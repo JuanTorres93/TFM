@@ -1,18 +1,19 @@
 # TODO improve all calculations using numpy
-# TODO add support class or enum
+# TODO add support class or enum ¿tuple?
+import math
 
 class Node:
     # TODO CHANGE SUPPORT BY ITS TYPE AND ADD A SETTER METHOD
-    def __init__(self, name: str, x: float, y: float, z: float, force=(0, 0, 0), momentum=(0, 0, 0), support=0):
+    def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=0):
+        if type(name) not in [str]:
+            raise TypeError ("name must be of type str")
+
         self.name = name
-        self.x = x
-        self.y = y
-        self.z = z
+        self.position = position
         self.force = force
         self.momentum = momentum
         self.support = support
 
-    # TODO Write tests for the methods below
     def set_name(self, new_name):
         self.name = new_name
 
@@ -22,25 +23,29 @@ class Node:
     def set_momentum(self, new_momentum):
         self.momentum = new_momentum
 
-    def set_x(self, new_x):
-        self.x = new_x
-
-    def set_y(self, new_y):
-        self.y = new_y
-
-    def set_z(self, new_z):
-        self.z = new_z
-
     def set_position(self, new_position):
-        self.x = new_position.x
-        self.y = new_position.y
-        self.z = new_position.z
+        self.position = new_position
+
+    def x(self):
+        return self.position[0]
+
+    def y(self):
+        return self.position[1]
+
+    def z(self):
+        return self.position[2]
 
 
 class Bar:
+    # TODO Add material and section
     def __init__(self, name: str, origin, end):
         # origin: Node
         # bar: Node
+        if type(origin) not in [Node] or type(end) not in [Node]:
+            raise TypeError ("Nodes must be of type 'Node'")
+
+        if type(name) not in [str]:
+            raise TypeError ("name must be of type str")
 
         self.name = name
         self.origin = origin
@@ -55,6 +60,17 @@ class Bar:
 
     def set_end(self, new_end):
         self.end = new_end
+
+    def length(self):
+        return math.sqrt((self.end.x() - self.origin.x())**2 +
+                         (self.end.y() - self.origin.y())**2 +
+                         (self.end.z() - self.origin.z())**2)
+
+    def set_material(self):
+        pass
+
+    def set_section(self):
+        pass
 
 
 class Structure:
