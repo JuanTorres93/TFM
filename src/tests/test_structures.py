@@ -2,6 +2,7 @@
 # Otherwise it will fail due to imports
 import unittest
 from modules import structures as st
+# from src.modules import structures as st
 
 
 class TestNode(unittest.TestCase):
@@ -66,11 +67,10 @@ class TestNode(unittest.TestCase):
         self.assertEqual(2, node.z())
 
 
-
 class TestBar(unittest.TestCase):
     def test_constructor(self):
         n_ori = st.Node("N1")
-        n_end = st.Node("N2")
+        n_end = st.Node("N2", position=(1, 2, 3))
 
         bar = st.Bar("B1", n_ori, n_end)
 
@@ -80,7 +80,7 @@ class TestBar(unittest.TestCase):
         self.assertRaises(TypeError, st.Bar, "name", n_ori, (0, 0, 0))
         self.assertRaises(TypeError, st.Bar, "name", (0, 0, 0), n_end)
         self.assertRaises(TypeError, st.Bar, 3, n_ori, n_end)
-
+        self.assertRaises(ValueError, st.Bar, "name", n_ori, n_ori)
 
     def test_set_name(self):
         n_ori = st.Node("N1")
@@ -115,13 +115,48 @@ class TestBar(unittest.TestCase):
 
         self.assertEqual(bar.end, (1, 2, 3))
 
-    def test_set_length(self):
+    def test_length(self):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(1, 2, 3))
 
         bar = st.Bar("B1", n_ori, n_end)
 
         self.assertAlmostEqual(bar.length(), 3.741657387)
+
+
+class TestStructure(unittest.TestCase):
+    def test_constructor(self):
+        n1 = st.Node("N1")
+        n2 = st.Node("N2", position=(0, 2, 3))
+        n3 = st.Node("N3", position=(1, 2, 3))
+
+        bar_1 = st.Bar("B1", n1, n2)
+        bar_2 = st.Bar("B2", n2, n3)
+
+        bar_list = [bar_2, bar_1]
+
+        self.assertRaises(TypeError, st.Structure, "name", bar_1)
+        self.assertRaises(TypeError, st.Structure, "name", bar_list)
+
+        bar_dict = {
+            'b1': bar_1,
+            'b2': bar_2
+        }
+
+        structure = st.Structure("S1", bar_dict)
+
+        self.assertEqual(structure.name, "S1")
+        self.assertEqual(structure.bars.get('b1'), bar_1)
+        self.assertEqual(structure.bars.get('b2'), bar_2)
+
+        bar_3 = st.Bar("B1", n2, n3)
+        bar_dict = {
+            'b1': bar_1,
+            'b2': bar_3
+        }
+
+        self.assertRaises(ValueError, st.Structure, "name", bar_dict)
+
 
 if __name__ == '__main__':
     unittest.main()

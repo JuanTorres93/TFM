@@ -6,7 +6,7 @@ class Node:
     # TODO CHANGE SUPPORT BY ITS TYPE AND ADD A SETTER METHOD
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=0):
         if type(name) not in [str]:
-            raise TypeError ("name must be of type str")
+            raise TypeError("name must be of type str")
 
         self.name = name
         self.position = position
@@ -42,10 +42,13 @@ class Bar:
         # origin: Node
         # bar: Node
         if type(origin) not in [Node] or type(end) not in [Node]:
-            raise TypeError ("Nodes must be of type 'Node'")
+            raise TypeError("Nodes must be of type 'Node'")
 
         if type(name) not in [str]:
-            raise TypeError ("name must be of type str")
+            raise TypeError("name must be of type str")
+
+        if origin == end:
+            raise ValueError("Origin and end nodes must be different")
 
         self.name = name
         self.origin = origin
@@ -76,5 +79,22 @@ class Bar:
 class Structure:
     # TODO When creating a structure check that there aren't multiple bars with the same name
     def __init__(self, name, bars):
-        # TODO bars will be a list, or maybe better, a ditionary of bars
+        if type(name) not in [str]:
+            raise TypeError("name must be of type str")
+        if type(bars) not in [dict]:
+            raise TypeError("bars must be of a dictionary of bars")
+
+        # Check if every bar has a unique name
+        bar_names = []
+
+        for key, bar in bars.items():
+            if bar.name not in bar_names:
+                bar_names.append(bar.name)
+            else:
+                raise ValueError("More than one bar with name '" + bar.name + "'")
+
+        del bar_names
+
+        # TODO bars will be a dictionary of bars
+        self.name = name
         self.bars = bars
