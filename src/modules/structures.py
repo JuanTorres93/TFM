@@ -1,6 +1,7 @@
 # TODO improve all calculations using numpy
 # TODO add support class or enum ¿tuple?
 import math
+import numpy as np
 
 class Node:
     # TODO CHANGE SUPPORT BY ITS TYPE AND ADD A SETTER METHOD
@@ -98,3 +99,17 @@ class Structure:
         # TODO bars will be a dictionary of bars
         self.name = name
         self.bars = bars
+
+
+def local_rigidity_matrix_2d_rigid_nodes(e, a, l, i):
+    """e -> Young's modulus
+    a -> cross section's area
+    l -> beam length
+    i -> modulus inertia"""
+
+    return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
+                     [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
+                     [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
+                     [-e * a / l, 0, 0, e * a / l, 0, 0],
+                     [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
+                     [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])

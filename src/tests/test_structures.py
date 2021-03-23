@@ -1,5 +1,6 @@
 # Run this file with python3 -m unittest
 # Otherwise it will fail due to imports
+import numpy as np
 import unittest
 from modules import structures as st
 # from src.modules import structures as st
@@ -157,6 +158,22 @@ class TestStructure(unittest.TestCase):
 
         self.assertRaises(ValueError, st.Structure, "name", bar_dict)
 
+
+class TestLocalRigidityMatrix(unittest.TestCase):
+    def test_local_rigidity_matrix_2d_rigid_nodes(self):
+        calculated_matrix = st.local_rigidity_matrix_2d_rigid_nodes(e=205.93965 * 10 ** 9 , a= 53.8 * 10 ** (-4),
+                                                                    l=4.2, i=8356 * 10 ** (-8))
+
+        expected_matrix = np.array([
+            [263798885, 0, 0, -263798885, 0, 0],
+            [0, 2787223.38, 5853169.1, 0, -2787223.38, 5853169.10],
+            [0, 5853169.1, 16388873.48, 0, -5853169.1, 8194436.74],
+            [-263798885, 0, 0, 263798885, 0, 0],
+            [0, -2787223.38, -5853169.1, 0, 2787223.38, -5853169.10],
+            [0, 5853169.1, 8194436.74, 0, -5853169.1, 16388873.48],
+        ])
+
+        np.testing.assert_allclose(calculated_matrix, expected_matrix)
 
 if __name__ == '__main__':
     unittest.main()
