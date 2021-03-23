@@ -124,6 +124,53 @@ class TestBar(unittest.TestCase):
 
         self.assertAlmostEqual(bar.length(), 3.741657387)
 
+    def test_local_rigidity_matrix_2d_rigid_nodes(self):
+        n_ori = st.Node("N1")
+        n_end = st.Node("N2", position=(0, 4.2, 0))
+
+        bar = st.Bar("B1", n_ori, n_end)
+
+        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(e=205.93965 * 10 ** 9, a=53.8 * 10 ** (-4),
+                                                                     i=8356 * 10 ** (-8))
+
+        expected_matrix = np.array([
+            [263798885, 0, 0, -263798885, 0, 0],
+            [0, 2787223.38, 5853169.1, 0, -2787223.38, 5853169.10],
+            [0, 5853169.1, 16388873.48, 0, -5853169.1, 8194436.74],
+            [-263798885, 0, 0, 263798885, 0, 0],
+            [0, -2787223.38, -5853169.1, 0, 2787223.38, -5853169.10],
+            [0, 5853169.1, 8194436.74, 0, -5853169.1, 16388873.48],
+        ])
+
+        np.testing.assert_allclose(calculated_matrix, expected_matrix)
+
+
+    def test_system_change_matrix_2d_rigid_nodes(angle):
+        n_ori = st.Node("N1")
+        n_end = st.Node("N2", position=(0, 4.2, 0))
+
+        bar = st.Bar("B1", n_ori, n_end)
+
+        calculated_matrix = bar.system_change_matrix_2d_rigid_nodes(angle=0)
+
+        expected_matrix = np.array([
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ])
+
+        np.testing.assert_allclose(calculated_matrix, expected_matrix)
+
+        calculated_matrix = bar.system_change_matrix_2d_rigid_nodes(angle=1.30899)
+
+        expected_matrix = np.array([
+            [0.2588257, -0.9659240, 0],
+            [0.9659240, 0.25882571, 0],
+            [0, 0, 1],
+        ])
+
+        np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-5)
+
 
 class TestStructure(unittest.TestCase):
     def test_constructor(self):
@@ -158,22 +205,6 @@ class TestStructure(unittest.TestCase):
 
         self.assertRaises(ValueError, st.Structure, "name", bar_dict)
 
-
-class TestLocalRigidityMatrix(unittest.TestCase):
-    def test_local_rigidity_matrix_2d_rigid_nodes(self):
-        calculated_matrix = st.local_rigidity_matrix_2d_rigid_nodes(e=205.93965 * 10 ** 9 , a= 53.8 * 10 ** (-4),
-                                                                    l=4.2, i=8356 * 10 ** (-8))
-
-        expected_matrix = np.array([
-            [263798885, 0, 0, -263798885, 0, 0],
-            [0, 2787223.38, 5853169.1, 0, -2787223.38, 5853169.10],
-            [0, 5853169.1, 16388873.48, 0, -5853169.1, 8194436.74],
-            [-263798885, 0, 0, 263798885, 0, 0],
-            [0, -2787223.38, -5853169.1, 0, 2787223.38, -5853169.10],
-            [0, 5853169.1, 8194436.74, 0, -5853169.1, 16388873.48],
-        ])
-
-        np.testing.assert_allclose(calculated_matrix, expected_matrix)
 
 if __name__ == '__main__':
     unittest.main()

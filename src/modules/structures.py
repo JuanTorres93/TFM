@@ -3,6 +3,7 @@
 import math
 import numpy as np
 
+
 class Node:
     # TODO CHANGE SUPPORT BY ITS TYPE AND ADD A SETTER METHOD
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=0):
@@ -65,16 +66,44 @@ class Bar:
     def set_end(self, new_end):
         self.end = new_end
 
-    def length(self):
-        return math.sqrt((self.end.x() - self.origin.x())**2 +
-                         (self.end.y() - self.origin.y())**2 +
-                         (self.end.z() - self.origin.z())**2)
+    def length(self) -> float:
+        return math.sqrt((self.end.x() - self.origin.x()) ** 2 +
+                         (self.end.y() - self.origin.y()) ** 2 +
+                         (self.end.z() - self.origin.z()) ** 2)
 
+    # TODO implement material and section as tables of a database
     def set_material(self):
         pass
 
     def set_section(self):
         pass
+
+    def local_rigidity_matrix_2d_rigid_nodes(self, e, a, i):
+        # TODO Possible improvement, get e, a and i from material and section properties
+
+        """e -> Young's modulus
+        a -> cross section's area
+        l -> beam length
+        i -> modulus inertia"""
+
+        l = self.length()
+
+        return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
+                         [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
+                         [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
+                         [-e * a / l, 0, 0, e * a / l, 0, 0],
+                         [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
+                         [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])
+
+    def system_change_matrix_2d_rigid_nodes(self, angle):
+        """angle represents the angle that the global axis must be rotated in order to be the same
+        than the local ones. angle is assumed in radians"""
+
+        return np.array([
+            [math.cos(angle), -math.sin(angle), 0],
+            [math.sin(angle), math.cos(angle), 0],
+            [0, 0, 1],
+        ])
 
 
 class Structure:
@@ -99,17 +128,3 @@ class Structure:
         # TODO bars will be a dictionary of bars
         self.name = name
         self.bars = bars
-
-
-def local_rigidity_matrix_2d_rigid_nodes(e, a, l, i):
-    """e -> Young's modulus
-    a -> cross section's area
-    l -> beam length
-    i -> modulus inertia"""
-
-    return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
-                     [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
-                     [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
-                     [-e * a / l, 0, 0, e * a / l, 0, 0],
-                     [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
-                     [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])
