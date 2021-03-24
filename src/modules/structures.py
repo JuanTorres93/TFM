@@ -3,6 +3,11 @@
 import math
 import numpy as np
 
+import src.modules.database_utils as db
+
+# Create the database if it does not exist
+db.regenerate_initial_database()
+
 
 class Node:
     # TODO CHANGE SUPPORT BY ITS TYPE AND ADD A SETTER METHOD
@@ -72,7 +77,11 @@ class Bar:
                          (self.end.z() - self.origin.z()) ** 2)
 
     # TODO implement material and section as tables of a database
-    def set_material(self):
+    def set_material(self, mat_name):
+        """
+        :param mat_name: str corresponds with a unique name in the materials table of the database
+        :return:
+        """
         pass
 
     def set_section(self):
@@ -128,3 +137,15 @@ class Structure:
         # TODO bars will be a dictionary of bars
         self.name = name
         self.bars = bars
+
+
+class Material:
+    def __init__(self, name):
+        """
+        :param name: must be the same than those of the table in the material database
+        """
+        conn = db.create_connection()
+
+        # All parameters must be the same than those of the table in the material database
+        self.generic_name, self.name, self.e = db.execute_read_query("""SELECT generic_name, name, e
+        FROM materials:""")
