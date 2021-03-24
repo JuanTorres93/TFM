@@ -6,6 +6,7 @@ from modules import structures as st
 # from src.modules import structures as st
 
 
+
 class TestNode(unittest.TestCase):
     # TODO Modify support when it is defined
     def test_constructor(self):
@@ -205,6 +206,11 @@ class TestStructure(unittest.TestCase):
 
         self.assertRaises(ValueError, st.Structure, "name", bar_dict)
 
+class TestMaterial(unittest.TestCase):
+    def test_constructor(self):
+        mat = st.Material("s275j")
+
+        self.assertEqual(1, 1)
 
 if __name__ == '__main__':
     unittest.main()
