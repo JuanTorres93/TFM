@@ -20,3 +20,8 @@ def path_exists(path_str: str):
 def create_directory(path: str):
     if not path_exists(path):
         os.mkdir(path)
+
+
+def remove(path: str):
+    if path_exists(path):
+        os.remove(path)
