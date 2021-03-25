@@ -2,8 +2,12 @@
 # Otherwise it will fail due to imports
 import numpy as np
 import unittest
-from modules import structures as st
-# from src.modules import structures as st
+try:
+    import context
+except ModuleNotFoundError:
+    import tests.context
+
+from src.modules import structures as st
 
 
 
@@ -79,10 +83,12 @@ class TestBar(unittest.TestCase):
         self.assertEqual(bar.name, "B1")
         self.assertEqual(bar.origin, n_ori)
         self.assertEqual(bar.end, n_end)
+        self.assertIsInstance(bar.material, st.Material)
         self.assertRaises(TypeError, st.Bar, "name", n_ori, (0, 0, 0))
         self.assertRaises(TypeError, st.Bar, "name", (0, 0, 0), n_end)
         self.assertRaises(TypeError, st.Bar, 3, n_ori, n_end)
         self.assertRaises(ValueError, st.Bar, "name", n_ori, n_ori)
+        self.assertRaises(TypeError, st.Bar, "name", n_ori, n_end, material=2)
 
     def test_set_name(self):
         n_ori = st.Node("N1")
@@ -131,8 +137,7 @@ class TestBar(unittest.TestCase):
 
         bar = st.Bar("B1", n_ori, n_end)
 
-        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(e=205.93965 * 10 ** 9, a=53.8 * 10 ** (-4),
-                                                                     i=8356 * 10 ** (-8))
+        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(a=53.8 * 10 ** (-4), i=8356 * 10 ** (-8))
 
         expected_matrix = np.array([
             [263798885, 0, 0, -263798885, 0, 0],
@@ -210,7 +215,12 @@ class TestMaterial(unittest.TestCase):
     def test_constructor(self):
         mat = st.Material("s275j")
 
-        self.assertEqual(1, 1)
+        self.assertEqual(mat.generic_name, "steel")
+        self.assertEqual(mat.name, "s275j")
+        self.assertEqual(mat.e, 205939650000)
+
+        self.assertRaises(TypeError, st.Material, 4)
+        self.assertRaises(LookupError, st.Material, "foobar")
 
 if __name__ == '__main__':
     unittest.main()

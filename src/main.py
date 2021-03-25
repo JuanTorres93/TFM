@@ -1,5 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from modules import structures
+from src.modules import databaseutils as db
+
+# Create the database if it does not exist
+db.regenerate_initial_database()
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):

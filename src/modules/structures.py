@@ -3,10 +3,7 @@
 import math
 import numpy as np
 
-import src.modules.database_utils as db
-
-# Create the database if it does not exist
-db.regenerate_initial_database()
+import src.modules.databaseutils as db
 
 
 class Node:
@@ -45,14 +42,14 @@ class Node:
 
 class Bar:
     # TODO Add material and section
-    def __init__(self, name: str, origin, end):
+    def __init__(self, name: str, origin, end, material="s275j"):
         # origin: Node
         # bar: Node
         if type(origin) not in [Node] or type(end) not in [Node]:
             raise TypeError("Nodes must be of type 'Node'")
 
-        if type(name) not in [str]:
-            raise TypeError("name must be of type str")
+        if type(name) not in [str] or type(material) not in [str]:
+            raise TypeError("name and material must be of type str")
 
         if origin == end:
             raise ValueError("Origin and end nodes must be different")
@@ -60,6 +57,7 @@ class Bar:
         self.name = name
         self.origin = origin
         self.end = end
+        self.material = Material(material)
 
     # TODO Write tests for the methods below
     def set_name(self, new_name):
@@ -82,20 +80,21 @@ class Bar:
         :param mat_name: str corresponds with a unique name in the materials table of the database
         :return:
         """
-        pass
+        # TODO Add more materials to database and write a test for this function
+        self.material = Material(mat_name)
 
     def set_section(self):
         pass
 
-    def local_rigidity_matrix_2d_rigid_nodes(self, e, a, i):
+    def local_rigidity_matrix_2d_rigid_nodes(self, a, i):
         # TODO Possible improvement, get e, a and i from material and section properties
-
-        """e -> Young's modulus
-        a -> cross section's area
-        l -> beam length
-        i -> modulus inertia"""
+        # e -> Young's modulus
+        # a -> cross section's area
+        # l -> beam length
+        # i -> modulus inertia
 
         l = self.length()
+        e = self.material.e
 
         return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
                          [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
@@ -141,11 +140,18 @@ class Structure:
 
 class Material:
     def __init__(self, name):
+        if type(name) not in [str]:
+            raise TypeError("name must be of type str")
         """
         :param name: must be the same than those of the table in the material database
         """
         conn = db.create_connection()
 
         # All parameters must be the same than those of the table in the material database
-        self.generic_name, self.name, self.e = db.execute_read_query("""SELECT generic_name, name, e
-        FROM materials:""")
+        result = db.execute_read_query(conn, """SELECT generic_name, name, e
+        FROM materials WHERE name = '""" + name + "';")
+
+        if result:
+            self.generic_name, self.name, self.e = result[0]
+        else:
+            raise LookupError("The material " + name + " is not defined in the database.")
