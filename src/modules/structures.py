@@ -42,7 +42,7 @@ class Node:
 
 class Bar:
     # TODO Add material and section
-    def __init__(self, name: str, origin, end, material="s275j"):
+    def __init__(self, name: str, origin, end, material="s275j", profile=("IPE", 300)):
         # origin: Node
         # bar: Node
         if type(origin) not in [Node] or type(end) not in [Node]:
@@ -58,6 +58,7 @@ class Bar:
         self.origin = origin
         self.end = end
         self.material = Material(material)
+        self.profile = Profile(profile[0], profile[1])
 
     # TODO Write tests for the methods below
     def set_name(self, new_name):
@@ -74,7 +75,6 @@ class Bar:
                          (self.end.y() - self.origin.y()) ** 2 +
                          (self.end.z() - self.origin.z()) ** 2)
 
-    # TODO implement material and section as tables of a database
     def set_material(self, mat_name):
         """
         :param mat_name: str corresponds with a unique name in the materials table of the database
@@ -83,10 +83,16 @@ class Bar:
         # TODO Add more materials to database and write a test for this function
         self.material = Material(mat_name)
 
-    def set_section(self):
-        pass
+    def set_profile(self, profile_name, profile_number):
+        """
+        :param profile_name: str corresponds with a name in the profile table of the database. e.g. IPE
+        :param profile_number: str corresponds with a name_number in the profile table of the database
+        :return:
+        """
+        # TODO Add more profiles to database and write a test for this function
+        self.profile = Profile(profile_name, profile_number)
 
-    def local_rigidity_matrix_2d_rigid_nodes(self, a, i):
+    def local_rigidity_matrix_2d_rigid_nodes(self, i):
         # TODO Possible improvement, get e, a and i from material and section properties
         # e -> Young's modulus
         # a -> cross section's area
@@ -94,7 +100,8 @@ class Bar:
         # i -> modulus inertia
 
         l = self.length()
-        e = self.material.e
+        e = self.material.young_mod
+        a = self.profile.area
 
         return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
                          [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
@@ -140,18 +147,54 @@ class Structure:
 
 class Material:
     def __init__(self, name):
-        if type(name) not in [str]:
-            raise TypeError("name must be of type str")
         """
         :param name: must be the same than those of the table in the material database
         """
+        if type(name) not in [str]:
+            raise TypeError("name must be of type str")
         conn = db.create_connection()
 
+        query = """SELECT generic_name, name, young_mod, rig_mod, poisson_coef,
+        thermal_dil_coef, density
+        FROM materials WHERE name = '""" + name + "';"
+
         # All parameters must be the same than those of the table in the material database
-        result = db.execute_read_query(conn, """SELECT generic_name, name, e
-        FROM materials WHERE name = '""" + name + "';")
+        result = db.execute_read_query(conn, query)
 
         if result:
-            self.generic_name, self.name, self.e = result[0]
+            self.generic_name, self.name, self.young_mod, self.rig_mod, self.poisson_coef,\
+                self.thermal_dil_coef, self.density = result[0]
         else:
-            raise LookupError("The material " + name + " is not defined in the database.")
+            raise LookupError("Error in the query: ''" + query + "''. Or maybe the material " + name + " is not defined in the database.")
+
+
+class Profile:
+    def __init__(self, name, name_number):
+        """
+        :param name: must be the same than those of the table in the profiles database
+        """
+        if type(name) not in [str]:
+            raise TypeError("name must be of type str")
+        if type(name_number) not in [str, int]:
+            raise TypeError("name must be of type str")
+
+        if type(name_number) in [int]:
+            name_number = str(name_number)
+
+        conn = db.create_connection()
+
+        query = """SELECT name, name_number, area, weight, inertia_moment_x, res_mod_x,
+        inertia_moment_y, res_mod_y
+        FROM profiles WHERE name = '""" + name + "' AND name_number = " +\
+                name_number + ";"
+
+        # All parameters must be the same than those of the table in the profile database
+        result = db.execute_read_query(conn, query)
+
+        if result:
+            self.name, self.name_number, self.area, self.weight, self.inertia_moment_x, self.res_mod_x, \
+            self.inertia_moment_y, self.res_mod_y = result[0]
+        else:
+            raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
+                              name_number + " is not defined in the database.")
+        pass
