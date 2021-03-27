@@ -137,7 +137,7 @@ class TestBar(unittest.TestCase):
 
         bar = st.Bar("B1", n_ori, n_end)
 
-        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(a=53.8 * 10 ** (-4), i=8356 * 10 ** (-8))
+        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(i=8356 * 10 ** (-8))
 
         expected_matrix = np.array([
             [263798885, 0, 0, -263798885, 0, 0],
@@ -225,6 +225,23 @@ class TestMaterial(unittest.TestCase):
 
         self.assertRaises(TypeError, st.Material, 4)
         self.assertRaises(LookupError, st.Material, "foobar")
+
+
+class TestProfile(unittest.TestCase):
+    def test_constructor(self):
+        pro = st.Profile("IPE", 80)
+
+        self.assertEqual(pro.name, "IPE")
+        self.assertEqual(pro.name_number, 80)
+        self.assertEqual(pro.area, 0.000764)
+        self.assertEqual(pro.weight, 6)
+        self.assertEqual(pro.inertia_moment_x, 0.000000801)
+        self.assertEqual(pro.res_mod_x, 0.000020)
+        self.assertEqual(pro.inertia_moment_y, 0.0000000849)
+        self.assertEqual(pro.res_mod_y, 0.00000369)
+
+        self.assertRaises(TypeError, st.Profile, 4, 3)
+        self.assertRaises(LookupError, st.Profile, "h", "foobar")
 
 if __name__ == '__main__':
     unittest.main()
