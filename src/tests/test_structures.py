@@ -217,7 +217,11 @@ class TestMaterial(unittest.TestCase):
 
         self.assertEqual(mat.generic_name, "steel")
         self.assertEqual(mat.name, "s275j")
-        self.assertEqual(mat.e, 205939650000)
+        self.assertEqual(mat.young_mod, 205939650000)
+        self.assertEqual(mat.rig_mod, 81000000000)
+        self.assertEqual(mat.poisson_coef, 0.3)
+        self.assertEqual(mat.thermal_dil_coef, 0.000012)
+        self.assertEqual(mat.density, 7.85)
 
         self.assertRaises(TypeError, st.Material, 4)
         self.assertRaises(LookupError, st.Material, "foobar")
