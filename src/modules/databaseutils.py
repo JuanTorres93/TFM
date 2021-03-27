@@ -70,10 +70,11 @@ def regenerate_initial_database(force=False):
         );
         """,
         # More fields in http://prontuarios.info/perfiles/IPE
+        # TODO pair name, number_name must be unique
         """
         CREATE TABLE IF NOT EXISTS profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE, -- IPE, HEB...
+        name TEXT NOT NULL, -- IPE, HEB...
         name_number INTEGER NOT NULL, -- e.g. 300 in IPE 300
         area REAL NOT NULL, 
         weight REAL NOT NULL, -- kg/m
@@ -94,6 +95,12 @@ def regenerate_initial_database(force=False):
         res_mod_x, inertia_moment_y, res_mod_y)
         VALUES ('IPE', 80, 0.000764, 6, 0.000000801, 0.000020, 0.0000000849,
         0.00000369);
+        """,
+        """
+        INSERT INTO profiles (name, name_number, area, weight, inertia_moment_x, 
+        res_mod_x, inertia_moment_y, res_mod_y)
+        VALUES ('IPE', 300, 0.00538, 42.2, 0.00008360, 0.000577, 0.0000000604,
+        0.00000335);
         """
         ]
 
@@ -130,4 +137,6 @@ def add_material_to_db(material_info):
 regenerate_initial_database(force=True)
 conn = create_connection()
 x = execute_read_query(conn, "SELECT * FROM materials;")
+y = execute_read_query(conn, "SELECT * FROM profiles;")
 print(x)
+print(y)
