@@ -99,7 +99,7 @@ def regenerate_initial_database(force=False):
         """
         INSERT INTO profiles (name, name_number, area, weight, inertia_moment_x, 
         res_mod_x, inertia_moment_y, res_mod_y)
-        VALUES ('IPE', 300, 0.00538, 42.2, 0.00008360, 0.000577, 0.0000000604,
+        VALUES ('IPE', 300, 0.00538, 42.2, 0.00008356, 0.000577, 0.0000000604,
         0.00000335);
         """
         ]
@@ -134,9 +134,9 @@ def add_material_to_db(material_info):
     execute_query(conn, query)
 
 
-regenerate_initial_database(force=True)
-conn = create_connection()
-x = execute_read_query(conn, "SELECT * FROM materials;")
-y = execute_read_query(conn, "SELECT * FROM profiles;")
-print(x)
-print(y)
+# regenerate_initial_database(force=True)
+# conn = create_connection()
+# x = execute_read_query(conn, "SELECT * FROM materials;")
+# y = execute_read_query(conn, "SELECT * FROM profiles;")
+# print(x)
+# print(y)
