@@ -17,9 +17,9 @@ class TestNode(unittest.TestCase):
         node = st.Node("N1", position=(1, 2, 3), force=(4, 5, 6), momentum=(7, 8, 9), support=0)
 
         self.assertEqual(node.name, "N1")
-        self.assertEqual(node.position, (1, 2, 3))
-        self.assertEqual(node.force, (4, 5, 6))
-        self.assertEqual(node.momentum, (7, 8, 9))
+        np.testing.assert_array_equal(node.position, np.array((1, 2, 3)))
+        np.testing.assert_array_equal(node.force, np.array((4, 5, 6)))
+        np.testing.assert_array_equal(node.momentum, np.array((7, 8, 9)))
         self.assertEqual(node.support, 0)
         self.assertRaises(TypeError, st.Node, 3)
 
@@ -35,21 +35,23 @@ class TestNode(unittest.TestCase):
         node = st.Node("N1", position=(1, 1, 1))
 
         node.set_position((2, 2, 2))
-        self.assertEqual((2, 2, 2), node.position)
+
+        np.testing.assert_array_equal(node.position, (2, 2, 2))
 
     # TODO force should be a tuple of int or float
     def test_set_force(self):
         node = st.Node("N1", force=(1, 1, 1))
 
         node.set_force((2, 2, 2))
-        self.assertEqual((2, 2, 2), node.force)
+        np.testing.assert_array_equal(node.force, (2, 2, 2))
 
     # TODO momentum should be a tuple of int or float
     def test_set_momentum(self):
         node = st.Node("N1", momentum=(1, 1, 1))
 
         node.set_momentum((2, 2, 2))
-        self.assertEqual((2, 2, 2), node.momentum)
+
+        np.testing.assert_array_equal(node.momentum, (2, 2, 2))
 
     def test_x(self):
         node = st.Node("N1", position=(1, 2, 3))
@@ -137,7 +139,7 @@ class TestBar(unittest.TestCase):
 
         bar = st.Bar("B1", n_ori, n_end)
 
-        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes(i=8356 * 10 ** (-8))
+        calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes()
 
         expected_matrix = np.array([
             [263798885, 0, 0, -263798885, 0, 0],
@@ -151,31 +153,48 @@ class TestBar(unittest.TestCase):
         np.testing.assert_allclose(calculated_matrix, expected_matrix)
 
 
-    def test_system_change_matrix_2d_rigid_nodes(angle):
+    def test_system_change_matrix_2d_rigid_nodes(self):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(0, 4.2, 0))
 
         bar = st.Bar("B1", n_ori, n_end)
 
-        calculated_matrix = bar.system_change_matrix_2d_rigid_nodes(angle=0)
+        calculated_matrix = bar.system_change_matrix_2d_rigid_nodes()
 
         expected_matrix = np.array([
+            [0, -1, 0],
             [1, 0, 0],
-            [0, 1, 0],
             [0, 0, 1],
         ])
 
-        np.testing.assert_allclose(calculated_matrix, expected_matrix)
+        np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-5, atol=1e-7)
 
-        calculated_matrix = bar.system_change_matrix_2d_rigid_nodes(angle=1.30899)
+    def test_angle_from_global_to_local(self):
+        n_ori = st.Node("N1")
+        n_end = st.Node("N2", position=(0, 4.2, 0))
+
+        bar = st.Bar("B1", n_ori, n_end)
+
+        np.testing.assert_equal(bar._angle_from_global_to_local(), np.pi / 2)
+
+    def test_global_rigidity_matrix_2d_rigid_nodes(self):
+        n_ori = st.Node("N1")
+        n_end = st.Node("N2", position=(0, 4.2, 0))
+
+        bar = st.Bar("B1", n_ori, n_end)
+
+        calculated_matrix = bar.global_rigidity_matrix_2d_rigid_nodes()
 
         expected_matrix = np.array([
-            [0.2588257, -0.9659240, 0],
-            [0.9659240, 0.25882571, 0],
-            [0, 0, 1],
+            [2787223.38, 0, -5853169.10, -2787223.38, 0, -5853169.10],
+            [0, 263798885, 0, 0, -263798885, 0],
+            [-5853169.1, 0, 16388873.48, 5853169.10, 0, 8194436.74],
+            [-2787223.38, 0, 5853169.10, 2787223.38, 0, 5853169.10],
+            [0, -263798885, 0, 0, 263798885, 0],
+            [-5853169.1, 0, 8194436.74, 5853169.10, 0, 16388873.48],
         ])
 
-        np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-5)
+        np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-6, atol=1)
 
 
 class TestStructure(unittest.TestCase):
