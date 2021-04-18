@@ -12,25 +12,28 @@ from src.modules import structures as st
 
 
 class TestNode(unittest.TestCase):
-    # TODO Modify support when it is defined
     def test_constructor(self):
-        node = st.Node("N1", position=(1, 2, 3), force=(4, 5, 6), momentum=(7, 8, 9), support=0)
+        node = st.Node("N1", position=(1, 2, 3), force=(4, 5, 6), momentum=(7, 8, 9), support=st.Support.NONE)
 
         self.assertEqual(node.name, "N1")
         np.testing.assert_array_equal(node.position, np.array((1, 2, 3)))
         np.testing.assert_array_equal(node.force, np.array((4, 5, 6)))
         np.testing.assert_array_equal(node.momentum, np.array((7, 8, 9)))
-        self.assertEqual(node.support, 0)
+        self.assertEqual(node.support, st.Support.NONE)
         self.assertRaises(TypeError, st.Node, 3)
 
-    # TODO name should be an str
+        self.assertRaises(TypeError, st.Node, "N1", position=[1, 2, 3])
+        self.assertRaises(TypeError, st.Node, "N1", force=[1, 2, 3])
+        self.assertRaises(TypeError, st.Node, "N1", momentum=[1, 2, 3])
+
     def test_set_name(self):
         node = st.Node("N1")
 
         node.set_name("node")
         self.assertEqual("node", node.name)
 
-    # TODO position should be a tuple of int or float
+        self.assertRaises(TypeError, node.set_name, 0)
+
     def test_set_position(self):
         node = st.Node("N1", position=(1, 1, 1))
 
@@ -38,20 +41,37 @@ class TestNode(unittest.TestCase):
 
         np.testing.assert_array_equal(node.position, (2, 2, 2))
 
-    # TODO force should be a tuple of int or float
+        self.assertRaises(TypeError, node.set_position, 0)
+        self.assertRaises(TypeError, node.set_position, [0, 0, 0])
+
     def test_set_force(self):
         node = st.Node("N1", force=(1, 1, 1))
 
         node.set_force((2, 2, 2))
         np.testing.assert_array_equal(node.force, (2, 2, 2))
 
-    # TODO momentum should be a tuple of int or float
+        self.assertRaises(TypeError, node.set_force, 0)
+        self.assertRaises(TypeError, node.set_force, [0, 0, 0])
+
     def test_set_momentum(self):
         node = st.Node("N1", momentum=(1, 1, 1))
 
         node.set_momentum((2, 2, 2))
 
         np.testing.assert_array_equal(node.momentum, (2, 2, 2))
+
+        self.assertRaises(TypeError, node.set_momentum, 0)
+        self.assertRaises(TypeError, node.set_momentum, [0, 0, 0])
+
+    def test_set_support(self):
+        node = st.Node("N1", momentum=(1, 1, 1))
+        self.assertEqual(node.support, st.Support.NONE)
+
+        node.set_support(st.Support.FIXED)
+        self.assertEqual(node.support, st.Support.FIXED)
+
+        self.assertRaises(TypeError, node.set_support, 0)
+        self.assertRaises(TypeError, node.set_support, [0, 0, 0])
 
     def test_x(self):
         node = st.Node("N1", position=(1, 2, 3))
@@ -101,6 +121,8 @@ class TestBar(unittest.TestCase):
 
         self.assertEqual("New name", bar.name)
 
+        self.assertRaises(TypeError, bar.set_name, 0)
+
     def test_set_origin(self):
         n_ori = st.Node("N1")
         n_end = st.Node("N2")
@@ -108,10 +130,12 @@ class TestBar(unittest.TestCase):
         bar = st.Bar("B1", n_ori, n_end)
         self.assertEqual(bar.origin, n_ori)
 
-        new_origin = (1, 2, 3)
+        new_origin = st.Node("N3", position=(1, 2, 3))
         bar.set_origin(new_origin)
 
-        self.assertEqual(bar.origin, (1, 2, 3))
+        self.assertEqual(bar.origin, new_origin)
+
+        self.assertRaises(TypeError, bar.set_origin, 0)
 
     def test_set_end(self):
         n_ori = st.Node("N1")
@@ -120,10 +144,12 @@ class TestBar(unittest.TestCase):
         bar = st.Bar("B1", n_ori, n_end)
         self.assertEqual(bar.end, n_end)
 
-        new_end = (1, 2, 3)
+        new_end = st.Node("N3", (1, 2, 3))
         bar.set_end(new_end)
 
-        self.assertEqual(bar.end, (1, 2, 3))
+        self.assertEqual(bar.end, new_end)
+        self.assertRaises(TypeError, bar.set_end, 0)
+        self.assertRaises(TypeError, bar.set_end, (0, 0, 0))
 
     def test_length(self):
         n_ori = st.Node("N1")
