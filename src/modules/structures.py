@@ -48,9 +48,13 @@ class Node:
         self.force = np.array(force)
         self.momentum = np.array(momentum)
         self.support = support
-        self.number_for_matrix = 0
 
-    def set_name(self, new_name):
+        # Number assigned to construct the structure matrix (handled from structure class)
+        self.solving_numeration = -1
+        # List for constructing the assembled matrix (handled from structure class)
+        self.contained_in_bars = []
+
+    def set_name(self, new_name: str):
         """
         Sets the name of the node to the specified one
         :param new_name: new name of the node
@@ -61,7 +65,7 @@ class Node:
 
         self.name = new_name
 
-    def set_force(self, new_force):
+    def set_force(self, new_force: (float, float, float)):
         """
         Sets the force of the node to the specified one
         :param new_force: new force applied to the node
@@ -72,7 +76,7 @@ class Node:
 
         self.force = np.array(new_force)
 
-    def set_momentum(self, new_momentum):
+    def set_momentum(self, new_momentum: (float, float, float)):
         """
         Sets the momentum of the node to the specified one
         :param new_momentum: new momentum applied to the node
@@ -83,7 +87,7 @@ class Node:
 
         self.momentum = np.array(new_momentum)
 
-    def set_position(self, new_position):
+    def set_position(self, new_position: (float, float, float)):
         """
         Sets the position of the node to the specified one
         :param new_position: new position applied to the node
@@ -94,7 +98,7 @@ class Node:
 
         self.position = np.array(new_position)
 
-    def set_support(self, new_support):
+    def set_support(self, new_support: Support):
         """
         Sets the support of the node to the specified one
         :param new_support: new support applied to the node
@@ -131,7 +135,7 @@ class Bar:
     """
     Class that represents a bar in a structure.
     """
-    def __init__(self, name: str, origin, end, material="s275j", profile=("IPE", 300)):
+    def __init__(self, name: str, origin: Node, end: Node, material="s275j", profile=("IPE", 300)):
         """
         Constructor for Bar class
         :param name: Name of the bar
@@ -155,7 +159,18 @@ class Bar:
         self.material = Material(material)
         self.profile = Profile(profile[0], profile[1])
 
-    def set_name(self, new_name):
+        # Number assigned to construct the structure matrix (handle from structure class)
+        self.solving_numeration = -1
+
+        # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
+        self.global_rigidity_matrix_2d_rigid_nodes()
+        # This submatrixes are here exposed for an easier way to assemble the assembled matrix from the structure class
+        self.k_ii = None
+        self.k_ij = None
+        self.k_ji = None
+        self.k_jj = None
+
+    def set_name(self, new_name: str):
         """
         Sets the name of the node to the specified one
         :param new_name: new name of the node
@@ -166,7 +181,7 @@ class Bar:
 
         self.name = new_name
 
-    def set_origin(self, new_origin):
+    def set_origin(self, new_origin: Node):
         """
         Sets the origin node of the bar to the specified one
         :param new_origin: new origin node of the bar
@@ -177,7 +192,7 @@ class Bar:
 
         self.origin = new_origin
 
-    def set_end(self, new_end):
+    def set_end(self, new_end: Node):
         """
         Sets the end node of the bar to the specified one
         :param new_end: new end node of the bar
@@ -195,7 +210,7 @@ class Bar:
         """
         return np.linalg.norm(np.subtract(self.end.position, self.origin.position))
 
-    def set_material(self, mat_name):
+    def set_material(self, mat_name: str):
         """
         :param mat_name: str corresponds with a unique name in the materials table of the database
         :return:
@@ -203,7 +218,7 @@ class Bar:
         # TODO Add more materials to database and write a test for this function
         self.material = Material(mat_name)
 
-    def set_profile(self, profile_name, profile_number):
+    def set_profile(self, profile_name: str, profile_number: int):
         """
         :param profile_name: str corresponds with a name in the profile table of the database. e.g. IPE
         :param profile_number: str corresponds with a name_number in the profile table of the database
@@ -273,25 +288,25 @@ class Bar:
         l = self.local_rigidity_matrix_2d_rigid_nodes()
 
         m_aux = g.dot(l[0:3, 0:3])
-        k_ii = m_aux.dot(np.transpose(g))
+        self.k_ii = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[0:3, 3:6])
-        k_ij = m_aux.dot(np.transpose(g))
+        self.k_ij = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[3:6, 0:3])
-        k_ji = m_aux.dot(np.transpose(g))
+        self.k_ji = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[3:6, 3:6])
-        k_jj = m_aux.dot(np.transpose(g))
+        self.k_jj = m_aux.dot(np.transpose(g))
 
-        top = np.hstack((k_ii, k_ij))
-        bottom = np.hstack((k_ji, k_jj))
+        top = np.hstack((self.k_ii, self.k_ij))
+        bottom = np.hstack((self.k_ji, self.k_jj))
 
         return np.vstack((top, bottom))
 
 
 class Structure:
-    def __init__(self, name, bars):
+    def __init__(self, name: str, bars: dict):
         """
 
         :param name: Unique name of the structure
@@ -352,12 +367,45 @@ class Structure:
     #     print(list(map(lambda x: x.name, end_nodes)))
     #     print(end_nodes_validity)
 
-    def rigidity_matrix(self):
-        pass
+    def assembled_matrix(self):
+        # Initialize assignment of numbers to each bar and each node
+        for key, bar in st.bars.items():
+            bar.solving_numeration = -1
+            bar.origin.solving_number = -1
+            bar.end.solving_number = -1
+
+        # Assign numeration for each bar and each node and check which bar each node belongs to
+        bar_number = 1
+        node_number = 1
+
+        for key, bar in st.bars.items():
+            origin_node = bar.origin
+            end_node = bar.end
+
+            # Bar solving number assignations
+            if bar.solving_numeration <= 0:
+                bar.solving_numeration = bar_number
+                bar_number = bar_number + 1
+
+            # Nodes solving number assignations
+            if origin_node.solving_number <= 0:
+                origin_node.solving_number = node_number
+                node_number = node_number + 1
+
+            if end_node.solving_number <= 0:
+                end_node.solving_number = node_number
+                node_number = node_number + 1
+
+            # Assign bar number to origin and end nodes contained_in_bars list
+            if bar.solving_numeration not in origin_node.contained_in_bars:
+                origin_node.contained_in_bars.append(bar.solving_numeration)
+
+            if bar.solving_numeration not in end_node.contained_in_bars:
+                end_node.contained_in_bars.append(bar.solving_numeration)
 
 
 class Material:
-    def __init__(self, name):
+    def __init__(self, name: str):
         """
         :param name: must be the same than those of the table in the material database
         """
@@ -381,7 +429,7 @@ class Material:
 
 
 class Profile:
-    def __init__(self, name, name_number):
+    def __init__(self, name: str, name_number):
         """
         :param name: must be the same than those of the table in the profiles database
         """
@@ -436,3 +484,4 @@ bars = {
 }
 
 st = Structure("S1", bars)
+st.assembled_matrix()
