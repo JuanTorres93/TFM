@@ -4,7 +4,7 @@ import unittest
 try:
     import context
 except ModuleNotFoundError:
-    import tests.context
+    import src.tests.context
 
 from src.modules import databaseutils as db
 
