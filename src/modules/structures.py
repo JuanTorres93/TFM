@@ -3,6 +3,8 @@ import math
 import numpy as np
 import src.modules.databaseutils as db
 
+# For structures with rigid nodes, the size of the submatrixes is 3
+submatrix_size = 3
 
 @enum.unique
 class Support(enum.Enum):
@@ -162,8 +164,6 @@ class Bar:
         # Number assigned to construct the structure matrix (handle from structure class)
         self.solving_numeration = -1
 
-        # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
-        self.global_rigidity_matrix_2d_rigid_nodes()
         # This submatrixes are here exposed for an easier way to assemble the assembled matrix from the structure class
         self.k_ii = None
         self.k_ij = None
@@ -369,7 +369,7 @@ class Structure:
 
     def assembled_matrix(self):
         # Initialize assignment of numbers to each bar and each node
-        for key, bar in st.bars.items():
+        for key, bar in self.bars.items():
             bar.solving_numeration = -1
             bar.origin.solving_number = -1
             bar.end.solving_number = -1
@@ -378,7 +378,7 @@ class Structure:
         bar_number = 1
         node_number = 1
 
-        for key, bar in st.bars.items():
+        for key, bar in self.bars.items():
             origin_node = bar.origin
             end_node = bar.end
 
@@ -402,6 +402,44 @@ class Structure:
 
             if bar.solving_numeration not in end_node.contained_in_bars:
                 end_node.contained_in_bars.append(bar.solving_numeration)
+
+        # Assemble the matrix
+        # Total number of nodes in structure
+        num_nodes = node_number - 1
+        # List to store the nodes already processed
+        nodes_done = []
+        # Matrix to be returned as assembled matrix
+        matrix = [[0] * num_nodes * submatrix_size] * num_nodes * submatrix_size
+        matrix = np.array(matrix)
+
+        def find_submatrix(matrix, row, col):
+            # This function returns submatrixes of the global matrix as global rigidity submatrixes
+            row = row - 1
+            col = col - 1
+
+            submatrix_row_start = int(row * submatrix_size)
+            submatrix_row_end = int(row * submatrix_size + submatrix_size)
+            submatrix_col_start = int(col * submatrix_size)
+            submatrix_col_end = int(col * submatrix_size + submatrix_size)
+
+            return matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end]
+
+        print(find_submatrix(matrix, 1, 1))
+
+        for key, bar in self.bars.items():
+            # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
+            bar.global_rigidity_matrix_2d_rigid_nodes()
+
+            origin_node = bar.origin
+            end_node = bar.end
+            origin_in_bars = origin_node.contained_in_bars
+            end_in_bars = end_node.contained_in_bars
+
+            if origin_node.solving_number not in nodes_done:
+                pass
+
+
+
 
 
 class Material:
