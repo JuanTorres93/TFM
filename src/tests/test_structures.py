@@ -1,5 +1,7 @@
 # Run this file with python3 -m unittest
 # Otherwise it will fail due to imports
+import math
+
 import numpy as np
 import unittest
 try:
@@ -196,12 +198,27 @@ class TestBar(unittest.TestCase):
         np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-5, atol=1e-7)
 
     def test_angle_from_global_to_local(self):
-        n_ori = st.Node("N1")
-        n_end = st.Node("N2", position=(0, 4.2, 0))
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.5, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.PINNED)
 
-        bar = st.Bar("B1", n_ori, n_end)
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
 
-        np.testing.assert_equal(bar._angle_from_global_to_local(), np.pi / 2)
+        b1 = st.Bar("B1", n1, n2)
+
+        np.testing.assert_equal(b1._angle_from_global_to_local(), np.pi / 2)
+        np.testing.assert_almost_equal(b2._angle_from_global_to_local(), math.radians(8.778), 3)
+        np.testing.assert_almost_equal(b3._angle_from_global_to_local(), math.radians(351.222), 3)
+        # Differs in 0.03 radians due to trigonometry used to calculate node position
+        np.testing.assert_almost_equal(b4._angle_from_global_to_local(), math.radians(351.222), 0)
+        np.testing.assert_equal(b5._angle_from_global_to_local(), math.radians(270))
 
     def test_global_rigidity_matrix_2d_rigid_nodes(self):
         n_ori = st.Node("N1")
