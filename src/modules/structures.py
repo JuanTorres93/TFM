@@ -6,6 +6,7 @@ import src.modules.databaseutils as db
 # For structures with rigid nodes, the size of the submatrixes is 3
 submatrix_size = 3
 
+
 @enum.unique
 class Support(enum.Enum):
     """
@@ -14,13 +15,14 @@ class Support(enum.Enum):
     NONE = 1
     ROLLER = 2  # Deslizadera
     PINNED = 3  # Fijo
-    FIXED = 4   # Empotramiento
+    FIXED = 4  # Empotramiento
 
 
 class Node:
     """
     Class that represents a node in a structure.
     """
+
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
         """
         Constructor for Node class
@@ -137,6 +139,7 @@ class Bar:
     """
     Class that represents a bar in a structure.
     """
+
     def __init__(self, name: str, origin: Node, end: Node, material="s275j", profile=("IPE", 300)):
         """
         Constructor for Bar class
@@ -406,8 +409,6 @@ class Structure:
         # Assemble the matrix
         # Total number of nodes in structure
         num_nodes = node_number - 1
-        # List to store the nodes already processed
-        nodes_done = []
         # Matrix to be returned as assembled matrix
         matrix = [[0] * num_nodes * submatrix_size] * num_nodes * submatrix_size
         matrix = np.array(matrix)
@@ -422,24 +423,56 @@ class Structure:
             submatrix_col_start = int(col * submatrix_size)
             submatrix_col_end = int(col * submatrix_size + submatrix_size)
 
-            return matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end]
+            return {
+                "matrix": matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end],
+                "row_start": submatrix_row_start,
+                "row_end": submatrix_row_end,
+                "col_start": submatrix_col_start,
+                "col_end": submatrix_col_end
+            }
 
-        print(find_submatrix(matrix, 1, 1))
+        # List to store the nodes already processed
+        nodes_done = []
 
         for key, bar in self.bars.items():
             # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
             bar.global_rigidity_matrix_2d_rigid_nodes()
+            print(bar._angle_from_global_to_local() * 180 / math.pi)
 
             origin_node = bar.origin
             end_node = bar.end
+
+            # This list is used in a loop in order to use the different k_xy of the bar
+            nodes_combination = [(origin_node.solving_number, origin_node.solving_number),
+                                 (origin_node.solving_number, end_node.solving_number),
+                                 (end_node.solving_number, origin_node.solving_number),
+                                 (end_node.solving_number, end_node.solving_number)
+                                 ]
+
             origin_in_bars = origin_node.contained_in_bars
             end_in_bars = end_node.contained_in_bars
 
-            if origin_node.solving_number not in nodes_done:
-                pass
+            for i in range(4):
+                submatrix_info = find_submatrix(matrix, nodes_combination[i][0], nodes_combination[i][1])
+                submatrix = submatrix_info.get("matrix")
+                row_start = submatrix_info.get("row_start")
+                row_end = submatrix_info.get("row_end")
+                col_start = submatrix_info.get("col_start")
+                col_end = submatrix_info.get("col_end")
+
+                if i == 0:
+                    submatrix = np.add(submatrix, bar.k_ii)
+                elif i == 1:
+                    submatrix = np.add(submatrix, bar.k_ij)
+                elif i == 2:
+                    submatrix = np.add(submatrix, bar.k_ji)
+                elif i == 3:
+                    submatrix = np.add(submatrix, bar.k_jj)
+
+                matrix[row_start:row_end, col_start:col_end] = submatrix
 
 
-
+        print(matrix)
 
 
 class Material:
@@ -496,7 +529,6 @@ class Profile:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
         pass
-
 
 
 # TODO DELETE EVERYTHING DOWN HERE IT IS JUST FOR TESTING PURPOSES
