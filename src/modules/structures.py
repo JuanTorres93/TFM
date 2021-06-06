@@ -55,8 +55,6 @@ class Node:
 
         # Number assigned to construct the structure matrix (handled from structure class)
         self.solving_numeration = -1
-        # List for constructing the assembled matrix (handled from structure class)
-        self.contained_in_bars = []
 
     def set_name(self, new_name: str):
         """
@@ -266,7 +264,19 @@ class Bar:
         dot_product = reference @ beam_line
 
         cosine = dot_product / np.linalg.norm(reference) / np.linalg.norm(beam_line)
-        return np.arccos(cosine)
+        angle = np.arccos(cosine)
+
+        if self.end.x() >= self.origin.x() and self.end.y() >= self.origin.y():
+            # angle = angle
+            pass
+        elif self.end.x() <= self.origin.x() and self.end.y() >= self.origin.y():
+            angle = angle + math.pi / 2
+        elif self.end.x() <= self.origin.x() and self.end.y() <= self.origin.y():
+            angle = angle + math.pi
+        else:
+            angle = 2 * math.pi - angle
+
+        return angle
 
     def system_change_matrix_2d_rigid_nodes(self):
         """
@@ -371,6 +381,10 @@ class Structure:
     #     print(end_nodes_validity)
 
     def assembled_matrix(self):
+        """
+        This function returns the assembled matrix of the structure
+        :return:
+        """
         # Initialize assignment of numbers to each bar and each node
         for key, bar in self.bars.items():
             bar.solving_numeration = -1
@@ -399,13 +413,6 @@ class Structure:
                 end_node.solving_number = node_number
                 node_number = node_number + 1
 
-            # Assign bar number to origin and end nodes contained_in_bars list
-            if bar.solving_numeration not in origin_node.contained_in_bars:
-                origin_node.contained_in_bars.append(bar.solving_numeration)
-
-            if bar.solving_numeration not in end_node.contained_in_bars:
-                end_node.contained_in_bars.append(bar.solving_numeration)
-
         # Assemble the matrix
         # Total number of nodes in structure
         num_nodes = node_number - 1
@@ -414,7 +421,13 @@ class Structure:
         matrix = np.array(matrix)
 
         def find_submatrix(matrix, row, col):
-            # This function returns submatrixes of the global matrix as global rigidity submatrixes
+            """
+
+            :param matrix: matrix from which the submatrix is going to be extracted
+            :param row: row index of the assembled matrix in the form of matrix of matrixes
+            :param col: row index of the assembled matrix in the form of matrix of matrixes
+            :return: returns submatrixes of the global matrix as global rigidity submatrixes
+            """
             row = row - 1
             col = col - 1
 
@@ -431,13 +444,9 @@ class Structure:
                 "col_end": submatrix_col_end
             }
 
-        # List to store the nodes already processed
-        nodes_done = []
-
         for key, bar in self.bars.items():
             # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
             bar.global_rigidity_matrix_2d_rigid_nodes()
-            print(bar._angle_from_global_to_local() * 180 / math.pi)
 
             origin_node = bar.origin
             end_node = bar.end
@@ -448,9 +457,6 @@ class Structure:
                                  (end_node.solving_number, origin_node.solving_number),
                                  (end_node.solving_number, end_node.solving_number)
                                  ]
-
-            origin_in_bars = origin_node.contained_in_bars
-            end_in_bars = end_node.contained_in_bars
 
             for i in range(4):
                 submatrix_info = find_submatrix(matrix, nodes_combination[i][0], nodes_combination[i][1])
@@ -471,8 +477,7 @@ class Structure:
 
                 matrix[row_start:row_end, col_start:col_end] = submatrix
 
-
-        print(matrix)
+        return matrix
 
 
 class Material:
@@ -536,7 +541,8 @@ n1 = Node("N1", position=(0, 0, 0), support=Support.PINNED)
 n2 = Node("N2", position=(0, 4.2, 0))
 n3 = Node("N3", position=(6.8, 5.25, 0))
 n4 = Node("N4", position=(13.6, 4.2, 0))
-n5 = Node("N5", position=(17.2, 3.5, 0))
+# n5 = Node("N5", position=(17.2, 3.5, 0))
+n5 = Node("N5", position=(17.2, 3.644117647, 0))
 n6 = Node("N6", position=(13.6, 0, 0), support=Support.PINNED)
 
 b1 = Bar("B1", n1, n2)
