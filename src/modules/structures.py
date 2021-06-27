@@ -1,7 +1,11 @@
 import enum
 import math
+import sys
+
 import numpy as np
 import src.modules.databaseutils as db
+
+# TODO Introducir fuerzas en ejes globales y locales
 
 # For structures with rigid nodes, the size of the submatrixes is 3
 submatrix_size = 3
@@ -24,6 +28,7 @@ class Node:
     """
 
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
+        # TODO force and momentum as list of tuples and a metho for getting the resultants
         """
         Constructor for Node class
         :param name: Name of the node
@@ -380,16 +385,17 @@ class Structure:
     #     print(list(map(lambda x: x.name, end_nodes)))
     #     print(end_nodes_validity)
 
-    def assembled_matrix(self):
+    def set_bars_and_nodes_numeration(self):
         """
-        This function returns the assembled matrix of the structure
-        :return:
+        Assigns a number to each bar and each node of the structure
+
+        :return:  number of nodes in the structure
         """
         # Initialize assignment of numbers to each bar and each node
         for key, bar in self.bars.items():
             bar.solving_numeration = -1
-            bar.origin.solving_number = -1
-            bar.end.solving_number = -1
+            bar.origin.solving_numeration = -1
+            bar.end.solving_numeration = -1
 
         # Assign numeration for each bar and each node and check which bar each node belongs to
         bar_number = 1
@@ -405,44 +411,52 @@ class Structure:
                 bar_number = bar_number + 1
 
             # Nodes solving number assignations
-            if origin_node.solving_number <= 0:
-                origin_node.solving_number = node_number
+            if origin_node.solving_numeration <= 0:
+                origin_node.solving_numeration = node_number
                 node_number = node_number + 1
 
-            if end_node.solving_number <= 0:
-                end_node.solving_number = node_number
+            if end_node.solving_numeration <= 0:
+                end_node.solving_numeration = node_number
                 node_number = node_number + 1
 
-        # Assemble the matrix
+        return node_number - 1
+
+    def find_submatrix(self, matrix, row, col):
+        """
+
+        :param matrix: matrix from which the submatrix is going to be extracted
+        :param row: row index of the assembled matrix in the form of matrix of matrixes
+        :param col: row index of the assembled matrix in the form of matrix of matrixes
+        :return: returns submatrixes of the global matrix as global rigidity submatrixes
+        """
+        row = row - 1
+        col = col - 1
+
+        submatrix_row_start = int(row * submatrix_size)
+        submatrix_row_end = int(row * submatrix_size + submatrix_size)
+        submatrix_col_start = int(col * submatrix_size)
+        submatrix_col_end = int(col * submatrix_size + submatrix_size)
+
+        return {
+            "matrix": matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end],
+            "row_start": submatrix_row_start,
+            "row_end": submatrix_row_end,
+            "col_start": submatrix_col_start,
+            "col_end": submatrix_col_end
+        }
+
+    def assembled_matrix(self):
+        """
+        This function returns the assembled matrix of the structure
+        :return:
+        """
+
         # Total number of nodes in structure
-        num_nodes = node_number - 1
+        num_nodes = self.set_bars_and_nodes_numeration()
+
         # Matrix to be returned as assembled matrix
         matrix = [[0] * num_nodes * submatrix_size] * num_nodes * submatrix_size
         matrix = np.array(matrix)
-
-        def find_submatrix(matrix, row, col):
-            """
-
-            :param matrix: matrix from which the submatrix is going to be extracted
-            :param row: row index of the assembled matrix in the form of matrix of matrixes
-            :param col: row index of the assembled matrix in the form of matrix of matrixes
-            :return: returns submatrixes of the global matrix as global rigidity submatrixes
-            """
-            row = row - 1
-            col = col - 1
-
-            submatrix_row_start = int(row * submatrix_size)
-            submatrix_row_end = int(row * submatrix_size + submatrix_size)
-            submatrix_col_start = int(col * submatrix_size)
-            submatrix_col_end = int(col * submatrix_size + submatrix_size)
-
-            return {
-                "matrix": matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end],
-                "row_start": submatrix_row_start,
-                "row_end": submatrix_row_end,
-                "col_start": submatrix_col_start,
-                "col_end": submatrix_col_end
-            }
 
         for key, bar in self.bars.items():
             # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
@@ -451,15 +465,15 @@ class Structure:
             origin_node = bar.origin
             end_node = bar.end
 
-            # This list is used in a loop in order to use the different k_xy of the bar
-            nodes_combination = [(origin_node.solving_number, origin_node.solving_number),
-                                 (origin_node.solving_number, end_node.solving_number),
-                                 (end_node.solving_number, origin_node.solving_number),
-                                 (end_node.solving_number, end_node.solving_number)
+            # This list is used in a loop in order to use the different k_ij of the bar
+            nodes_combination = [(origin_node.solving_numeration, origin_node.solving_numeration),
+                                 (origin_node.solving_numeration, end_node.solving_numeration),
+                                 (end_node.solving_numeration, origin_node.solving_numeration),
+                                 (end_node.solving_numeration, end_node.solving_numeration)
                                  ]
 
             for i in range(4):
-                submatrix_info = find_submatrix(matrix, nodes_combination[i][0], nodes_combination[i][1])
+                submatrix_info = self.find_submatrix(matrix, nodes_combination[i][0], nodes_combination[i][1])
                 submatrix = submatrix_info.get("matrix")
                 row_start = submatrix_info.get("row_start")
                 row_end = submatrix_info.get("row_end")
@@ -478,6 +492,78 @@ class Structure:
                 matrix[row_start:row_end, col_start:col_end] = submatrix
 
         return matrix
+
+    def decoupled_matrix(self):
+        """
+
+        :return: Decoupled matrix of the structure
+        """
+
+        # The assembled matrix must be edited in order to obtain the decoupled one
+        matrix = self.assembled_matrix()
+
+        def constrain_matrix(mat, row=-1, col=-1):
+            """
+            Constrains the given matrix setting the values of the given row and/or column to the greatest admisible one
+
+            :param mat: matrix to constrain (assembled matrix or already constrained assembled matrix)
+            :param row: row to constrains
+            :param col: column to constrain
+            :return:
+            """
+
+            # Convert index to machine readable
+            row -= 1
+            col -= 1
+
+            # Constrain row, if given
+            if row >= 0:
+                mat[row, :] = sys.maxsize
+
+            # Constrain column, if given
+            if col >= 0:
+                mat[:, col] = sys.maxsize
+
+        # Nodes already processed when searching for constraints
+        processed_nodes = []
+
+        def process_node(node, processed_nodes, mat):
+            """
+            Checks if a node has any kind of support and constrains the assembled matrix accordingly.
+
+            :param node: Node to look for supports
+            :param processed_nodes: already processed nodes
+            :param mat: assembled (edited) matrix
+            :return:
+            """
+            if node.solving_numeration not in processed_nodes:
+                if node.support is not Support.NONE:
+                    pass
+
+                processed_nodes.append(node.solving_numeration)
+
+        for key, bar in self.bars.items():
+            origin_node = bar.origin
+            end_node = bar.end
+
+            process_node(origin_node, processed_nodes, matrix)
+            process_node(end_node, processed_nodes, matrix)
+
+
+        return matrix
+
+    def inverse_assembled_matrix(self):
+        """
+
+        :return: Inverse of assembled matrix
+        """
+        return np.linalg.inv(self.assembled_matrix())
+
+    def force_matrix(self):
+        pass
+
+    def nodes_displacements(self):
+        pass
 
 
 class Material:
@@ -533,17 +619,15 @@ class Profile:
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
-        pass
 
 
-# TODO DELETE EVERYTHING DOWN HERE IT IS JUST FOR TESTING PURPOSES
+# TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
 n1 = Node("N1", position=(0, 0, 0), support=Support.PINNED)
 n2 = Node("N2", position=(0, 4.2, 0))
 n3 = Node("N3", position=(6.8, 5.25, 0))
 n4 = Node("N4", position=(13.6, 4.2, 0))
-# n5 = Node("N5", position=(17.2, 3.5, 0))
 n5 = Node("N5", position=(17.2, 3.644117647, 0))
-n6 = Node("N6", position=(13.6, 0, 0), support=Support.PINNED)
+n6 = Node("N6", position=(13.6, 0, 0), support=Support.FIXED)
 
 b1 = Bar("B1", n1, n2)
 b2 = Bar("B2", n2, n3)
@@ -561,3 +645,6 @@ bars = {
 
 st = Structure("S1", bars)
 st.assembled_matrix()
+
+# print(st.decoupled_matrix())
+st.decoupled_matrix()
