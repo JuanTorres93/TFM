@@ -17,7 +17,8 @@ class Support(enum.Enum):
     Enumeration for the different types of supports
     """
     NONE = 1
-    ROLLER = 2  # Deslizadera
+    ROLLER_X = 2  # Deslizadera
+    ROLLER_Y = 5  # Deslizadera
     PINNED = 3  # Fijo
     FIXED = 4  # Empotramiento
 
@@ -494,6 +495,7 @@ class Structure:
         return matrix
 
     def decoupled_matrix(self):
+        # TODO Escribir un test para esta funcion
         """
 
         :return: Decoupled matrix of the structure
@@ -502,45 +504,52 @@ class Structure:
         # The assembled matrix must be edited in order to obtain the decoupled one
         matrix = self.assembled_matrix()
 
-        def constrain_matrix(mat, row=-1, col=-1):
-            """
-            Constrains the given matrix setting the values of the given row and/or column to the greatest admisible one
-
-            :param mat: matrix to constrain (assembled matrix or already constrained assembled matrix)
-            :param row: row to constrains
-            :param col: column to constrain
-            :return:
-            """
-
-            # Convert index to machine readable
-            row -= 1
-            col -= 1
-
-            # Constrain row, if given
-            if row >= 0:
-                mat[row, :] = sys.maxsize
-
-            # Constrain column, if given
-            if col >= 0:
-                mat[:, col] = sys.maxsize
-
         # Nodes already processed when searching for constraints
         processed_nodes = []
 
-        def process_node(node, processed_nodes, mat):
+        def process_node(node, proc_nodes, mat):
             """
             Checks if a node has any kind of support and constrains the assembled matrix accordingly.
 
             :param node: Node to look for supports
-            :param processed_nodes: already processed nodes
+            :param proc_nodes: list of already processed nodes
             :param mat: assembled (edited) matrix
             :return:
             """
-            if node.solving_numeration not in processed_nodes:
+            if node.solving_numeration not in proc_nodes:
                 if node.support is not Support.NONE:
-                    pass
+                    # If the support provides restrictions
 
-                processed_nodes.append(node.solving_numeration)
+                    # offset_index is used to cancel rows and columns in a more human-friendly way (using 0, 1 and 2)
+                    # to cancel out the pertinent rows and columns
+                    offset_index = (node.solving_numeration - 1) * submatrix_size
+
+                    # range_start is used to restrain cancellations on rollers supports
+                    range_start = 0
+
+                    if node.support is Support.ROLLER_X:
+                        target_cancellations = 1
+                    elif node.support is Support.ROLLER_Y:
+                        range_start = 1
+                        target_cancellations = 2
+                    elif node.support is Support.PINNED:
+                        target_cancellations = 2
+
+                    # TODO Agregar más elifs si se introducen más tipos de apoyos
+                    else:
+                        # FIXED
+                        target_cancellations = 3
+
+                    # TODO cambiar el range si se implementan otros tipos de estructuras
+                    for offset_component in range(range_start, target_cancellations):
+                        # offset_component = 0, cancels out x component
+                        # offset_component = 1, cancels out y component
+                        # offset_component = 2, cancels out angle component
+                        mat[:, offset_index + offset_component] = sys.maxsize
+                        mat[offset_index + offset_component, :] = sys.maxsize
+
+                # Mark the current node as processed
+                proc_nodes.append(node.solving_numeration)
 
         for key, bar in self.bars.items():
             origin_node = bar.origin
@@ -549,13 +558,19 @@ class Structure:
             process_node(origin_node, processed_nodes, matrix)
             process_node(end_node, processed_nodes, matrix)
 
-
         return matrix
+
+    def inverse_decoupled_matrix(self):
+        """
+
+        :return: Inverse of decoupled matrix
+        """
+        return np.linalg.inv(self.decoupled_matrix())
 
     def inverse_assembled_matrix(self):
         """
 
-        :return: Inverse of assembled matrix
+        :return: Inverse of decoupled matrix
         """
         return np.linalg.inv(self.assembled_matrix())
 
@@ -647,4 +662,8 @@ st = Structure("S1", bars)
 st.assembled_matrix()
 
 # print(st.decoupled_matrix())
-st.decoupled_matrix()
+# st.decoupled_matrix()
+F = np.array([0, 0, 0, 0, -35020.05, -40159.83, 0, -70040.1, 0, -12500, -53560.23,
+              15778.78, 0, -18540.18, 11256.05, -12500, 0, 13125])
+
+print(np.dot(st.inverse_assembled_matrix(), F.transpose()))
