@@ -507,13 +507,15 @@ class Structure:
         # Nodes already processed when searching for constraints
         processed_nodes = []
 
-        def process_node(node, proc_nodes, mat):
+        indexes_to_delete = []
+
+        def process_node(node, proc_nodes, index_to_delete):
             """
             Checks if a node has any kind of support and constrains the assembled matrix accordingly.
 
             :param node: Node to look for supports
             :param proc_nodes: list of already processed nodes
-            :param mat: assembled (edited) matrix
+            :param index_to_delete: list of row and column indexes to delete
             :return:
             """
             if node.solving_numeration not in proc_nodes:
@@ -545,8 +547,9 @@ class Structure:
                         # offset_component = 0, cancels out x component
                         # offset_component = 1, cancels out y component
                         # offset_component = 2, cancels out angle component
-                        mat[:, offset_index + offset_component] = sys.maxsize
-                        mat[offset_index + offset_component, :] = sys.maxsize
+
+                        if (offset_index + offset_component) not in index_to_delete:
+                            indexes_to_delete.append(offset_index + offset_component)
 
                 # Mark the current node as processed
                 proc_nodes.append(node.solving_numeration)
@@ -555,8 +558,11 @@ class Structure:
             origin_node = bar.origin
             end_node = bar.end
 
-            process_node(origin_node, processed_nodes, matrix)
-            process_node(end_node, processed_nodes, matrix)
+            process_node(origin_node, processed_nodes, indexes_to_delete)
+            process_node(end_node, processed_nodes, indexes_to_delete)
+
+        matrix = np.delete(matrix, indexes_to_delete, 0)
+        matrix = np.delete(matrix, indexes_to_delete, 1)
 
         return matrix
 
@@ -662,8 +668,9 @@ st = Structure("S1", bars)
 st.assembled_matrix()
 
 # print(st.decoupled_matrix())
-# st.decoupled_matrix()
-F = np.array([0, 0, 0, 0, -35020.05, -40159.83, 0, -70040.1, 0, -12500, -53560.23,
-              15778.78, 0, -18540.18, 11256.05, -12500, 0, 13125])
+st.decoupled_matrix()
+F = np.array([0, 0, -35020.05, -40159.83, 0, -70040.1, 0, -12500, -53560.23,
+              15778.78, 0, -18540.18, 11256.05])
 
-print(np.dot(st.inverse_assembled_matrix(), F.transpose()))
+# print(np.linalg.det(st.decoupled_matrix()))
+print(np.dot(st.inverse_decoupled_matrix(), F.transpose()))
