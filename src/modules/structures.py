@@ -29,7 +29,7 @@ class Node:
     """
 
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
-        # TODO force and momentum as list of tuples and a metho for getting the resultants
+        # TODO force and momentum as list of tuples and a method for getting the resultants
         """
         Constructor for Node class
         :param name: Name of the node
@@ -137,6 +137,15 @@ class Node:
         :return: z value of position
         """
         return self.position[2]
+
+    def get_total_force_and_momentum(self):
+        """
+
+        :return: [x force, y force, momentum]
+        """
+        # TODO Escribir test para esta funcion
+        # TODO Modificar la funcion para cuando haya varias fuerzas y varios mmomentos aplicados
+        return np.array([self.force[0], self.force[1], self.momentum[2]])
 
 
 class Bar:
@@ -350,6 +359,28 @@ class Structure:
         self.name = name
         self.bars = bars
 
+    def get_number_of_nodes(self):
+        """
+
+        :return: Number of nodes that belong to the structure
+        """
+        num_nodes = 0
+        processed_nodes = []
+
+        for key, bar in self.bars.items():
+            origin = bar.origin
+            end = bar.end
+
+            if origin not in processed_nodes:
+                num_nodes += 1
+                processed_nodes.append(origin)
+
+            if end not in processed_nodes:
+                num_nodes += 1
+                processed_nodes.append(end)
+
+        return num_nodes
+
     # def check_validity_of_nodes(self):
     #     """
     #     Each node must belong to, at least, two bars, unless it has a support. If one node does not fulfill one of the
@@ -494,20 +525,20 @@ class Structure:
 
         return matrix
 
-    def decoupled_matrix(self):
-        # TODO Escribir un test para esta funcion
+    def _get_indexes_to_delete(self):
         """
 
-        :return: Decoupled matrix of the structure
+        :return: list of the indexes of rows and columns that must be deleted for the decoupled matrix
         """
 
-        # The assembled matrix must be edited in order to obtain the decoupled one
-        matrix = self.assembled_matrix()
+        # Set numeration
+        self.set_bars_and_nodes_numeration()
+
+        # List to be returned
+        indexes_to_delete = []
 
         # Nodes already processed when searching for constraints
         processed_nodes = []
-
-        indexes_to_delete = []
 
         def process_node(node, proc_nodes, index_to_delete):
             """
@@ -519,6 +550,7 @@ class Structure:
             :return:
             """
             if node.solving_numeration not in proc_nodes:
+                # If the node has not yet been processed
                 if node.support is not Support.NONE:
                     # If the support provides restrictions
 
@@ -530,16 +562,20 @@ class Structure:
                     range_start = 0
 
                     if node.support is Support.ROLLER_X:
+                        # Remove x component
                         target_cancellations = 1
                     elif node.support is Support.ROLLER_Y:
+                        # Remove y component
                         range_start = 1
                         target_cancellations = 2
                     elif node.support is Support.PINNED:
+                        # Remove x and y components
                         target_cancellations = 2
 
                     # TODO Agregar más elifs si se introducen más tipos de apoyos
                     else:
                         # FIXED
+                        # Remove x, y and angle components
                         target_cancellations = 3
 
                     # TODO cambiar el range si se implementan otros tipos de estructuras
@@ -549,6 +585,7 @@ class Structure:
                         # offset_component = 2, cancels out angle component
 
                         if (offset_index + offset_component) not in index_to_delete:
+                            # Add index to the list in order to delete all rows and columns at once
                             indexes_to_delete.append(offset_index + offset_component)
 
                 # Mark the current node as processed
@@ -561,6 +598,20 @@ class Structure:
             process_node(origin_node, processed_nodes, indexes_to_delete)
             process_node(end_node, processed_nodes, indexes_to_delete)
 
+        return indexes_to_delete
+
+    def decoupled_matrix(self):
+        """
+
+        :return: Decoupled matrix of the structure
+        """
+
+        # The assembled matrix must be edited in order to obtain the decoupled one
+        matrix = self.assembled_matrix()
+
+        indexes_to_delete = self._get_indexes_to_delete()
+
+        # Delete all rows at once and then all columns
         matrix = np.delete(matrix, indexes_to_delete, 0)
         matrix = np.delete(matrix, indexes_to_delete, 1)
 
@@ -580,11 +631,61 @@ class Structure:
         """
         return np.linalg.inv(self.assembled_matrix())
 
-    def force_matrix(self):
-        pass
+    def forces_and_momentums_in_structure(self):
+        """
+
+        :return: Array of x force, y force and z momentum applied to each node
+        """
+
+        # Assing numerations
+        self.set_bars_and_nodes_numeration()
+
+        # List to store the forces in an ordered way
+        forces = []
+        # Index to find the nodes in order
+        current_search = 1
+
+        while current_search < self.get_number_of_nodes():
+            for key, bar in self.bars.items():
+                origin = bar.origin
+                end = bar.end
+
+                if origin.solving_numeration == current_search or end.solving_numeration == current_search:
+                    if origin.solving_numeration == current_search:
+                        valid_node = origin
+                    else:
+                        valid_node = end
+
+                    # X force
+                    forces.append(valid_node.get_total_force_and_momentum()[0])
+                    # Y force
+                    forces.append(valid_node.get_total_force_and_momentum()[1])
+                    # Z Momentum
+                    forces.append(valid_node.get_total_force_and_momentum()[2])
+
+                    # Look for the next node
+                    current_search += 1
+
+        return forces
+
+    def decoupled_forces_and_momentums_in_structure(self):
+        """
+
+        :return: array of not supported forces and momentums (array to muliply by the inverse of the deoupled matrix)
+        """
+        force_array = self.forces_and_momentums_in_structure()
+        indexes_to_delete = self._get_indexes_to_delete()
+
+        # Delete all rows at once
+        return np.delete(force_array, indexes_to_delete, 0)
 
     def nodes_displacements(self):
-        pass
+        """
+
+        :return: Array with the displacement of the nodes
+        """
+
+        return np.dot(self.inverse_decoupled_matrix(), self.decoupled_forces_and_momentums_in_structure())
 
 
 class Material:
@@ -643,12 +744,12 @@ class Profile:
 
 
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
-n1 = Node("N1", position=(0, 0, 0), support=Support.PINNED)
-n2 = Node("N2", position=(0, 4.2, 0))
-n3 = Node("N3", position=(6.8, 5.25, 0))
-n4 = Node("N4", position=(13.6, 4.2, 0))
-n5 = Node("N5", position=(17.2, 3.644117647, 0))
-n6 = Node("N6", position=(13.6, 0, 0), support=Support.FIXED)
+n1 = Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.PINNED)
+n2 = Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
+n3 = Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
+n4 = Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+n5 = Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
+n6 = Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=Support.FIXED)
 
 b1 = Bar("B1", n1, n2)
 b2 = Bar("B2", n2, n3)
@@ -669,8 +770,3 @@ st.assembled_matrix()
 
 # print(st.decoupled_matrix())
 st.decoupled_matrix()
-F = np.array([0, 0, -35020.05, -40159.83, 0, -70040.1, 0, -12500, -53560.23,
-              15778.78, 0, -18540.18, 11256.05])
-
-# print(np.linalg.det(st.decoupled_matrix()))
-print(np.dot(st.inverse_decoupled_matrix(), F.transpose()))

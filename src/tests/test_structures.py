@@ -366,6 +366,169 @@ class TestStructure(unittest.TestCase):
 
         np.testing.assert_allclose(calculated_matrix, expected_matrix, atol=90300)
 
+    def test_get_number_of_nodes(self):
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        self.assertEqual(structure.get_number_of_nodes(), 6)
+
+    def test_forces_and_momentums_in_structure(self):
+        n1 = st.Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
+        n6 = st.Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        calculated_forces = structure.forces_and_momentums_in_structure()
+        expected_forces = np.array([0, 0, 0,
+                                    0, -35020.05, -40159.83,
+                                    0, -70040.1, 0,
+                                    -12500, -53560.23, 15778.78,
+                                    0, -18540.18, 11256.05,
+                                    -12500, 0, 13125])
+
+        np.testing.assert_almost_equal(calculated_forces, expected_forces)
+
+    def test_get_indexes_to_delete(self):
+        n1 = st.Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
+        n6 = st.Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        calculated_indexes = structure._get_indexes_to_delete()
+        expected_indexes = [0, 1, 15, 16, 17]
+
+        self.assertEqual(calculated_indexes, expected_indexes)
+
+    def test_decoupled_forces_and_momentums_in_structure(self):
+        n1 = st.Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
+        n6 = st.Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        calculated_forces = structure.decoupled_forces_and_momentums_in_structure()
+        expected_forces = np.array([0,
+                                    0, -35020.05, -40159.83,
+                                    0, -70040.1, 0,
+                                    -12500, -53560.23, 15778.78,
+                                    0, -18540.18, 11256.05])
+
+        np.testing.assert_almost_equal(calculated_forces, expected_forces)
+
+    def test_nodes_displacements(self):
+        n1 = st.Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
+        n6 = st.Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        calculated = structure.nodes_displacements()
+        expected = np.array([0.01032450,
+                             -0.02154358,
+                             -0.00026348,
+                             -0.00526072,
+                             -0.01203257,
+                             -0.06329572,
+                             0.00023138,
+                             -0.00254491,
+                             -0.00040809,
+                             0.00427134,
+                             -0.00211703,
+                             0.00230199,
+                             -0.00041022])
+
+        np.testing.assert_allclose(calculated, expected, atol=10**-6)
+
 class TestMaterial(unittest.TestCase):
     def test_constructor(self):
         mat = st.Material("s275j")
