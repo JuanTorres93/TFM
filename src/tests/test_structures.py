@@ -279,7 +279,7 @@ class TestStructure(unittest.TestCase):
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
         n4 = st.Node("N4", position=(13.6, 4.2, 0))
         n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
-        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.PINNED)
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
@@ -318,6 +318,50 @@ class TestStructure(unittest.TestCase):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, -278, 0, -585, 0, 0, 0, 278, 0, -585],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -26379, 0, 0, 0, 0, 0, 26379, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 585, 0, 819, 0, 0, 0, -585, 0, 1638]
+        ])
+
+        np.testing.assert_allclose(calculated_matrix, expected_matrix, atol=90300)
+
+    def test_decoupled_matrix(self):
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+
+        calculated_matrix = structure.decoupled_matrix()
+
+        expected_matrix = 10000 * np.array([
+            [1638, 585, 0, 819, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [585, 16007, 2418, 552, -15729, -2428, -33, 0, 0, 0, 0, 0, 0],
+            [0, 2418, 26816, 215, -2418, -436, 215, 0, 0, 0, 0, 0, 0],
+            [819, 552, 215, 2639, 33, -215, 500, 0, 0, 0, 0, 0, 0],
+            [0, -15729, -2418, 33, 31458, 0, 66, -15729, 2418, 33, 0, 0, 0],
+            [0, -2418, -436, -215, 0, 873, 0, 2418, -436, 215, 0, 0, 0],
+            [0, -33, 215, 500, 66, 0, 2000, -33, -215, 500, 0, 0, 0],
+            [0, 0, 0, 0, -15729, 2418, -33, 45725, -6941, 670, -29717, 4522, 118],
+            [0, 0, 0, 0, 2418, -436, -215, -6941, 27942, 553, 4522, -1125, 769],
+            [0, 0, 0, 0, 33, 215, 500, 670, 553, 4528, -118, -769, 944],
+            [0, 0, 0, 0, 0, 0, 0, -29717, 4522, -118, 29717, -4522, -118],
+            [0, 0, 0, 0, 0, 0, 0, 4522, -1125, -769, -4522, 1125, -769],
+            [0, 0, 0, 0, 0, 0, 0, 118, 769, 944, -118, -769, 1889],
         ])
 
         np.testing.assert_allclose(calculated_matrix, expected_matrix, atol=90300)
