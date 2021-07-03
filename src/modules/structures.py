@@ -28,6 +28,9 @@ class Node:
     Class that represents a node in a structure.
     """
 
+    # TODO En vez de asignar tantos valores por defecto, hacer varios constructores que llamen a una funcion de
+    # inicializacion con los parametros necesarios
+
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
         # TODO force and momentum as list of tuples and a method for getting the resultants
         """
@@ -61,6 +64,12 @@ class Node:
 
         # Number assigned to construct the structure matrix (handled from structure class)
         self.solving_numeration = -1
+
+        # Displacement of the node (handled from structure class)
+        self.displacement = {}
+
+        # Reactions in the node (handled from structure class)
+        self.reactions = {}
 
     def set_name(self, new_name: str):
         """
@@ -143,9 +152,48 @@ class Node:
 
         :return: [x force, y force, momentum]
         """
-        # TODO Escribir test para esta funcion
         # TODO Modificar la funcion para cuando haya varias fuerzas y varios mmomentos aplicados
         return np.array([self.force[0], self.force[1], self.momentum[2]])
+
+    def set_displacement(self, new_displacement):
+        """
+
+        :param new_displacement: dictionary of x, y and angle displacements
+        :return:
+        """
+
+        if type(new_displacement) not in [dict]:
+            raise TypeError("new_displacement must be a dictionary")
+
+        self.displacement = new_displacement
+
+    def get_displacement(self):
+        """
+
+        :return: Node displacement
+        """
+
+        return self.displacement
+
+    def set_reactions(self, new_reactions):
+        """
+
+        :param new_reactions: dictionary of x, y and moment reactions
+        :return:
+        """
+
+        if type(new_reactions) not in [dict]:
+            raise TypeError("new_reactions must be a dictionary")
+
+        self.reactions = new_reactions
+
+    def get_reactions(self):
+        """
+
+        :return: Node reactions
+        """
+
+        return self.reactions
 
 
 class Bar:
@@ -525,13 +573,13 @@ class Structure:
 
         return matrix
 
-    def _get_indexes_to_delete(self):
+    def _get_zero_displacement_indexes(self):
         """
 
         :return: list of the indexes of rows and columns that must be deleted for the decoupled matrix
         """
 
-        # Set numeration
+        # Set numeration. Do not delete this line, other functions depend on numeration given here.
         self.set_bars_and_nodes_numeration()
 
         # List to be returned
@@ -609,7 +657,7 @@ class Structure:
         # The assembled matrix must be edited in order to obtain the decoupled one
         matrix = self.assembled_matrix()
 
-        indexes_to_delete = self._get_indexes_to_delete()
+        indexes_to_delete = self._get_zero_displacement_indexes()
 
         # Delete all rows at once and then all columns
         matrix = np.delete(matrix, indexes_to_delete, 0)
@@ -674,18 +722,117 @@ class Structure:
         :return: array of not supported forces and momentums (array to muliply by the inverse of the deoupled matrix)
         """
         force_array = self.forces_and_momentums_in_structure()
-        indexes_to_delete = self._get_indexes_to_delete()
+        indexes_to_delete = self._get_zero_displacement_indexes()
 
         # Delete all rows at once
         return np.delete(force_array, indexes_to_delete, 0)
 
-    def nodes_displacements(self):
+    def get_nodes_displacements(self):
         """
+        Determines the displacement of each node, assigns its value to the node instances and returns the displacement
+        vector
 
         :return: Array with the displacement of the nodes
         """
 
-        return np.dot(self.inverse_decoupled_matrix(), self.decoupled_forces_and_momentums_in_structure())
+        # Constricted displacements on nodes
+        zero_displacement_indexes = self._get_zero_displacement_indexes()
+        # Sort them in order to build the matrix in a correct way
+        zero_displacement_indexes.sort()
+        # Calculate the displacement of the non-constricted nodes
+        calculated_nodes_displacements = np.dot(self.inverse_decoupled_matrix(),
+                                                self.decoupled_forces_and_momentums_in_structure())
+
+        # List to store the displacement of ALL nodes
+        nodes_displacements = []
+        # Variable to set to zero the displacement of the constricted nodes
+        included_zero_displacement_index = 0
+        # Variable to travel trough calculated_node_displacements list
+        included_non_zero_displacement_index = 0
+
+        # Build the final displacement vector using the calculated and the known (zero value) ones
+        for i in range(len(zero_displacement_indexes) + len(calculated_nodes_displacements)):
+            if i == zero_displacement_indexes[included_zero_displacement_index]:
+                nodes_displacements.append(0)
+                included_zero_displacement_index += 1
+            else:
+                nodes_displacements.append(calculated_nodes_displacements[included_non_zero_displacement_index])
+                included_non_zero_displacement_index += 1
+
+        # Assign the displacement of each node to its instance
+        assigned_nodes_numeration = []
+        node_to_process = 1
+
+        while node_to_process < self.get_number_of_nodes():
+            for key, bar in self.bars.items():
+                origin = bar.origin
+                end = bar.end
+
+                if origin.solving_numeration == node_to_process or \
+                        end.solving_numeration == node_to_process:
+
+                    if origin.solving_numeration == node_to_process:
+                        valid_node = origin
+                    else:
+                        valid_node = end
+
+                    index_offset = (node_to_process - 1) * submatrix_size
+
+                    displacement = {
+                        "x": nodes_displacements[index_offset],
+                        "y": nodes_displacements[index_offset + 1],
+                        "angle": nodes_displacements[index_offset + 2]
+                    }
+
+                    valid_node.set_displacement(displacement)
+
+                    assigned_nodes_numeration.append(valid_node.solving_numeration)
+                    node_to_process += 1
+
+        return nodes_displacements
+
+    def get_nodes_reactions(self):
+        """
+        Determines the reactions of each node, assigns its value to the node instances and returns the reactions
+        vector
+
+        :return: Array with the reactions of the nodes
+        """
+        # TODO Hay que tener en cuenta las fuerzas generadas en el estado de bloqueo
+
+        # Assign the displacement of each node to its instance
+        assigned_nodes_numeration = []
+        node_to_process = 1
+
+        nodes_reactions = np.dot(self.assembled_matrix(), self.get_nodes_displacements())
+
+        while node_to_process < self.get_number_of_nodes():
+            for key, bar in self.bars.items():
+                origin = bar.origin
+                end = bar.end
+
+                if origin.solving_numeration == node_to_process or \
+                        end.solving_numeration == node_to_process:
+
+                    if origin.solving_numeration == node_to_process:
+                        valid_node = origin
+                    else:
+                        valid_node = end
+
+                    index_offset = (node_to_process - 1) * submatrix_size
+
+                    reactions = {
+                        "x": nodes_reactions[index_offset],
+                        "y": nodes_reactions[index_offset + 1],
+                        "momentum": nodes_reactions[index_offset + 2]
+                    }
+
+                    valid_node.set_reactions(reactions)
+
+                    assigned_nodes_numeration.append(valid_node.solving_numeration)
+                    node_to_process += 1
+
+        return nodes_reactions
 
 
 class Material:
@@ -768,5 +915,22 @@ bars = {
 st = Structure("S1", bars)
 st.assembled_matrix()
 
-# print(st.decoupled_matrix())
-st.decoupled_matrix()
+st.get_nodes_displacements()
+st.get_nodes_reactions()
+
+# p_n = []
+# for key, bar in st.bars.items():
+#     origin = bar.origin
+#     end = bar.end
+#
+#     if origin not in p_n:
+#         print(60 * "=")
+#         print(bar.origin.name)
+#         print(bar.origin.get_reactions())
+#         p_n.append(origin)
+#
+#     if end not in p_n:
+#         print(60 * "=")
+#         print(bar.end.name)
+#         print(bar.end.get_reactions())
+#         p_n.append(end)

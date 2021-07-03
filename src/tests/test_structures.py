@@ -96,6 +96,54 @@ class TestNode(unittest.TestCase):
         node.set_position((2, 2, 2))
         self.assertEqual(2, node.z())
 
+    def test_get_total_force_and_momentum(self):
+        # Test 1
+        force_1 = (1, 2, 3)
+        n1 = st.Node("N1", position=(1, 2, 3), force=force_1)
+
+        expected_result = np.array([1, 2, 0])
+        self.assertEqual(expected_result.all(), n1.get_total_force_and_momentum().all())
+
+        # Test 2
+        force_1 = (1, 2, 3)
+        momentum_1 = (1, 2, 3)
+        n1 = st.Node("N1", position=(1, 2, 3), force=force_1, momentum=momentum_1)
+
+        expected_result = np.array([1, 2, 3])
+        self.assertEqual(expected_result.all(), n1.get_total_force_and_momentum().all())
+
+        # TODO Incluir mas tests dentro de este metodo cuando las fuerzas se especifiquen como listas y haya metodos
+        # para agregaar y quitar fuerzas aplciadas
+
+    def test_set_and_get_displacement(self):
+        node = st.Node("N1")
+
+        new_displacement = {
+            "x": 1,
+            "y": 2,
+            "angle": 3
+        }
+
+        node.set_displacement(new_displacement)
+        self.assertEqual(node.get_displacement(), new_displacement)
+
+        self.assertRaises(TypeError, node.set_displacement, 0)
+
+    def test_set_and_get_reactions(self):
+        node = st.Node("N1")
+
+        new_reactions = {
+            "x": 1,
+            "y": 2,
+            "momentum": 3
+        }
+
+        node.set_reactions(new_reactions)
+
+        self.assertEqual(node.get_reactions(), new_reactions)
+        self.assertRaises(TypeError, node.set_reactions, 0)
+
+
 
 class TestBar(unittest.TestCase):
     def test_constructor(self):
@@ -450,7 +498,7 @@ class TestStructure(unittest.TestCase):
 
         structure = st.Structure("S1", bars)
 
-        calculated_indexes = structure._get_indexes_to_delete()
+        calculated_indexes = structure._get_zero_displacement_indexes()
         expected_indexes = [0, 1, 15, 16, 17]
 
         self.assertEqual(calculated_indexes, expected_indexes)
@@ -512,8 +560,10 @@ class TestStructure(unittest.TestCase):
 
         structure = st.Structure("S1", bars)
 
-        calculated = structure.nodes_displacements()
-        expected = np.array([0.01032450,
+        calculated = structure.get_nodes_displacements()
+        expected = np.array([0,
+                             0,
+                             0.01032450,
                              -0.02154358,
                              -0.00026348,
                              -0.00526072,
@@ -525,7 +575,10 @@ class TestStructure(unittest.TestCase):
                              0.00427134,
                              -0.00211703,
                              0.00230199,
-                             -0.00041022])
+                             -0.00041022,
+                             0,
+                             0,
+                             0])
 
         np.testing.assert_allclose(calculated, expected, atol=10**-6)
 
