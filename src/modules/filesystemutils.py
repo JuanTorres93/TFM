@@ -1,5 +1,6 @@
 import os
 import pathlib
+import random
 
 
 def home_directory(as_str=True):
@@ -23,6 +24,12 @@ def path_exists(path_str: str):
 def create_directory(path: str):
     if not path_exists(path):
         os.mkdir(path)
+
+def get_random_name(base_name: str):
+    # Set the seed to the current time
+    random.seed()
+
+    return base_name + str(random.randrange(1000000))
 
 
 def remove(path: str):

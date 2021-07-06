@@ -287,6 +287,40 @@ class TestBar(unittest.TestCase):
 
         np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-6, atol=1)
 
+    def test_add_distributed_charge(self):
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+
+        b2 = st.Bar("B2", n2, n3)
+
+        self.assertRaises(TypeError, b2.add_distributed_charge, 3)
+
+        new_distributed_charge = st.DistributedCharge(st.DistributedChargeType.SQUARE, max_value=7)
+
+        dc_name = "dc"
+
+        b2.add_distributed_charge(new_distributed_charge, dc_name)
+        are_equals = new_distributed_charge.equals(b2.get_distributed_charges().get(dc_name))
+        self.assertTrue(are_equals)
+
+    def test_get_referred_distributed_charge_to_nodes(self):
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+
+        b2 = st.Bar("B2", n2, n3)
+
+        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36)
+        b2.add_distributed_charge(dc, "test1")
+
+        calculated_values = b2.get_referred_distributed_charge_to_nodes()
+        expected_values = {
+            "y": 35020.05,
+            "m": 40159.83
+        }
+
+        self.assertAlmostEqual(calculated_values.get("y"), expected_values.get("y"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m"), expected_values.get("m"), places=0)
+
 
 class TestStructure(unittest.TestCase):
     def test_constructor(self):
@@ -613,6 +647,7 @@ class TestProfile(unittest.TestCase):
 
         self.assertRaises(TypeError, st.Profile, 4, 3)
         self.assertRaises(LookupError, st.Profile, "h", "foobar")
+
 
 if __name__ == '__main__':
     unittest.main()

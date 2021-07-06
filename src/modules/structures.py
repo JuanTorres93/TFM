@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import src.modules.databaseutils as db
+import src.modules.filesystemutils as fs
 
 # TODO Introducir fuerzas en ejes globales y locales
 
@@ -22,14 +23,18 @@ class Support(enum.Enum):
     PINNED = 3  # Fijo
     FIXED = 4  # Empotramiento
 
+@enum.unique
+class DistributedChargeType(enum.Enum):
+    """
+    Enumeration for the different types of distributed charges
+    """
+    SQUARE = 1
+
 
 class Node:
     """
     Class that represents a node in a structure.
     """
-
-    # TODO En vez de asignar tantos valores por defecto, hacer varios constructores que llamen a una funcion de
-    # inicializacion con los parametros necesarios
 
     def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
         # TODO force and momentum as list of tuples and a method for getting the resultants
@@ -225,14 +230,22 @@ class Bar:
         self.material = Material(material)
         self.profile = Profile(profile[0], profile[1])
 
-        # Number assigned to construct the structure matrix (handle from structure class)
+        # Number assigned to build the structure (assembled) matrix (handle from structure class)
         self.solving_numeration = -1
 
         # This submatrixes are here exposed for an easier way to assemble the assembled matrix from the structure class
+        # Do not change their initialization
         self.k_ii = None
         self.k_ij = None
         self.k_ji = None
         self.k_jj = None
+
+        # TODO Borrar este comentario cuando distributed_charges y applied_forces se utilicen
+        # Distributed charges applied to the bar
+        self.distributed_charges = {}
+
+        # Punctual forces applied to the bar
+        self.applied_forces = {}
 
     def set_name(self, new_name: str):
         """
@@ -379,6 +392,43 @@ class Bar:
         bottom = np.hstack((self.k_ji, self.k_jj))
 
         return np.vstack((top, bottom))
+
+    def add_distributed_charge(self, new_distributed_charge, dc_name=None):
+        """
+        Adds the specified distributed charge to the collection of distributed charges applied to the bar
+        :param new_distributed_charge: DistributedCharge to be added
+        :param dc_name: name to assign in dictionary
+        :return:
+        """
+        if type(new_distributed_charge) not in [DistributedCharge]:
+            raise TypeError("new_distributed_charge must be of type DistributedCharge")
+
+        if dc_name is None:
+            dc_name = fs.get_random_name("dc")
+
+            while dc_name not in self.distributed_charges:
+                dc_name = fs.get_random_name("dc")
+
+        self.distributed_charges[dc_name] = new_distributed_charge
+
+    def get_distributed_charges(self):
+        # TODO Escribir test
+        return self.distributed_charges
+
+    def get_referred_distributed_charge_to_nodes(self):
+        # If there are distributed_charges applied to the bar
+        if len(self.distributed_charges) > 0:
+            for key, dc in self.distributed_charges.items():
+                if dc.dc_type == DistributedChargeType.SQUARE:
+                    return {
+                        "y": dc.max_value * self.length() / 2,
+                        "m": dc.max_value * pow(self.length(), 2) / 12
+                    }
+                # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
+
+        elif len(self.distributed_charges) == 0:
+            print("There are no distributed charges applied to bar " + self.name)
+
 
 
 class Structure:
@@ -888,6 +938,28 @@ class Profile:
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
+
+
+class DistributedCharge:
+    """
+    Class to represent a distributed charge applied to a single beam
+    """
+    def __init__(self, dc_type, max_value):
+        # TODO escribir test
+        self.dc_type = dc_type
+        self.max_value = max_value
+        # If new parameters are included, they must be added to the equals function
+
+    def equals(self, other_distributed_charge):
+        # TODO escribir test
+        if type(other_distributed_charge) not in [DistributedCharge]:
+            raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
+
+        if self.dc_type == other_distributed_charge.dc_type and \
+            self.max_value == other_distributed_charge.max_value:
+            return True
+        else:
+            return False
 
 
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
