@@ -23,6 +23,7 @@ class Support(enum.Enum):
     PINNED = 3  # Fijo
     FIXED = 4  # Empotramiento
 
+
 @enum.unique
 class DistributedChargeType(enum.Enum):
     """
@@ -206,6 +207,8 @@ class Bar:
     Class that represents a bar in a structure.
     """
 
+    # TODO implementar sistema de coordenadas locales?
+
     def __init__(self, name: str, origin: Node, end: Node, material="s275j", profile=("IPE", 300)):
         """
         Constructor for Bar class
@@ -240,12 +243,11 @@ class Bar:
         self.k_ji = None
         self.k_jj = None
 
-        # TODO Borrar este comentario cuando distributed_charges y applied_forces se utilicen
         # Distributed charges applied to the bar
         self.distributed_charges = {}
 
         # Punctual forces applied to the bar
-        self.applied_forces = {}
+        self.punctual_forces = {}
 
     def set_name(self, new_name: str):
         """
@@ -393,6 +395,31 @@ class Bar:
 
         return np.vstack((top, bottom))
 
+    def _add_object_to_instance_dictionary(self, dictionary, obj, obj_name, obj_type=None):
+        """
+        Function to include an object to an instance dictionary
+        :param dictionary: dictorionary to include the new object into
+        :param obj: object to include in the dicttionary
+        :param obj_name: str key to assign to the object
+        :param obj_type: if not None, then forces obj to be of type obj_type
+        :return:
+        """
+
+        if obj_type is not None:
+            if type(obj) not in [obj_type]:
+                raise TypeError("new_distributed_charge must be of type " + str(obj_type))
+
+        if obj_name is None:
+            obj_name = fs.get_random_name("dc")
+
+            while obj_name in dictionary.keys():
+                obj_name = fs.get_random_name("dc")
+
+        if type(obj_name) not in [str]:
+            raise TypeError("obj_name must be of type str or None")
+
+        dictionary[obj_name] = obj
+
     def add_distributed_charge(self, new_distributed_charge, dc_name=None):
         """
         Adds the specified distributed charge to the collection of distributed charges applied to the bar
@@ -400,22 +427,19 @@ class Bar:
         :param dc_name: name to assign in dictionary
         :return:
         """
-        if type(new_distributed_charge) not in [DistributedCharge]:
-            raise TypeError("new_distributed_charge must be of type DistributedCharge")
 
-        if dc_name is None:
-            dc_name = fs.get_random_name("dc")
-
-            while dc_name not in self.distributed_charges:
-                dc_name = fs.get_random_name("dc")
-
-        self.distributed_charges[dc_name] = new_distributed_charge
+        self._add_object_to_instance_dictionary(self.distributed_charges, new_distributed_charge, dc_name,
+                                                DistributedCharge)
 
     def get_distributed_charges(self):
-        # TODO Escribir test
+        """
+
+        :return: instance dictionary that contains all applied distributed charges in the bar
+        """
         return self.distributed_charges
 
     def get_referred_distributed_charge_to_nodes(self):
+        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total
         # If there are distributed_charges applied to the bar
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
@@ -429,6 +453,18 @@ class Bar:
         elif len(self.distributed_charges) == 0:
             print("There are no distributed charges applied to bar " + self.name)
 
+    def add_punctual_force(self, new_punctual_force, force_name=None):
+        """
+        Adds the specified punctual force to the collection of punctual forces applied to the bar
+        :param new_punctual_force: PunctualForceInBar to be added
+        :param force_name: name to assign in dictionary
+        :return:
+        """
+        self._add_object_to_instance_dictionary(self.punctual_forces, new_punctual_force, force_name,
+                                                PuntualForceInBar)
+
+    def get_punctual_forces(self):
+        return self.punctual_forces
 
 
 class Structure:
@@ -903,7 +939,7 @@ class Material:
 
         if result:
             self.generic_name, self.name, self.young_mod, self.rig_mod, self.poisson_coef, \
-            self.thermal_dil_coef, self.density = result[0]
+                self.thermal_dil_coef, self.density = result[0]
         else:
             raise LookupError(
                 "Error in the query: ''" + query + "''. Or maybe the material " + name + " is not defined in the database.")
@@ -934,7 +970,7 @@ class Profile:
 
         if result:
             self.name, self.name_number, self.area, self.weight, self.inertia_moment_x, self.res_mod_x, \
-            self.inertia_moment_y, self.res_mod_y = result[0]
+                self.inertia_moment_y, self.res_mod_y = result[0]
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
@@ -944,6 +980,7 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
+
     def __init__(self, dc_type, max_value):
         # TODO escribir test
         self.dc_type = dc_type
@@ -956,7 +993,38 @@ class DistributedCharge:
             raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
 
         if self.dc_type == other_distributed_charge.dc_type and \
-            self.max_value == other_distributed_charge.max_value:
+                self.max_value == other_distributed_charge.max_value:
+            return True
+        else:
+            return False
+
+
+class PuntualForceInBar:
+    """
+    Class that represents a punctual force applied in any point of a bar
+    """
+
+    def __init__(self, value, origin_end_factor):
+        # TODO Escribir test
+        """
+
+        :param value: the magnitud of the force
+        :param origin_end_factor: value from 0 to 1 where 0 means origin node and 1 means end node
+        """
+        if value < 0 or value > 1:
+            raise ValueError("Error. value must be between 0 and 1.")
+
+        self.value = value
+        self.origin_end_factor = origin_end_factor
+        # If new parameters are included, they must be added to the equals function
+
+    def equals(self, other_punctual_force_in_bar):
+        # TODO escribir test
+        if type(other_punctual_force_in_bar) not in [PuntualForceInBar]:
+            raise TypeError("Error. The type of other_punctual_force_in_bar must be PunctualForceInBar")
+
+        if self.value == other_punctual_force_in_bar.value and \
+                self.origin_end_factor == other_punctual_force_in_bar.origin_end_factor:
             return True
         else:
             return False
@@ -975,6 +1043,10 @@ b2 = Bar("B2", n2, n3)
 b3 = Bar("B3", n3, n4)
 b4 = Bar("B4", n4, n5)
 b5 = Bar("B5", n4, n6)
+
+dc = DistributedCharge(DistributedChargeType.SQUARE, 10179.36)
+b2.add_distributed_charge(dc)
+b3.add_distributed_charge(dc)
 
 bars = {
     b1.name: b1,

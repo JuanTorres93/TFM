@@ -287,7 +287,7 @@ class TestBar(unittest.TestCase):
 
         np.testing.assert_allclose(calculated_matrix, expected_matrix, rtol=1e-6, atol=1)
 
-    def test_add_distributed_charge(self):
+    def test_add_and_get_distributed_charge(self):
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
 
@@ -321,6 +321,41 @@ class TestBar(unittest.TestCase):
         self.assertAlmostEqual(calculated_values.get("y"), expected_values.get("y"), places=0)
         self.assertAlmostEqual(calculated_values.get("m"), expected_values.get("m"), places=0)
 
+    def test__add_object_to_instance_dictionary(self):
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+
+        b2 = st.Bar("B2", n2, n3)
+
+        self.assertEqual(len(b2.get_distributed_charges()), 0)
+        self.assertEqual(len(b2.get_punctual_forces()), 0)
+
+        # Add a distributed charge
+        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36)
+        b2.add_distributed_charge(dc, "test1")
+
+        self.assertEqual(len(b2.get_distributed_charges()), 1)
+
+        # Add a punctual force
+        pf = st.PuntualForceInBar(40, 0.8)
+        b2.add_punctual_force(pf, "test2")
+        self.assertEqual(len(b2.get_punctual_forces()), 1)
+
+    def test_add_and_get_punctual_forces(self):
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+
+        b2 = st.Bar("B2", n2, n3)
+
+        self.assertRaises(TypeError, b2.add_punctual_force, 3)
+
+        new_punctual_force = st.PuntualForceInBar(459, 0.8)
+
+        pf_name = "pf"
+
+        b2.add_punctual_force(new_punctual_force, pf_name)
+        are_equals = new_punctual_force.equals(b2.get_punctual_forces().get(pf_name))
+        self.assertTrue(are_equals)
 
 class TestStructure(unittest.TestCase):
     def test_constructor(self):
