@@ -37,35 +37,42 @@ class Node:
     Class that represents a node in a structure.
     """
 
-    def __init__(self, name: str, position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.NONE):
+    def __init__(self, name: str, position=(0, 0, 0), forces=None, momentums=None, support=Support.NONE):
         # TODO force and momentum as list of tuples and a method for getting the resultants
         """
         Constructor for Node class
         :param name: Name of the node
         :param position: Cartesian coordinates of the nodes (x, y, z)
-        :param force: Force applied to the node (Fx, Fy, Fz)
-        :param momentum: Momentum applied to the node (Mx, My, Mz)
+        :param forces: Dictionary of tuples representing forces applied to the node (Fx, Fy, Fz)
+        :param momentums: Momentum applied to the node (Mx, My, Mz)
         :param support: Support attached to the node
         """
+        # forces and momentums are not directly assigned an empty dictionary because it does not work as expected
+        if forces is None:
+            forces = {}
+
+        if momentums is None:
+            momentums = {}
+
         if type(name) not in [str]:
             raise TypeError("name must be of type str")
 
         if type(position) not in [tuple]:
             raise TypeError("Position must be a tuple")
 
-        if type(force) not in [tuple]:
-            raise TypeError("Force must be a tuple")
+        if type(forces) not in [dict]:
+            raise TypeError("forces must be a dict")
 
-        if type(momentum) not in [tuple]:
-            raise TypeError("Momentum must be a tuple")
+        if type(momentums) not in [dict]:
+            raise TypeError("Momentum must be a dict")
 
         if type(support) not in [Support]:
             raise TypeError("Support must be of 'Support type'.")
 
         self.name = name
         self.position = np.array(position)
-        self.force = np.array(force)
-        self.momentum = np.array(momentum)
+        self.forces = forces
+        self.momentums = momentums
         self.support = support
 
         # Number assigned to construct the structure matrix (handled from structure class)
@@ -87,28 +94,6 @@ class Node:
             raise TypeError("name must be of type str")
 
         self.name = new_name
-
-    def set_force(self, new_force: (float, float, float)):
-        """
-        Sets the force of the node to the specified one
-        :param new_force: new force applied to the node
-        :return:
-        """
-        if type(new_force) not in [tuple]:
-            raise TypeError("new_force must be a tuple.")
-
-        self.force = np.array(new_force)
-
-    def set_momentum(self, new_momentum: (float, float, float)):
-        """
-        Sets the momentum of the node to the specified one
-        :param new_momentum: new momentum applied to the node
-        :return:
-        """
-        if type(new_momentum) not in [tuple]:
-            raise TypeError("new_momentum must be a tuple.")
-
-        self.momentum = np.array(new_momentum)
 
     def set_position(self, new_position: (float, float, float)):
         """
@@ -153,13 +138,57 @@ class Node:
         """
         return self.position[2]
 
+    def get_forces_dictionary(self):
+        """
+
+        :return: dictionary representing the forces applied to the node
+        """
+        return self.forces
+
+    def add_force(self, key, force):
+        """
+        Adds a force to the node
+        :param key: key to store the force in the dictionary
+        :param force: tuple representing the applied force (Fx, Fy, Fz)
+        :return:
+        """
+        self.forces[key] = force
+
+    def get_momentum_dictionary(self):
+        """
+
+        :return: dictionary representing the momentums applied to the node
+        """
+        return self.momentums
+
+    def add_momentum(self, key, momentum):
+        """
+        Adds a momentum to the node
+        :param key: key to store the momentum in the dictionary
+        :param momentum: tuple representing the applied momentum (Mx, My, Mz)
+        :return:
+        """
+        self.momentums[key] = momentum
+
     def get_total_force_and_momentum(self):
         """
 
         :return: [x force, y force, momentum]
         """
-        # TODO Modificar la funcion para cuando haya varias fuerzas y varios mmomentos aplicados
-        return np.array([self.force[0], self.force[1], self.momentum[2]])
+        x_force = 0
+        y_force = 0
+        z_momentum = 0
+
+        if len(self.forces) > 0:
+            for key, force in self.forces.items():
+                x_force += force[0]
+                y_force += force[1]
+
+        if len(self.momentums) > 0:
+            for key, momentum in self.momentums.items():
+                z_momentum += momentum[2]
+
+        return np.array([x_force, y_force, z_momentum])
 
     def set_displacement(self, new_displacement):
         """
@@ -1087,14 +1116,13 @@ class PuntualForceInBar:
         else:
             return False
 
-
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
-n1 = Node("N1", position=(0, 0, 0), force=(0, 0, 0), momentum=(0, 0, 0), support=Support.PINNED)
-n2 = Node("N2", position=(0, 4.2, 0), force=(0, -35020.05, 0), momentum=(0, 0, -40159.83))
-n3 = Node("N3", position=(6.8, 5.25, 0), force=(0, -70040.1, 0), momentum=(0, 0, 0))
-n4 = Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
-n5 = Node("N5", position=(17.2, 3.644117647, 0), force=(0, -18540.18, 0), momentum=(0, 0, 11256.05))
-n6 = Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=Support.FIXED)
+n1 = Node("N1", position=(0, 0, 0), forces={"F1": (0, 0, 0)}, momentums={"M1": (0, 0, 0)}, support=Support.PINNED)
+n2 = Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
+n3 = Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
+n4 = Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
+n5 = Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)}, momentums={"M1": (0, 0, 11256.05)})
+n6 = Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)}, support=Support.FIXED)
 
 b1 = Bar("B1", n1, n2)
 b2 = Bar("B2", n2, n3)
@@ -1122,7 +1150,6 @@ st.assembled_matrix()
 
 st.get_nodes_displacements()
 st.get_nodes_reactions()
-
 
 # p_n = []
 # for key, bar in st.bars.items():
