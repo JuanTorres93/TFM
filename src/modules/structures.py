@@ -498,6 +498,20 @@ class Bar:
         elif len(self.punctual_forces) == 0:
             print("There are no punctual forces applied to bar " + self.name)
 
+    def has_distributed_charges(self):
+        # TODO escribir test
+        if len(self.distributed_charges) > 0:
+            return True
+        else:
+            return False
+
+    def has_punctual_forces(self):
+        # TODO escribir test
+        if len(self.punctual_forces) > 0:
+            return True
+        else:
+            return False
+
 
 class Structure:
     def __init__(self, name: str, bars: dict):
@@ -799,6 +813,7 @@ class Structure:
 
     def forces_and_momentums_in_structure(self):
         """
+        Collects all forces and momentums in the structure referred to the nodes
 
         :return: Array of x force, y force and z momentum applied to each node
         """
@@ -810,6 +825,13 @@ class Structure:
         forces = []
         # Index to find the nodes in order
         current_search = 1
+
+        for key, bar in self.bars.items():
+            if bar.has_distributed_charges():
+                dc_nodes = bar.get_referred_distributed_charge_to_nodes()
+
+            if bar.has_punctual_forces():
+                pass
 
         while current_search < self.get_number_of_nodes():
             for key, bar in self.bars.items():
@@ -911,8 +933,8 @@ class Structure:
 
     def get_nodes_reactions(self):
         """
-        Determines the reactions of each node, assigns its value to the node instances and returns the reactions
-        vector
+        Once known the applied forces. determines the reactions of each node, assigns its value to the node instances
+        and returns the reactions vector
 
         :return: Array with the reactions of the nodes
         """
