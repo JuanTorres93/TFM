@@ -444,6 +444,7 @@ class Bar:
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
                 if dc.dc_type == DistributedChargeType.SQUARE:
+                    # TODO tener en cuenta los signos
                     return {
                         "y": dc.max_value * self.length() / 2,
                         "m": dc.max_value * pow(self.length(), 2) / 12
@@ -465,6 +466,37 @@ class Bar:
 
     def get_punctual_forces(self):
         return self.punctual_forces
+
+    def get_referred_puntual_forces_in_bar_to_nodes(self):
+        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total
+        # TODO tener en cuenta fuerzas inclinadas
+        # If there are punctual_forces applied to the bar
+        if len(self.punctual_forces) > 0:
+            for key, pf in self.punctual_forces.items():
+                bar_length = self.length()
+                distance_origin_force = bar_length * pf.origin_end_factor
+                distance_end_force = bar_length * (1- pf.origin_end_factor)
+
+                # TODO Repasar los signos tanto en reacciones, como en momentos
+                # Reactions
+                reaction_origin = pf.value * pow(distance_end_force, 2) * (bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
+                reaction_end = pf.value * pow(distance_origin_force, 2) * (bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+
+                # Flector momentums
+                flector_origin = - pf.value * distance_origin_force * pow(distance_end_force, 2) / pow(bar_length, 2)
+                flector_end = - pf.value * pow(distance_origin_force , 2) * distance_end_force / pow(bar_length, 2)
+                flector_force_point = 2 * pf.value * pow(distance_origin_force, 2) * pow(distance_end_force, 2) / pow(bar_length, 3)
+
+                return {
+                    "y_origin": reaction_origin,
+                    "y_end": reaction_end,
+                    "m_origin": flector_origin,
+                    "m_end": flector_end,
+                    "m_force_point": flector_force_point
+                }
+
+        elif len(self.punctual_forces) == 0:
+            print("There are no punctual forces applied to bar " + self.name)
 
 
 class Structure:
@@ -981,6 +1013,8 @@ class DistributedCharge:
     Class to represent a distributed charge applied to a single beam
     """
 
+    # TODO incluir leyes de deformacion mirando un prontuario
+
     def __init__(self, dc_type, max_value):
         # TODO escribir test
         self.dc_type = dc_type
@@ -1004,6 +1038,8 @@ class PuntualForceInBar:
     Class that represents a punctual force applied in any point of a bar
     """
 
+    # TODO incluir ley de deformacion mirando un prontuario
+
     def __init__(self, value, origin_end_factor):
         # TODO Escribir test
         """
@@ -1011,8 +1047,8 @@ class PuntualForceInBar:
         :param value: the magnitud of the force
         :param origin_end_factor: value from 0 to 1 where 0 means origin node and 1 means end node
         """
-        if value < 0 or value > 1:
-            raise ValueError("Error. value must be between 0 and 1.")
+        if origin_end_factor < 0 or origin_end_factor > 1:
+            raise ValueError("Error. origin_end_factor must be between 0 and 1.")
 
         self.value = value
         self.origin_end_factor = origin_end_factor
@@ -1048,6 +1084,9 @@ dc = DistributedCharge(DistributedChargeType.SQUARE, 10179.36)
 b2.add_distributed_charge(dc)
 b3.add_distributed_charge(dc)
 
+pf = PuntualForceInBar(25000, 0.5)
+b5.add_punctual_force(pf, "pf")
+
 bars = {
     b1.name: b1,
     b2.name: b2,
@@ -1061,6 +1100,7 @@ st.assembled_matrix()
 
 st.get_nodes_displacements()
 st.get_nodes_reactions()
+
 
 # p_n = []
 # for key, bar in st.bars.items():

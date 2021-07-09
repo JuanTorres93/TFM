@@ -357,6 +357,29 @@ class TestBar(unittest.TestCase):
         are_equals = new_punctual_force.equals(b2.get_punctual_forces().get(pf_name))
         self.assertTrue(are_equals)
 
+    def test_get_referred_punctual_forces_to_nodes(self):
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), force=(-12500, -53560.23, 0), momentum=(0, 0, 15778.78))
+        n6 = st.Node("N6", position=(13.6, 0, 0), force=(-12500, 0, 0), momentum=(0, 0, 13125), support=st.Support.FIXED)
+
+        b5 = st.Bar("B5", n4, n6)
+
+        pf = st.PuntualForceInBar(25000, 0.5)
+        b5.add_punctual_force(pf, "pf")
+
+        calculated_values = b5.get_referred_puntual_forces_in_bar_to_nodes()
+        expected_values = {
+            "y_origin": 12500,
+            "y_end": 12500,
+            # TODO check that both signs are correct
+            "m_origin": -13125,
+            "m_end": -13125
+        }
+
+        self.assertAlmostEqual(calculated_values.get("y_origin"), expected_values.get("y_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("y_end"), expected_values.get("y_end"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_origin"), expected_values.get("m_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
+
 class TestStructure(unittest.TestCase):
     def test_constructor(self):
         n1 = st.Node("N1")
