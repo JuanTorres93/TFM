@@ -70,7 +70,7 @@ class Node:
             raise TypeError("Support must be of 'Support type'.")
 
         self.name = name
-        self.position = np.array(position)
+        self.position = position
         self.forces = forces
         self.momentums = momentums
         self.support = support
@@ -83,6 +83,18 @@ class Node:
 
         # Reactions in the node (handled from structure class)
         self.reactions = {}
+
+    def equals(self, other_node):
+        """
+        Checks if this node is equal to other_node
+        :param other_node: node instance to compare to
+        :return: true if both nodes are equals, else otherwise
+        """
+        if self.position == other_node.position and \
+                self.support == other_node.support:
+            return True
+        else:
+            return False
 
     def set_name(self, new_name: str):
         """
@@ -152,6 +164,12 @@ class Node:
         :param force: tuple representing the applied force (Fx, Fy, Fz)
         :return:
         """
+        if type(force) in [tuple]:
+            force = np.array(force)
+
+        if type(force) not in [np.ndarray]:
+            raise TypeError("Error. force must be of type tuple")
+
         self.forces[key] = force
 
     def get_momentum_dictionary(self):
@@ -360,7 +378,7 @@ class Bar:
                          [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
                          [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])
 
-    def _angle_from_global_to_local(self):
+    def angle_from_global_to_local(self):
         """
 
         :return: Needed angle for converting the local matrix to global one
@@ -391,7 +409,7 @@ class Bar:
         :return: System change matrix
         """
         # Angle must be in radians
-        angle = self._angle_from_global_to_local()
+        angle = self.angle_from_global_to_local()
 
         return np.array([
             [math.cos(angle), -math.sin(angle), 0],
@@ -468,15 +486,19 @@ class Bar:
         return self.distributed_charges
 
     def get_referred_distributed_charge_to_nodes(self):
-        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total
+        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
+        # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
+
         # If there are distributed_charges applied to the bar
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
                 if dc.dc_type == DistributedChargeType.SQUARE:
                     # TODO tener en cuenta los signos
+                    # TODO convertir los valores a coordenadas globales
                     return {
-                        "y": dc.max_value * self.length() / 2,
-                        "m": dc.max_value * pow(self.length(), 2) / 12
+                        "y": - dc.max_value * self.length() / 2,
+                        "m_origin": - dc.max_value * pow(self.length(), 2) / 12,
+                        "m_end": dc.max_value * pow(self.length(), 2) / 12
                     }
                 # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
 
@@ -496,29 +518,61 @@ class Bar:
     def get_punctual_forces(self):
         return self.punctual_forces
 
-    def get_referred_puntual_forces_in_bar_to_nodes(self):
-        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total
-        # TODO tener en cuenta fuerzas inclinadas
+    def get_referred_punctual_forces_in_bar_to_nodes(self, return_global_values=True):
+        """
+
+        :param return_global_values: boolean that specifies the return values must be in global coordinates. If it is
+        not true, then the returned values are in local coordinates
+        :return: Dictionary of forces and momentums of nodes in local coordinates
+        """
+        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
+        # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
         # If there are punctual_forces applied to the bar
         if len(self.punctual_forces) > 0:
             for key, pf in self.punctual_forces.items():
                 bar_length = self.length()
                 distance_origin_force = bar_length * pf.origin_end_factor
-                distance_end_force = bar_length * (1- pf.origin_end_factor)
+                distance_end_force = bar_length * (1 - pf.origin_end_factor)
 
-                # TODO Repasar los signos tanto en reacciones, como en momentos
-                # Reactions
-                reaction_origin = pf.value * pow(distance_end_force, 2) * (bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
-                reaction_end = pf.value * pow(distance_origin_force, 2) * (bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+                # Decompose force according each axis
+                forces_in_axis = tuple([pf.value * x for x in pf.direction])
+
+                # Reactions in each axis
+                y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
+                y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+                x_reaction = - forces_in_axis[0]
+
+                reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
+                reaction_end = np.array([x_reaction, y_reaction_end, 0])
+
 
                 # Flector momentums
-                flector_origin = - pf.value * distance_origin_force * pow(distance_end_force, 2) / pow(bar_length, 2)
-                flector_end = - pf.value * pow(distance_origin_force , 2) * distance_end_force / pow(bar_length, 2)
-                flector_force_point = 2 * pf.value * pow(distance_origin_force, 2) * pow(distance_end_force, 2) / pow(bar_length, 3)
+                flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(bar_length, 2)
+                flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length, 2)
+                # TODO Repasar el signo en flector_force_point
+                flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force, 2) / pow(bar_length, 3)
+
+                if not return_global_values:
+                    return {
+                        "x_origin": reaction_origin[0],
+                        "x_end": reaction_end[0],
+                        "y_origin": reaction_origin[1],
+                        "y_end": reaction_end[1],
+                        "m_origin": flector_origin,
+                        "m_end": flector_end,
+                        "m_force_point": flector_force_point
+                    }
+
+                # Convert reactions to global coordinates
+                matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
+                reaction_origin_global = np.dot(matrix_conversion_to_global, reaction_origin)
+                reaction_end_global = np.dot(matrix_conversion_to_global, reaction_end)
 
                 return {
-                    "y_origin": reaction_origin,
-                    "y_end": reaction_end,
+                    "x_origin": reaction_origin_global[0],
+                    "x_end": reaction_end_global[0],
+                    "y_origin": reaction_origin_global[1],
+                    "y_end": reaction_end_global[1],
                     "m_origin": flector_origin,
                     "m_end": flector_end,
                     "m_force_point": flector_force_point
@@ -855,12 +909,68 @@ class Structure:
         # Index to find the nodes in order
         current_search = 1
 
+        def add_referred_force_and_momentum_to_node(node, values, original_charge, node_position):
+            """
+            Adds the referenced charges to a node
+            :param node: Node to add the charges to
+            :param values: Dictionary of force and momentum to add to node
+            :param original_charge: dc if the charge is a distrubuted one or pf if it is a punctual force
+            :param node_position: "origin" if is an origin node, "end" otherwise
+            :return:
+            """
+            # If the charge applied to the bar is a distributed charge
+            if original_charge == "dc":
+                key_base = "dc"
+                # TODO modificarlo igual que para la fuerza puntual?
+                global_y_force = values.get("y")
+                force = np.array((0, global_y_force, 0))
+                if node_position == "origin":
+                    momentum = (0, 0, values.get("m_origin"))
+                else:
+                    momentum = (0, 0, values.get("m_end"))
+            # If the charge applied to the bar is a punctual force
+            elif original_charge == "pf":
+                key_base = "pf"
+                # If it is an origin node
+                if node_position == "origin":
+                    global_y_force = values.get("y_origin")
+                    global_x_force = values.get("x_origin")
+                    force = np.array((global_x_force, global_y_force, 0))
+                    momentum = (0, 0, values.get("m_origin"))
+                # If it is an end node
+                else:
+                    global_y_force = values.get("y_end")
+                    global_x_force = values.get("x_origin")
+                    force = np.array((global_x_force, global_y_force, 0))
+                    momentum = (0, 0, values.get("m_end"))
+            else:
+                raise ValueError("The value " + str(original_charge) + " is not valid for parameter original_charge")
+
+            # force = np.dot(bar.system_change_matrix_2d_rigid_nodes(), force)
+
+            real_key = key_base
+
+            # Unique key assignation
+            while (real_key in node.get_forces_dictionary()) or \
+                    (real_key in node.get_momentum_dictionary()):
+                real_key = fs.get_random_name(key_base)
+
+            # Add force and momentum to node
+            node.add_force(real_key, force)
+            node.add_momentum(real_key, momentum)
+
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
                 dc_nodes = bar.get_referred_distributed_charge_to_nodes()
 
+                add_referred_force_and_momentum_to_node(bar.origin, dc_nodes, "dc", "origin")
+                add_referred_force_and_momentum_to_node(bar.end, dc_nodes, "dc", "end")
+
             if bar.has_punctual_forces():
-                pass
+                pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes()
+
+                add_referred_force_and_momentum_to_node(bar.origin, pf_nodes, "pf", "origin")
+                add_referred_force_and_momentum_to_node(bar.end, pf_nodes, "pf", "end")
 
         while current_search < self.get_number_of_nodes():
             for key, bar in self.bars.items():
@@ -959,6 +1069,33 @@ class Structure:
                     node_to_process += 1
 
         return nodes_displacements
+
+    def get_nodes(self):
+        """
+
+        :return: list containing all nodes in the structure, order by solving numeration
+        """
+        self.set_bars_and_nodes_numeration()
+
+        got_nodes = []
+        current_searched_node = 1
+
+        while current_searched_node < self.get_number_of_nodes():
+            for key, bar in self.bars.items():
+                origin = bar.origin
+                end = bar.end
+
+                if origin.solving_numeration == current_searched_node or \
+                    end.solving_numeration == current_searched_node:
+                    if origin.solving_numeration == current_searched_node:
+                        valid_node = origin
+                    else:
+                        valid_node = end
+
+                    got_nodes.append(valid_node)
+                    current_searched_node += 1
+
+        return got_nodes
 
     def get_nodes_reactions(self):
         """
@@ -1091,18 +1228,23 @@ class PuntualForceInBar:
 
     # TODO incluir ley de deformacion mirando un prontuario
 
-    def __init__(self, value, origin_end_factor):
+    def __init__(self, value, origin_end_factor, direction):
         # TODO Escribir test
         """
 
         :param value: the magnitud of the force
         :param origin_end_factor: value from 0 to 1 where 0 means origin node and 1 means end node
+        :param direction: unitary vector representing the direction of the force in local axis
         """
         if origin_end_factor < 0 or origin_end_factor > 1:
             raise ValueError("Error. origin_end_factor must be between 0 and 1.")
 
+        if type(direction) not in [tuple]:
+            raise TypeError("Error. direction must be a tuple of representing the direction of the force")
+
         self.value = value
         self.origin_end_factor = origin_end_factor
+        self.direction = direction
         # If new parameters are included, they must be added to the equals function
 
     def equals(self, other_punctual_force_in_bar):
@@ -1111,18 +1253,20 @@ class PuntualForceInBar:
             raise TypeError("Error. The type of other_punctual_force_in_bar must be PunctualForceInBar")
 
         if self.value == other_punctual_force_in_bar.value and \
-                self.origin_end_factor == other_punctual_force_in_bar.origin_end_factor:
+                self.origin_end_factor == other_punctual_force_in_bar.origin_end_factor and \
+                self.direction == other_punctual_force_in_bar.direction:
             return True
         else:
             return False
 
+
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
-n1 = Node("N1", position=(0, 0, 0), forces={"F1": (0, 0, 0)}, momentums={"M1": (0, 0, 0)}, support=Support.PINNED)
-n2 = Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-n3 = Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-n4 = Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-n5 = Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)}, momentums={"M1": (0, 0, 11256.05)})
-n6 = Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)}, support=Support.FIXED)
+n1 = Node("N1", position=(0, 0, 0), support=Support.PINNED)
+n2 = Node("N2", position=(0, 4.2, 0))
+n3 = Node("N3", position=(6.8, 5.25, 0))
+n4 = Node("N4", position=(13.6, 4.2, 0))
+n5 = Node("N5", position=(17.2, 3.644117647, 0))
+n6 = Node("N6", position=(13.6, 0, 0), support=Support.FIXED)
 
 b1 = Bar("B1", n1, n2)
 b2 = Bar("B2", n2, n3)
@@ -1130,11 +1274,12 @@ b3 = Bar("B3", n3, n4)
 b4 = Bar("B4", n4, n5)
 b5 = Bar("B5", n4, n6)
 
-dc = DistributedCharge(DistributedChargeType.SQUARE, 10179.36)
+dc = DistributedCharge(DistributedChargeType.SQUARE, -10179.36)
 b2.add_distributed_charge(dc)
 b3.add_distributed_charge(dc)
+b4.add_distributed_charge(dc)
 
-pf = PuntualForceInBar(25000, 0.5)
+pf = PuntualForceInBar(-25000, 0.5, (0, 1, 0))
 b5.add_punctual_force(pf, "pf")
 
 bars = {
@@ -1146,24 +1291,13 @@ bars = {
 }
 
 st = Structure("S1", bars)
-st.assembled_matrix()
+# st.assembled_matrix()
 
-st.get_nodes_displacements()
-st.get_nodes_reactions()
+# st.get_nodes_displacements()
+# st.get_nodes_reactions()
 
-# p_n = []
-# for key, bar in st.bars.items():
-#     origin = bar.origin
-#     end = bar.end
-#
-#     if origin not in p_n:
-#         print(60 * "=")
-#         print(bar.origin.name)
-#         print(bar.origin.get_reactions())
-#         p_n.append(origin)
-#
-#     if end not in p_n:
-#         print(60 * "=")
-#         print(bar.end.name)
-#         print(bar.end.get_reactions())
-#         p_n.append(end)
+
+borrar = st.forces_and_momentums_in_structure()
+for i in range(len(borrar)):
+    print(borrar[i])
+
