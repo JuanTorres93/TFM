@@ -37,22 +37,24 @@ class Node:
     Class that represents a node in a structure.
     """
 
-    def __init__(self, name: str, position=(0, 0, 0), forces=None, momentums=None, support=Support.NONE):
-        # TODO force and momentum as list of tuples and a method for getting the resultants
+    def __init__(self, name: str, position=(0, 0, 0), forces_in_node=None, momentums_in_node=None,
+                 support=Support.NONE):
         """
         Constructor for Node class
         :param name: Name of the node
         :param position: Cartesian coordinates of the nodes (x, y, z)
-        :param forces: Dictionary of tuples representing forces applied to the node (Fx, Fy, Fz)
-        :param momentums: Momentum applied to the node (Mx, My, Mz)
+        :param forces_in_node: Dictionary representing forces applied directly to the node (Fx, Fy, Fz). Forces
+        that appear as a result of refering charges to nodes are handled differently
+        :param momentums_in_node: Dictionary representing momentums applied to the node (Mx, My, Mz). Momentums
+        that appear as a result of refering charges to nodes are handled differently
         :param support: Support attached to the node
         """
         # forces and momentums are not directly assigned an empty dictionary because it does not work as expected
-        if forces is None:
-            forces = {}
+        if forces_in_node is None:
+            forces_in_node = {}
 
-        if momentums is None:
-            momentums = {}
+        if momentums_in_node is None:
+            momentums_in_node = {}
 
         if type(name) not in [str]:
             raise TypeError("name must be of type str")
@@ -60,10 +62,10 @@ class Node:
         if type(position) not in [tuple]:
             raise TypeError("Position must be a tuple")
 
-        if type(forces) not in [dict]:
+        if type(forces_in_node) not in [dict]:
             raise TypeError("forces must be a dict")
 
-        if type(momentums) not in [dict]:
+        if type(momentums_in_node) not in [dict]:
             raise TypeError("Momentum must be a dict")
 
         if type(support) not in [Support]:
@@ -71,8 +73,10 @@ class Node:
 
         self.name = name
         self.position = position
-        self.forces = forces
-        self.momentums = momentums
+        self.forces_in_node = forces_in_node
+        self.referred_forces = {}
+        self.momentums_in_node = momentums_in_node
+        self.referred_momentums = {}
         self.support = support
 
         # Number assigned to construct the structure matrix (handled from structure class)
@@ -150,43 +154,85 @@ class Node:
         """
         return self.position[2]
 
-    def get_forces_dictionary(self):
+    def get_forces_in_node_dictionary(self):
         """
 
         :return: dictionary representing the forces applied to the node
         """
-        return self.forces
+        return self.forces_in_node
 
-    def add_force(self, key, force):
+    def get_referred_forces_dictionary(self):
+        """
+
+        :return: dictionary representing the forces applied to the node
+        """
+        return self.referred_forces
+
+    def clear_referred_forces(self):
+        self.referred_forces = {}
+
+    def add_force(self, key, force, belongs_to_node):
         """
         Adds a force to the node
         :param key: key to store the force in the dictionary
         :param force: tuple representing the applied force (Fx, Fy, Fz)
+        :param belongs_to_node: if true the force is applied directly to the node. If false, the force is a consecuence
+        of a charge applied to the bar
         :return:
         """
         if type(force) in [tuple]:
             force = np.array(force)
 
         if type(force) not in [np.ndarray]:
-            raise TypeError("Error. force must be of type tuple")
+            raise TypeError("Error. force must be of type numpy.array")
 
-        self.forces[key] = force
+        if type(belongs_to_node) not in [bool]:
+            raise TypeError("Error. belongs_to_node must be of type bool")
 
-    def get_momentum_dictionary(self):
+        if belongs_to_node:
+            self.forces_in_node[key] = force
+        else:
+            self.referred_forces[key] = force
+
+    def get_momentum_in_node_dictionary(self):
         """
 
         :return: dictionary representing the momentums applied to the node
         """
-        return self.momentums
+        return self.momentums_in_node
 
-    def add_momentum(self, key, momentum):
+    def get_referred_momentum_dictionary(self):
+        """
+
+        :return: dictionary representing the momentums applied to the node
+        """
+        return self.referred_momentums
+
+    def clear_referred_momentums(self):
+        self.referred_momentums = {}
+
+    def add_momentum(self, key, momentum, belongs_to_node):
         """
         Adds a momentum to the node
         :param key: key to store the momentum in the dictionary
         :param momentum: tuple representing the applied momentum (Mx, My, Mz)
+        :param belongs_to_node: if true the momentum is applied directly to the node. If false, the momentum is a consecuence
+        of a charge applied to the bar
         :return:
         """
-        self.momentums[key] = momentum
+        if type(momentum) in [tuple]:
+            momentum = np.array(momentum)
+
+        if type(momentum) not in [np.ndarray]:
+            raise TypeError("Error. momentum must be of type numpy.array")
+
+        if type(belongs_to_node) not in [bool]:
+            raise TypeError("Error. belongs_to_node must be of type bool")
+
+        if belongs_to_node:
+            self.momentums_in_node[key] = momentum
+        else:
+            self.referred_momentums[key] = momentum
 
     def get_total_force_and_momentum(self):
         """
@@ -197,13 +243,24 @@ class Node:
         y_force = 0
         z_momentum = 0
 
-        if len(self.forces) > 0:
-            for key, force in self.forces.items():
+        # Forces
+        if len(self.forces_in_node) > 0:
+            for key, force in self.forces_in_node.items():
                 x_force += force[0]
                 y_force += force[1]
 
-        if len(self.momentums) > 0:
-            for key, momentum in self.momentums.items():
+        if len(self.referred_forces) > 0:
+            for key, force in self.referred_forces.items():
+                x_force += force[0]
+                y_force += force[1]
+
+        # Momentums
+        if len(self.momentums_in_node) > 0:
+            for key, momentum in self.momentums_in_node.items():
+                z_momentum += momentum[2]
+
+        if len(self.referred_momentums) > 0:
+            for key, momentum in self.referred_momentums.items():
                 z_momentum += momentum[2]
 
         return np.array([x_force, y_force, z_momentum])
@@ -485,21 +542,41 @@ class Bar:
         """
         return self.distributed_charges
 
-    def get_referred_distributed_charge_to_nodes(self):
+    def get_referred_distributed_charge_to_nodes(self, return_global_values=True):
         # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
         # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
 
         # If there are distributed_charges applied to the bar
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
+                bar_length = self.length()
                 if dc.dc_type == DistributedChargeType.SQUARE:
-                    # TODO tener en cuenta los signos
-                    # TODO convertir los valores a coordenadas globales
+                    x_reaction = 0
+                    y_reaction = - dc.max_value * bar_length / 2
+                    m_origin_reaction = - dc.max_value * pow(bar_length, 2) / 12
+                    m_end_reaction = dc.max_value * pow(bar_length, 2) / 12
+
+                    reaction = np.array([x_reaction, y_reaction, 0])
+                    if not return_global_values:
+                        pass
                     return {
-                        "y": - dc.max_value * self.length() / 2,
-                        "m_origin": - dc.max_value * pow(self.length(), 2) / 12,
-                        "m_end": dc.max_value * pow(self.length(), 2) / 12
+                        "x": reaction[0],
+                        "y": reaction[1],
+                        "m_origin": m_origin_reaction,
+                        "m_end": m_end_reaction
                     }
+
+                    # Convert reactions to global coordinates
+                    matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
+                    reaction_global = np.dot(matrix_conversion_to_global, reaction)
+
+                    return {
+                        "x": reaction_global[0],
+                        "y": reaction_global[1],
+                        "m_origin": m_origin_reaction,
+                        "m_end": m_end_reaction
+                    }
+
                 # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
 
         elif len(self.distributed_charges) == 0:
@@ -513,7 +590,7 @@ class Bar:
         :return:
         """
         self._add_object_to_instance_dictionary(self.punctual_forces, new_punctual_force, force_name,
-                                                PuntualForceInBar)
+                                                PunctualForceInBar)
 
     def get_punctual_forces(self):
         return self.punctual_forces
@@ -544,7 +621,6 @@ class Bar:
 
                 reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
                 reaction_end = np.array([x_reaction, y_reaction_end, 0])
-
 
                 # Flector momentums
                 flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(bar_length, 2)
@@ -582,14 +658,12 @@ class Bar:
             print("There are no punctual forces applied to bar " + self.name)
 
     def has_distributed_charges(self):
-        # TODO escribir test
         if len(self.distributed_charges) > 0:
             return True
         else:
             return False
 
     def has_punctual_forces(self):
-        # TODO escribir test
         if len(self.punctual_forces) > 0:
             return True
         else:
@@ -914,20 +988,20 @@ class Structure:
             Adds the referenced charges to a node
             :param node: Node to add the charges to
             :param values: Dictionary of force and momentum to add to node
-            :param original_charge: dc if the charge is a distrubuted one or pf if it is a punctual force
+            :param original_charge: dc if the charge is a distributed one or pf if it is a punctual force
             :param node_position: "origin" if is an origin node, "end" otherwise
             :return:
             """
             # If the charge applied to the bar is a distributed charge
             if original_charge == "dc":
                 key_base = "dc"
-                # TODO modificarlo igual que para la fuerza puntual?
+                # TODO Si se añaden más tipos de carga, modificarlo igual que para la fuerza puntual
                 global_y_force = values.get("y")
                 force = np.array((0, global_y_force, 0))
                 if node_position == "origin":
-                    momentum = (0, 0, values.get("m_origin"))
+                    momentum = np.array([0, 0, values.get("m_origin")])
                 else:
-                    momentum = (0, 0, values.get("m_end"))
+                    momentum = np.array([0, 0, values.get("m_end")])
             # If the charge applied to the bar is a punctual force
             elif original_charge == "pf":
                 key_base = "pf"
@@ -936,28 +1010,34 @@ class Structure:
                     global_y_force = values.get("y_origin")
                     global_x_force = values.get("x_origin")
                     force = np.array((global_x_force, global_y_force, 0))
-                    momentum = (0, 0, values.get("m_origin"))
+                    momentum = np.array([0, 0, values.get("m_origin")])
                 # If it is an end node
                 else:
                     global_y_force = values.get("y_end")
                     global_x_force = values.get("x_origin")
                     force = np.array((global_x_force, global_y_force, 0))
-                    momentum = (0, 0, values.get("m_end"))
+                    momentum = np.array([0, 0, values.get("m_end")])
             else:
                 raise ValueError("The value " + str(original_charge) + " is not valid for parameter original_charge")
-
-            # force = np.dot(bar.system_change_matrix_2d_rigid_nodes(), force)
 
             real_key = key_base
 
             # Unique key assignation
-            while (real_key in node.get_forces_dictionary()) or \
-                    (real_key in node.get_momentum_dictionary()):
+            while (real_key in node.get_forces_in_node_dictionary()) or \
+                    (real_key in node.get_referred_forces_dictionary()) or \
+                    (real_key in node.get_momentum_in_node_dictionary()) or \
+                (real_key in node.get_referred_momentum_dictionary()):
                 real_key = fs.get_random_name(key_base)
 
             # Add force and momentum to node
-            node.add_force(real_key, force)
-            node.add_momentum(real_key, momentum)
+            node.add_force(real_key, force, False)
+            node.add_momentum(real_key, momentum, False)
+
+        # Clear all previously referred forces and momentums added
+        structure_nodes = self.get_nodes()
+        for node in structure_nodes:
+            node.clear_referred_forces()
+            node.clear_referred_momentums()
 
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
@@ -993,7 +1073,7 @@ class Structure:
                     # Look for the next node
                     current_search += 1
 
-        return forces
+        return -1 * np.array(forces)
 
     def decoupled_forces_and_momentums_in_structure(self):
         """
@@ -1104,8 +1184,6 @@ class Structure:
 
         :return: Array with the reactions of the nodes
         """
-        # TODO Hay que tener en cuenta las fuerzas generadas en el estado de bloqueo
-
         # Assign the displacement of each node to its instance
         assigned_nodes_numeration = []
         node_to_process = 1
@@ -1200,17 +1278,17 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
-
     # TODO incluir leyes de deformacion mirando un prontuario
 
     def __init__(self, dc_type, max_value):
-        # TODO escribir test
+        if type(dc_type) not in [DistributedChargeType]:
+            raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
+
         self.dc_type = dc_type
         self.max_value = max_value
-        # If new parameters are included, they must be added to the equals function
+        # If new parameters are included, they must be added to the equals function and to the test
 
     def equals(self, other_distributed_charge):
-        # TODO escribir test
         if type(other_distributed_charge) not in [DistributedCharge]:
             raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
 
@@ -1221,7 +1299,7 @@ class DistributedCharge:
             return False
 
 
-class PuntualForceInBar:
+class PunctualForceInBar:
     """
     Class that represents a punctual force applied in any point of a bar
     """
@@ -1245,11 +1323,10 @@ class PuntualForceInBar:
         self.value = value
         self.origin_end_factor = origin_end_factor
         self.direction = direction
-        # If new parameters are included, they must be added to the equals function
+        # If new parameters are included, they must be added to the equals function and to the test
 
     def equals(self, other_punctual_force_in_bar):
-        # TODO escribir test
-        if type(other_punctual_force_in_bar) not in [PuntualForceInBar]:
+        if type(other_punctual_force_in_bar) not in [PunctualForceInBar]:
             raise TypeError("Error. The type of other_punctual_force_in_bar must be PunctualForceInBar")
 
         if self.value == other_punctual_force_in_bar.value and \
@@ -1279,7 +1356,7 @@ b2.add_distributed_charge(dc)
 b3.add_distributed_charge(dc)
 b4.add_distributed_charge(dc)
 
-pf = PuntualForceInBar(-25000, 0.5, (0, 1, 0))
+pf = PunctualForceInBar(-25000, 0.5, (0, 1, 0))
 b5.add_punctual_force(pf, "pf")
 
 bars = {
@@ -1293,11 +1370,8 @@ bars = {
 st = Structure("S1", bars)
 # st.assembled_matrix()
 
-# st.get_nodes_displacements()
+# disp = st.get_nodes_displacements()
+# print("==========DISPLACEMENTS==========")
+# for i in range(len(disp)):
+#     print(disp[i])
 # st.get_nodes_reactions()
-
-
-borrar = st.forces_and_momentums_in_structure()
-for i in range(len(borrar)):
-    print(borrar[i])
-

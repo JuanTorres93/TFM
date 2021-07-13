@@ -15,12 +15,13 @@ from src.modules import structures as st
 
 class TestNode(unittest.TestCase):
     def test_constructor(self):
-        node = st.Node("N1", position=(1, 2, 3), forces={"F1": (4, 5, 6)}, momentums={"M1": (7, 8, 9)}, support=st.Support.NONE)
+        node = st.Node("N1", position=(1, 2, 3), forces_in_node={"F1": (4, 5, 6)}, momentums_in_node={"M1": (7, 8, 9)},
+                       support=st.Support.NONE)
 
         self.assertEqual(node.name, "N1")
         np.testing.assert_array_equal(node.position, np.array((1, 2, 3)))
-        np.testing.assert_array_equal(node.forces.get("F1"), np.array((4, 5, 6)))
-        np.testing.assert_array_equal(node.momentums.get("M1"), np.array((7, 8, 9)))
+        np.testing.assert_array_equal(node.forces_in_node.get("F1"), np.array((4, 5, 6)))
+        np.testing.assert_array_equal(node.momentums_in_node.get("M1"), np.array((7, 8, 9)))
         self.assertEqual(node.support, st.Support.NONE)
         self.assertRaises(TypeError, st.Node, 3)
 
@@ -29,10 +30,12 @@ class TestNode(unittest.TestCase):
         self.assertRaises(TypeError, st.Node, "N1", momentum=[1, 2, 3])
 
     def test_equals(self):
-        n1 = st.Node("N1", position=(1, 2, 3), forces={"F1": (4, 5, 6)}, momentums={"M1": (7, 8, 9)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(2, 2, 3), forces={"F1": (4, 5, 6)}, momentums={"M1": (7, 8, 9)})
-        n3 = st.Node("N3", position=(1, 2, 3), forces={"F1": (4, 5, 6)}, momentums={"M1": (7, 8, 9)})
-        n4 = st.Node("N4", position=(2, 2, 3), forces={"F1": (4, 5, 6)}, momentums={"M1": (7, 8, 9)}, support=st.Support.PINNED)
+        n1 = st.Node("N1", position=(1, 2, 3), forces_in_node={"F1": (4, 5, 6)}, momentums_in_node={"M1": (7, 8, 9)},
+                     support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(2, 2, 3), forces_in_node={"F1": (4, 5, 6)}, momentums_in_node={"M1": (7, 8, 9)})
+        n3 = st.Node("N3", position=(1, 2, 3), forces_in_node={"F1": (4, 5, 6)}, momentums_in_node={"M1": (7, 8, 9)})
+        n4 = st.Node("N4", position=(2, 2, 3), forces_in_node={"F1": (4, 5, 6)}, momentums_in_node={"M1": (7, 8, 9)},
+                     support=st.Support.PINNED)
 
         self.assertTrue(n1.equals(n1))
         self.assertTrue(not n1.equals(n2))
@@ -58,7 +61,7 @@ class TestNode(unittest.TestCase):
         self.assertRaises(TypeError, node.set_position, [0, 0, 0])
 
     def test_set_support(self):
-        node = st.Node("N1", momentums={"M1": (1, 1, 1)})
+        node = st.Node("N1", momentums_in_node={"M1": (1, 1, 1)})
         self.assertEqual(node.support, st.Support.NONE)
 
         node.set_support(st.Support.FIXED)
@@ -91,35 +94,55 @@ class TestNode(unittest.TestCase):
     def test_add_force(self):
         node = st.Node("N1", position=(1, 2, 3))
 
-        self.assertEqual(len(node.get_forces_dictionary()), 0)
+        self.assertRaises(TypeError, node.add_force, "n2", 2, True)
+        self.assertRaises(TypeError, node.add_force, "n2", (2, 2, 2), "j")
 
-        node.add_force("n1", (0, 0, 0))
-        self.assertEqual(len(node.get_forces_dictionary()), 1)
+        self.assertEqual(len(node.get_forces_in_node_dictionary()), 0)
 
-        node2 = st.Node("N1", position=(1, 2, 3), forces={"n2": (3, 4, 5)})
-        self.assertEqual(len(node2.get_forces_dictionary()), 1)
+        node.add_force("n1", (0, 0, 0), True)
+        self.assertEqual(len(node.get_forces_in_node_dictionary()), 1)
 
-        node2 = st.Node("N1", position=(1, 2, 3), momentums={"n2": (3, 4, 5)})
-        self.assertEqual(len(node2.get_forces_dictionary()), 0)
+        node2 = st.Node("N1", position=(1, 2, 3), forces_in_node={"n2": (3, 4, 5)})
+        self.assertEqual(len(node2.get_forces_in_node_dictionary()), 1)
+
+        # Momentum does not affect force
+        node2 = st.Node("N1", position=(1, 2, 3), momentums_in_node={"n2": (3, 4, 5)})
+        self.assertEqual(len(node2.get_forces_in_node_dictionary()), 0)
+
+        node2.add_force("f1", (1, 1, 1), belongs_to_node=True)
+        self.assertEqual(len(node2.get_forces_in_node_dictionary()), 1)
+
+        node2.add_force("f2", (1, 1, 1), belongs_to_node=False)
+        self.assertEqual(len(node2.get_referred_forces_dictionary()), 1)
 
     def test_add_momentum(self):
         node = st.Node("N1", position=(1, 2, 3))
 
-        self.assertEqual(len(node.get_momentum_dictionary()), 0)
+        self.assertRaises(TypeError, node.add_momentum, "n2", 2, True)
+        self.assertRaises(TypeError, node.add_momentum, "n2", (2, 2, 2), "j")
 
-        node.add_momentum("n1", (0, 0, 0))
-        self.assertEqual(len(node.get_momentum_dictionary()), 1)
+        self.assertEqual(len(node.get_momentum_in_node_dictionary()), 0)
 
-        node2 = st.Node("N2", position=(1, 2, 3), momentums={"n2": (3, 4, 5)})
-        self.assertEqual(len(node2.get_momentum_dictionary()), 1)
+        node.add_momentum("n1", (0, 0, 0), True)
+        self.assertEqual(len(node.get_momentum_in_node_dictionary()), 1)
 
-        node2 = st.Node("N2", position=(1, 2, 3), forces={"n2": (3, 4, 5)})
-        self.assertEqual(len(node2.get_momentum_dictionary()), 0)
+        node2 = st.Node("N2", position=(1, 2, 3), momentums_in_node={"n2": (3, 4, 5)})
+        self.assertEqual(len(node2.get_momentum_in_node_dictionary()), 1)
+
+        # Force does not affect momentum
+        node2 = st.Node("N2", position=(1, 2, 3), forces_in_node={"n2": (3, 4, 5)})
+        self.assertEqual(len(node2.get_momentum_in_node_dictionary()), 0)
+
+        node2.add_momentum("f1", (1, 1, 1), belongs_to_node=True)
+        self.assertEqual(len(node2.get_momentum_in_node_dictionary()), 1)
+
+        node2.add_momentum("f2", (1, 1, 1), belongs_to_node=False)
+        self.assertEqual(len(node2.get_referred_momentum_dictionary()), 1)
 
     def test_get_total_force_and_momentum(self):
         # Test 1
         force_1 = {"F1": (1, 2, 3)}
-        n1 = st.Node("N1", position=(1, 2, 3), forces=force_1)
+        n1 = st.Node("N1", position=(1, 2, 3), forces_in_node=force_1)
 
         # expected_result = np.array([Fx, Fy, Mz])
         expected_result = np.array([1, 2, 0])
@@ -128,7 +151,7 @@ class TestNode(unittest.TestCase):
         # Test 2
         force_1 = {"F1": (1, 2, 3)}
         momentum_1 = {"M1": (1, 2, 3)}
-        n1 = st.Node("N1", position=(1, 2, 3), forces=force_1, momentums=momentum_1)
+        n1 = st.Node("N1", position=(1, 2, 3), forces_in_node=force_1, momentums_in_node=momentum_1)
 
         # expected_result = np.array([Fx, Fy, Mz])
         expected_result = np.array([1, 2, 3])
@@ -137,15 +160,15 @@ class TestNode(unittest.TestCase):
         # Test 2
         force_1 = {"F1": (1, 2, 3)}
         momentum_1 = {"M1": (1, 2, 3)}
-        n1 = st.Node("N1", position=(1, 2, 3), forces=force_1, momentums=momentum_1)
+        n1 = st.Node("N1", position=(1, 2, 3), forces_in_node=force_1, momentums_in_node=momentum_1)
 
-        n1.add_force("F2", (3, 2, 1))
+        n1.add_force("F2", (3, 2, 1), False)
 
         # expected_result = np.array([Fx, Fy, Mz])
         expected_result = np.array([4, 4, 3])
         np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
 
-        n1.add_momentum("M2", (3, 3, 1))
+        n1.add_momentum("M2", (3, 3, 1), False)
         expected_result = np.array([4, 4, 4])
         np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
 
@@ -350,21 +373,21 @@ class TestBar(unittest.TestCase):
         dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36)
         b2.add_distributed_charge(dc, "test1")
 
-        calculated_values = b2.get_referred_distributed_charge_to_nodes()
+        calculated_values = b2.get_referred_distributed_charge_to_nodes(return_global_values=False)
         expected_values = {
+            "x": 0,
             "y": - 35020.05,
             "m_origin": - 40159.83,
             "m_end": 40159.83
         }
 
+        self.assertAlmostEqual(calculated_values.get("x"), expected_values.get("x"), places=0)
         self.assertAlmostEqual(calculated_values.get("y"), expected_values.get("y"), places=0)
         self.assertAlmostEqual(calculated_values.get("m_origin"), expected_values.get("m_origin"), places=0)
         self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
 
 
     def test_get_referred_punctual_force_to_nodes(self):
-        # TODO escribir este test
-        # Structure test
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
@@ -383,7 +406,7 @@ class TestBar(unittest.TestCase):
         b3.add_distributed_charge(dc)
         b4.add_distributed_charge(dc)
 
-        pf = st.PuntualForceInBar(-25000, 0.5, (0, 1, 0))
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
         b5.add_punctual_force(pf, "pf")
 
         bars = {
@@ -395,6 +418,42 @@ class TestBar(unittest.TestCase):
         }
 
         structure = st.Structure("S1", bars)
+
+        # Local coordinates
+        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=False)
+        expected_values = {
+            "x_origin": 0,
+            "x_end": 0,
+            "y_origin": 12500,
+            "y_end": 12500,
+            "m_origin": 13125,
+            "m_end": -13125
+        }
+
+        self.assertAlmostEqual(calculated_values.get("y_origin"), expected_values.get("y_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("y_end"), expected_values.get("y_end"), places=0)
+        self.assertAlmostEqual(calculated_values.get("x_origin"), expected_values.get("x_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("x_end"), expected_values.get("x_end"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_origin"), expected_values.get("m_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
+
+        # Global coordinates
+        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
+        expected_values = {
+            "x_origin": 12500,
+            "x_end": 12500,
+            "y_origin": 0,
+            "y_end": 0,
+            "m_origin": 13125,
+            "m_end": -13125
+        }
+
+        self.assertAlmostEqual(calculated_values.get("y_origin"), expected_values.get("y_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("y_end"), expected_values.get("y_end"), places=0)
+        self.assertAlmostEqual(calculated_values.get("x_origin"), expected_values.get("x_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("x_end"), expected_values.get("x_end"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_origin"), expected_values.get("m_origin"), places=0)
+        self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
 
     def test__add_object_to_instance_dictionary(self):
         n2 = st.Node("N2", position=(0, 4.2, 0))
@@ -412,7 +471,7 @@ class TestBar(unittest.TestCase):
         self.assertEqual(len(b2.get_distributed_charges()), 1)
 
         # Add a punctual force
-        pf = st.PuntualForceInBar(40, 0.8, (-1, 0, 0))
+        pf = st.PunctualForceInBar(40, 0.8, (-1, 0, 0))
         b2.add_punctual_force(pf, "test2")
         self.assertEqual(len(b2.get_punctual_forces()), 1)
 
@@ -424,7 +483,7 @@ class TestBar(unittest.TestCase):
 
         self.assertRaises(TypeError, b2.add_punctual_force, 3)
 
-        new_punctual_force = st.PuntualForceInBar(459, 0.8, (-1, 0, 0))
+        new_punctual_force = st.PunctualForceInBar(459, 0.8, (-1, 0, 0))
 
         pf_name = "pf"
 
@@ -438,7 +497,7 @@ class TestBar(unittest.TestCase):
 
         b5 = st.Bar("B5", n4, n6)
 
-        pf = st.PuntualForceInBar(-25000, 0.5, (0, 1, 0))
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
         b5.add_punctual_force(pf, "pf")
 
         calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(False)
@@ -454,6 +513,28 @@ class TestBar(unittest.TestCase):
         self.assertAlmostEqual(calculated_values.get("y_end"), expected_values.get("y_end"), places=0)
         self.assertAlmostEqual(calculated_values.get("m_origin"), expected_values.get("m_origin"), places=0)
         self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
+
+    def test_has_distributed_charges(self):
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+
+        b1 = st.Bar("B1", n1, n2)
+        self.assertFalse(b1.has_distributed_charges())
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        b1.add_distributed_charge(dc)
+        self.assertTrue(b1.has_distributed_charges())
+
+    def test_has_punctual_force(self):
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0))
+
+        b5 = st.Bar("B5", n4, n6)
+        self.assertFalse(b5.has_punctual_forces())
+
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        b5.add_punctual_force(pf, "pf")
+        self.assertTrue(b5.has_punctual_forces())
 
 class TestStructure(unittest.TestCase):
     def test_constructor(self):
@@ -608,20 +689,28 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(structure.get_number_of_nodes(), 6)
 
     def test_forces_and_momentums_in_structure(self):
-        n1 = st.Node("N1", position=(0, 0, 0), forces={"F1": (0, 0, 0)}, momentums={"M1": (0, 0, 0)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)},
-                     momentums={"M1": (0, 0, 11256.05)})
-        n6 = st.Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)},
-                     support=st.Support.FIXED)
+        # TODO no se deben añadir las fuerzas ni los momentos más de una vez, para cualquier número ...
+        # ... de llamadas a esta u otroas funciones
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
         b3 = st.Bar("B3", n3, n4)
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        b2.add_distributed_charge(dc)
+        b3.add_distributed_charge(dc)
+        b4.add_distributed_charge(dc)
+
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        b5.add_punctual_force(pf, "pf")
 
         bars = {
             b1.name: b1,
@@ -641,17 +730,27 @@ class TestStructure(unittest.TestCase):
                                     0, -18540.18, 11256.05,
                                     -12500, 0, 13125])
 
-        np.testing.assert_almost_equal(calculated_forces, expected_forces)
+        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
+
+        # This is done to assure that referred forces and momentums are not stacked
+        calculated_forces = structure.forces_and_momentums_in_structure()
+        calculated_forces = structure.forces_and_momentums_in_structure()
+        calculated_forces = structure.forces_and_momentums_in_structure()
+        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
 
     def test_get_indexes_to_delete(self):
-        n1 = st.Node("N1", position=(0, 0, 0), forces={"F1": (0, 0, 0)}, momentums={"M1": (0, 0, 0)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)},
-                     momentums={"M1": (0, 0, 11256.05)})
-        n6 = st.Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)},
-                     support=st.Support.FIXED)
+        n1 = st.Node("N1", position=(0, 0, 0), forces_in_node={"F1": (0, 0, 0)}, momentums_in_node={"M1": (0, 0, 0)},
+                     support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), forces_in_node={"F1": (0, -35020.05, 0)},
+                     momentums_in_node={"M1": (0, 0, -40159.83)})
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces_in_node={"F1": (0, -70040.1, 0)},
+                     momentums_in_node={"M1": (0, 0, 0)})
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces_in_node={"F1": (-12500, -53560.23, 0)},
+                     momentums_in_node={"M1": (0, 0, 15778.78)})
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces_in_node={"F1": (0, -18540.18, 0)},
+                     momentums_in_node={"M1": (0, 0, 11256.05)})
+        n6 = st.Node("N6", position=(13.6, 0, 0), forces_in_node={"F1": (-12500, 0, 0)},
+                     momentums_in_node={"M1": (0, 0, 13125)}, support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
@@ -675,20 +774,26 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(calculated_indexes, expected_indexes)
 
     def test_decoupled_forces_and_momentums_in_structure(self):
-        n1 = st.Node("N1", position=(0, 0, 0), forces={"F1": (0, 0, 0)}, momentums={"M1": (0, 0, 0)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)},
-                     momentums={"M1": (0, 0, 11256.05)})
-        n6 = st.Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)},
-                     support=st.Support.FIXED)
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
         b3 = st.Bar("B3", n3, n4)
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        b2.add_distributed_charge(dc)
+        b3.add_distributed_charge(dc)
+        b4.add_distributed_charge(dc)
+
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        b5.add_punctual_force(pf, "pf")
 
         bars = {
             b1.name: b1,
@@ -707,23 +812,29 @@ class TestStructure(unittest.TestCase):
                                     -12500, -53560.23, 15778.78,
                                     0, -18540.18, 11256.05])
 
-        np.testing.assert_almost_equal(calculated_forces, expected_forces)
+        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
 
     def test_nodes_displacements(self):
-        n1 = st.Node("N1", position=(0, 0, 0), forces={}, momentums={"M1": (0, 0, 0)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)},
-                     momentums={"M1": (0, 0, 11256.05)})
-        n6 = st.Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)},
-                     support=st.Support.FIXED)
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
         b3 = st.Bar("B3", n3, n4)
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        b2.add_distributed_charge(dc)
+        b3.add_distributed_charge(dc)
+        b4.add_distributed_charge(dc)
+
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        b5.add_punctual_force(pf, "pf")
 
         bars = {
             b1.name: b1,
@@ -758,14 +869,18 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_allclose(calculated, expected, atol=10**-6)
 
     def test_get_nodes(self):
-        n1 = st.Node("N1", position=(0, 0, 0), forces={}, momentums={"M1": (0, 0, 0)}, support=st.Support.PINNED)
-        n2 = st.Node("N2", position=(0, 4.2, 0), forces={"F1": (0, -35020.05, 0)}, momentums={"M1": (0, 0, -40159.83)})
-        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces={"F1": (0, -70040.1, 0)}, momentums={"M1": (0, 0, 0)})
-        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces={"F1": (-12500, -53560.23, 0)}, momentums={"M1": (0, 0, 15778.78)})
-        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces={"F1": (0, -18540.18, 0)},
-                     momentums={"M1": (0, 0, 11256.05)})
-        n6 = st.Node("N6", position=(13.6, 0, 0), forces={"F1": (-12500, 0, 0)}, momentums={"M1": (0, 0, 13125)},
-                     support=st.Support.FIXED)
+        n1 = st.Node("N1", position=(0, 0, 0), forces_in_node={}, momentums_in_node={"M1": (0, 0, 0)},
+                     support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0), forces_in_node={"F1": (0, -35020.05, 0)},
+                     momentums_in_node={"M1": (0, 0, -40159.83)})
+        n3 = st.Node("N3", position=(6.8, 5.25, 0), forces_in_node={"F1": (0, -70040.1, 0)},
+                     momentums_in_node={"M1": (0, 0, 0)})
+        n4 = st.Node("N4", position=(13.6, 4.2, 0), forces_in_node={"F1": (-12500, -53560.23, 0)},
+                     momentums_in_node={"M1": (0, 0, 15778.78)})
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0), forces_in_node={"F1": (0, -18540.18, 0)},
+                     momentums_in_node={"M1": (0, 0, 11256.05)})
+        n6 = st.Node("N6", position=(13.6, 0, 0), forces_in_node={"F1": (-12500, 0, 0)},
+                     momentums_in_node={"M1": (0, 0, 13125)}, support=st.Support.FIXED)
 
         b1 = st.Bar("B1", n1, n2)
         b2 = st.Bar("B2", n2, n3)
@@ -822,6 +937,53 @@ class TestProfile(unittest.TestCase):
 
         self.assertRaises(TypeError, st.Profile, 4, 3)
         self.assertRaises(LookupError, st.Profile, "h", "foobar")
+
+
+class TestDistributedCharge(unittest.TestCase):
+    def test_constructor(self):
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10)
+
+        self.assertEqual(dc.dc_type, st.DistributedChargeType.SQUARE)
+        self.assertEqual(dc.max_value, 10)
+
+        self.assertRaises(TypeError, st.DistributedCharge, 2, 20)
+
+    def test_equals(self):
+        # TODO añadir más tests cuando se tengan distintos tipos de carga distribuida
+        dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10)
+        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 20)
+
+        self.assertRaises(TypeError, dc1.equals, 3)
+        self.assertTrue(dc1.equals(dc1))
+        self.assertFalse(dc1.equals(dc2))
+
+
+class TestPunctualForce(unittest.TestCase):
+    def test_constructor(self):
+        pf = st.PunctualForceInBar(10, 0.5, (1, 0, 0))
+
+        self.assertEqual(pf.value, 10)
+        self.assertEqual(pf.origin_end_factor, 0.5)
+        self.assertEqual(pf.direction, (1, 0, 0))
+
+        self.assertRaises(ValueError, st.PunctualForceInBar, 10, -3, (1, 0, 0))
+        self.assertRaises(ValueError, st.PunctualForceInBar, 10, 3, (1, 0, 0))
+        self.assertRaises(TypeError, st.PunctualForceInBar, 10, .3, [1, 0, 0])
+
+
+    def test_equals(self):
+        # TODO añadir más tests cuando se tengan distintos tipos de carga distribuida
+        pf1 = st.PunctualForceInBar(10, 0.5, (1, 0, 0))
+        pf2 = st.PunctualForceInBar(9, 0.5, (1, 0, 0))
+        pf3 = st.PunctualForceInBar(10, 0.3, (1, 0, 0))
+        pf4 = st.PunctualForceInBar(10, 0.5, (2, 0, 0))
+
+        self.assertRaises(TypeError, pf1.equals, 3)
+        self.assertTrue(pf1.equals(pf1))
+        self.assertFalse(pf1.equals(pf2))
+        self.assertFalse(pf1.equals(pf3))
+        self.assertFalse(pf1.equals(pf4))
+
 
 
 if __name__ == '__main__':
