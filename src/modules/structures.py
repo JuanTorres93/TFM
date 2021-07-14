@@ -6,8 +6,6 @@ import numpy as np
 import src.modules.databaseutils as db
 import src.modules.filesystemutils as fs
 
-# TODO Introducir fuerzas en ejes globales y locales
-
 # For structures with rigid nodes, the size of the submatrixes is 3
 submatrix_size = 3
 
@@ -311,8 +309,6 @@ class Bar:
     Class that represents a bar in a structure.
     """
 
-    # TODO implementar sistema de coordenadas locales?
-
     def __init__(self, name: str, origin: Node, end: Node, material="s275j", profile=("IPE", 300)):
         """
         Constructor for Bar class
@@ -550,11 +546,12 @@ class Bar:
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
                 bar_length = self.length()
+                forces = dc.max_value * np.array(dc.direction)
                 if dc.dc_type == DistributedChargeType.SQUARE:
                     x_reaction = 0
-                    y_reaction = - dc.max_value * bar_length / 2
-                    m_origin_reaction = - dc.max_value * pow(bar_length, 2) / 12
-                    m_end_reaction = dc.max_value * pow(bar_length, 2) / 12
+                    y_reaction = - forces[1] * bar_length / 2
+                    m_origin_reaction = - forces[1] * pow(bar_length, 2) / 12
+                    m_end_reaction = forces[1] * pow(bar_length, 2) / 12
 
                     reaction = np.array([x_reaction, y_reaction, 0])
                     if not return_global_values:
@@ -1052,7 +1049,7 @@ class Structure:
                 add_referred_force_and_momentum_to_node(bar.origin, pf_nodes, "pf", "origin")
                 add_referred_force_and_momentum_to_node(bar.end, pf_nodes, "pf", "end")
 
-        while current_search < self.get_number_of_nodes():
+        while current_search <= self.get_number_of_nodes():
             for key, bar in self.bars.items():
                 origin = bar.origin
                 end = bar.end
@@ -1160,7 +1157,7 @@ class Structure:
         got_nodes = []
         current_searched_node = 1
 
-        while current_searched_node < self.get_number_of_nodes():
+        while current_searched_node <= self.get_number_of_nodes():
             for key, bar in self.bars.items():
                 origin = bar.origin
                 end = bar.end
@@ -1280,12 +1277,20 @@ class DistributedCharge:
     """
     # TODO incluir leyes de deformacion mirando un prontuario
 
-    def __init__(self, dc_type, max_value):
+    def __init__(self, dc_type, max_value, direction):
+        """
+
+        :param dc_type: type of distributed charge. Must be of type DistributedChargeType
+        :param max_value: the maximum value of the distributed charge
+        :param direction: unitary vector representing the direction of the force in local axis
+        """
+        # TODO completar el test con lo nuevo
         if type(dc_type) not in [DistributedChargeType]:
             raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
 
         self.dc_type = dc_type
         self.max_value = max_value
+        self.direction = direction
         # If new parameters are included, they must be added to the equals function and to the test
 
     def equals(self, other_distributed_charge):
@@ -1351,7 +1356,7 @@ b3 = Bar("B3", n3, n4)
 b4 = Bar("B4", n4, n5)
 b5 = Bar("B5", n4, n6)
 
-dc = DistributedCharge(DistributedChargeType.SQUARE, -10179.36)
+dc = DistributedCharge(DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
 b2.add_distributed_charge(dc)
 b3.add_distributed_charge(dc)
 b4.add_distributed_charge(dc)
@@ -1369,9 +1374,66 @@ bars = {
 
 st = Structure("S1", bars)
 # st.assembled_matrix()
-
 # disp = st.get_nodes_displacements()
 # print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
-#     print(disp[i])
-# st.get_nodes_reactions()
+#     if i % 3 == 0:
+#         label = "x: "
+#     elif i % 3 == 1:
+#         label = "y: "
+#     else:
+#         label = "angle: "
+#     print(label + str(disp[i]))
+
+
+# Structure 2
+n21 = Node("N21", position=(-1, 2, 0), support=Support.PINNED)
+n22 = Node("N22", position=(-1, 5, 0))
+n23 = Node("N23", position=(1, 5, 0))
+n24 = Node("N24", position=(1, 4, 0))
+n25 = Node("N25", position=(3, 4, 0))
+n26 = Node("N26", position=(3, 5, 0))
+n27 = Node("N27", position=(5, 5, 0))
+n28 = Node("N28", position=(5, 2, 0), support=Support.FIXED)
+
+b21 = Bar("B21", n21, n22)
+b22 = Bar("B22", n22, n23)
+b23 = Bar("B23", n23, n24)
+b24 = Bar("B24", n24, n25)
+b25 = Bar("B25", n25, n26)
+b26 = Bar("B26", n26, n27)
+b27 = Bar("B27", n27, n28)
+
+dc2 = DistributedCharge(DistributedChargeType.SQUARE, 100000, (0, -1, 0))
+b22.add_distributed_charge(dc2)
+b26.add_distributed_charge(dc2)
+
+pf21 = PunctualForceInBar(-40000, 0.5, (0, 1, 0))
+pf24 = PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+pf27 = PunctualForceInBar(-30000, 0.5, (0, 1, 0))
+
+b21.add_punctual_force(pf21)
+b24.add_punctual_force(pf24)
+b27.add_punctual_force(pf27)
+
+bars2 = {
+    b21.name: b21,
+    b22.name: b22,
+    b23.name: b23,
+    b24.name: b24,
+    b25.name: b25,
+    b26.name: b26,
+    b27.name: b27,
+}
+
+# st2 = Structure("st2", bars2)
+# disp = st2.get_nodes_displacements()
+# print("==========DISPLACEMENTS==========")
+# for i in range(len(disp)):
+#     if i % 3 == 0:
+#         label = "x: "
+#     elif i % 3 == 1:
+#         label = "y: "
+#     else:
+#         label = "angle: "
+#     print(label + str(disp[i]))

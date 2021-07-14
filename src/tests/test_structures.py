@@ -355,7 +355,8 @@ class TestBar(unittest.TestCase):
 
         self.assertRaises(TypeError, b2.add_distributed_charge, 3)
 
-        new_distributed_charge = st.DistributedCharge(st.DistributedChargeType.SQUARE, max_value=7)
+        new_distributed_charge = st.DistributedCharge(st.DistributedChargeType.SQUARE, max_value=7,
+                                                      direction=(0, -1, 0))
 
         dc_name = "dc"
 
@@ -370,15 +371,15 @@ class TestBar(unittest.TestCase):
 
         b2 = st.Bar("B2", n2, n3)
 
-        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36)
+        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36, direction=(0, -1, 0))
         b2.add_distributed_charge(dc, "test1")
 
         calculated_values = b2.get_referred_distributed_charge_to_nodes(return_global_values=False)
         expected_values = {
             "x": 0,
-            "y": - 35020.05,
-            "m_origin": - 40159.83,
-            "m_end": 40159.83
+            "y": 35020.05,
+            "m_origin": 40159.83,
+            "m_end": - 40159.83
         }
 
         self.assertAlmostEqual(calculated_values.get("x"), expected_values.get("x"), places=0)
@@ -401,7 +402,7 @@ class TestBar(unittest.TestCase):
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
 
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
         b3.add_distributed_charge(dc)
         b4.add_distributed_charge(dc)
@@ -465,7 +466,7 @@ class TestBar(unittest.TestCase):
         self.assertEqual(len(b2.get_punctual_forces()), 0)
 
         # Add a distributed charge
-        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36)
+        dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36, direction=(0, -1, 0))
         b2.add_distributed_charge(dc, "test1")
 
         self.assertEqual(len(b2.get_distributed_charges()), 1)
@@ -521,7 +522,7 @@ class TestBar(unittest.TestCase):
         b1 = st.Bar("B1", n1, n2)
         self.assertFalse(b1.has_distributed_charges())
 
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36, (0, -1, 0))
         b1.add_distributed_charge(dc)
         self.assertTrue(b1.has_distributed_charges())
 
@@ -704,7 +705,7 @@ class TestStructure(unittest.TestCase):
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
 
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
         b3.add_distributed_charge(dc)
         b4.add_distributed_charge(dc)
@@ -787,7 +788,7 @@ class TestStructure(unittest.TestCase):
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
 
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
         b3.add_distributed_charge(dc)
         b4.add_distributed_charge(dc)
@@ -815,6 +816,7 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
 
     def test_nodes_displacements(self):
+        # Test structure 1
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
@@ -828,7 +830,7 @@ class TestStructure(unittest.TestCase):
         b4 = st.Bar("B4", n4, n5)
         b5 = st.Bar("B5", n4, n6)
 
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
         b3.add_distributed_charge(dc)
         b4.add_distributed_charge(dc)
@@ -867,6 +869,77 @@ class TestStructure(unittest.TestCase):
                              0])
 
         np.testing.assert_allclose(calculated, expected, atol=10**-6)
+
+        # Test structure 2
+        n21 = st.Node("N21", position=(-1, 2, 0), support=st.Support.PINNED)
+        n22 = st.Node("N22", position=(-1, 5, 0))
+        n23 = st.Node("N23", position=(1, 5, 0))
+        n24 = st.Node("N24", position=(1, 4, 0))
+        n25 = st.Node("N25", position=(3, 4, 0))
+        n26 = st.Node("N26", position=(3, 5, 0))
+        n27 = st.Node("N27", position=(5, 5, 0))
+        n28 = st.Node("N28", position=(5, 2, 0), support=st.Support.FIXED)
+
+        b21 = st.Bar("B21", n21, n22)
+        b22 = st.Bar("B22", n22, n23)
+        b23 = st.Bar("B23", n23, n24)
+        b24 = st.Bar("B24", n24, n25)
+        b25 = st.Bar("B25", n25, n26)
+        b26 = st.Bar("B26", n26, n27)
+        b27 = st.Bar("B27", n27, n28)
+
+        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100000, (0, -1, 0))
+        b22.add_distributed_charge(dc2)
+        b26.add_distributed_charge(dc2)
+
+        pf21 = st.PunctualForceInBar(-40000, 0.5, (0, 1, 0))
+        pf24 = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        pf27 = st.PunctualForceInBar(-30000, 0.5, (0, 1, 0))
+
+        b21.add_punctual_force(pf21)
+        b24.add_punctual_force(pf24)
+        b27.add_punctual_force(pf27)
+
+        bars2 = {
+            b21.name: b21,
+            b22.name: b22,
+            b23.name: b23,
+            b24.name: b24,
+            b25.name: b25,
+            b26.name: b26,
+            b27.name: b27,
+        }
+
+        structure2 = st.Structure("st2", bars2)
+
+        calculated = structure2.get_nodes_displacements()
+        # These results are the exact same than Cespla provides
+        expected = np.array([0,
+                             0,
+                             -0.00107992,
+                             0.0131575,
+                             -0.000572115,
+                             -0.0123052,
+                             0.0130259,
+                             -0.031139,
+                             -0.0139501,
+                             0.00163605,
+                             -0.0311492,
+                             -0.00812327,
+                             0.00150441,
+                             -0.0308714,
+                             0.00835424,
+                             -0.0100462,
+                             -0.030859,
+                             0.0140407,
+                             -0.0101779,
+                             -0.000578654,
+                             0.0118345,
+                             0,
+                             0,
+                             0])
+
+        np.testing.assert_allclose(calculated, expected, atol=5**-8)
 
     def test_get_nodes(self):
         n1 = st.Node("N1", position=(0, 0, 0), forces_in_node={}, momentums_in_node={"M1": (0, 0, 0)},
@@ -941,7 +1014,7 @@ class TestProfile(unittest.TestCase):
 
 class TestDistributedCharge(unittest.TestCase):
     def test_constructor(self):
-        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10)
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10, (0, -1, 0))
 
         self.assertEqual(dc.dc_type, st.DistributedChargeType.SQUARE)
         self.assertEqual(dc.max_value, 10)
@@ -950,8 +1023,8 @@ class TestDistributedCharge(unittest.TestCase):
 
     def test_equals(self):
         # TODO añadir más tests cuando se tengan distintos tipos de carga distribuida
-        dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10)
-        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 20)
+        dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10, (0, -1, 0))
+        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 20, (0, -1, 0))
 
         self.assertRaises(TypeError, dc1.equals, 3)
         self.assertTrue(dc1.equals(dc1))
