@@ -17,9 +17,9 @@ class Support(enum.Enum):
     """
     NONE = 1
     ROLLER_X = 2  # Deslizadera
-    ROLLER_Y = 5  # Deslizadera
-    PINNED = 3  # Fijo
-    FIXED = 4  # Empotramiento
+    ROLLER_Y = 3  # Deslizadera
+    PINNED = 4  # Fijo
+    FIXED = 5  # Empotramiento
 
 
 @enum.unique
@@ -167,6 +167,11 @@ class Node:
         return self.referred_forces
 
     def clear_referred_forces(self):
+        """
+        Deletes all refered forces stored in the node instance. This method is useful to not stack the same forces
+        every time that they are calculated
+        :return:
+        """
         self.referred_forces = {}
 
     def add_force(self, key, force, belongs_to_node):
@@ -207,6 +212,11 @@ class Node:
         return self.referred_momentums
 
     def clear_referred_momentums(self):
+        """
+        Deletes all refered momentums stored in the node instance. This method is useful to not stack the same momentums
+        every time that they are calculated
+        :return:
+        """
         self.referred_momentums = {}
 
     def add_momentum(self, key, momentum, belongs_to_node):
@@ -265,8 +275,8 @@ class Node:
 
     def set_displacement(self, new_displacement):
         """
-
-        :param new_displacement: dictionary of x, y and angle displacements
+        Stores the displacement of the node. Handled from Structure class
+        :param new_displacement: dictionary of x, y and angle displacements.
         :return:
         """
 
@@ -285,7 +295,7 @@ class Node:
 
     def set_reactions(self, new_reactions):
         """
-
+        Stores the reaction of the node. Handled from Structure class
         :param new_reactions: dictionary of x, y and moment reactions
         :return:
         """
@@ -302,6 +312,16 @@ class Node:
         """
 
         return self.reactions
+
+    def has_support(self):
+        """
+
+        :return: True if the node has support, else otherwise
+        """
+        if self.support != Support.NONE:
+            return  True
+        else:
+            return False
 
 
 class Bar:
@@ -539,6 +559,11 @@ class Bar:
         return self.distributed_charges
 
     def get_referred_distributed_charge_to_nodes(self, return_global_values=True):
+        """
+
+        :param return_global_values: Specifies whether the return value is in global of local coordinates.
+        :return: reactions produced by charges that are applied directly to the Bar and not in a node.
+        """
         # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
         # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
 
@@ -590,6 +615,10 @@ class Bar:
                                                 PunctualForceInBar)
 
     def get_punctual_forces(self):
+        """
+
+        :return: punctual forces applied to the bar instance
+        """
         return self.punctual_forces
 
     def get_referred_punctual_forces_in_bar_to_nodes(self, return_global_values=True):
@@ -612,18 +641,24 @@ class Bar:
                 forces_in_axis = tuple([pf.value * x for x in pf.direction])
 
                 # Reactions in each axis
-                y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
-                y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+                y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (
+                            bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
+                y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (
+                            bar_length + 2 * distance_end_force) / pow(bar_length, 3)
                 x_reaction = - forces_in_axis[0]
 
                 reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
                 reaction_end = np.array([x_reaction, y_reaction_end, 0])
 
                 # Flector momentums
-                flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(bar_length, 2)
-                flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length, 2)
+                flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(
+                    bar_length, 2)
+                flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length,
+                                                                                                           2)
                 # TODO Repasar el signo en flector_force_point
-                flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force, 2) / pow(bar_length, 3)
+                flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force,
+                                                                                                  2) / pow(bar_length,
+                                                                                                           3)
 
                 if not return_global_values:
                     return {
@@ -655,12 +690,20 @@ class Bar:
             print("There are no punctual forces applied to bar " + self.name)
 
     def has_distributed_charges(self):
+        """
+
+        :return: True is the bar has any distributed charge applied to it
+        """
         if len(self.distributed_charges) > 0:
             return True
         else:
             return False
 
     def has_punctual_forces(self):
+        """
+
+        :return: True is the bar has any punctual force applied to it
+        """
         if len(self.punctual_forces) > 0:
             return True
         else:
@@ -714,42 +757,6 @@ class Structure:
                 processed_nodes.append(end)
 
         return num_nodes
-
-    # def check_validity_of_nodes(self):
-    #     """
-    #     Each node must belong to, at least, two bars, unless it has a support. If one node does not fulfill one of the
-    #     two options, the node will not be valid and the structure cannot be solved.
-    #     :return: True if all nodes are valid, False otherwise
-    #     """
-    #     # If think this is not needed for rigid structures
-    #     def validate_nodes(first_list, second_list):
-    #         nodes_validity = []
-    #
-    #         for node_f in first_list:
-    #             if node_f.support is not Support.NONE:
-    #                 nodes_validity.append(True)
-    #             else:
-    #                 if node_f in second_list:
-    #                     nodes_validity.append(True)
-    #                 elif first_list.count(node_f) > 1:
-    #                     nodes_validity.append(True)
-    #                 else:
-    #                     nodes_validity.append(False)
-    #
-    #         return  nodes_validity
-    #
-    #     origin_nodes = []
-    #     end_nodes = []
-    #     for key, bar in self.bars.items():
-    #         origin_nodes.append(bar.origin)
-    #         end_nodes.append(bar.end)
-    #
-    #     origin_nodes_validity = validate_nodes(origin_nodes, end_nodes)
-    #     end_nodes_validity = validate_nodes(end_nodes, origin_nodes)
-    #
-    #     print(origin_nodes_validity)
-    #     print(list(map(lambda x: x.name, end_nodes)))
-    #     print(end_nodes_validity)
 
     def set_bars_and_nodes_numeration(self):
         """
@@ -813,8 +820,8 @@ class Structure:
 
     def assembled_matrix(self):
         """
-        This function returns the assembled matrix of the structure
-        :return:
+
+        :return: assembled matrix of the structure
         """
 
         # Total number of nodes in structure
@@ -972,9 +979,8 @@ class Structure:
         :return: Array of x force, y force and z momentum applied to each node
         """
 
-        # Assing numerations
+        # Assign numerations
         self.set_bars_and_nodes_numeration()
-
         # List to store the forces in an ordered way
         forces = []
         # Index to find the nodes in order
@@ -1023,7 +1029,7 @@ class Structure:
             while (real_key in node.get_forces_in_node_dictionary()) or \
                     (real_key in node.get_referred_forces_dictionary()) or \
                     (real_key in node.get_momentum_in_node_dictionary()) or \
-                (real_key in node.get_referred_momentum_dictionary()):
+                    (real_key in node.get_referred_momentum_dictionary()):
                 real_key = fs.get_random_name(key_base)
 
             # Add force and momentum to node
@@ -1036,6 +1042,7 @@ class Structure:
             node.clear_referred_forces()
             node.clear_referred_momentums()
 
+        # Determine and assign node-referred forces and momentums for each node in each bar
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
                 dc_nodes = bar.get_referred_distributed_charge_to_nodes()
@@ -1049,6 +1056,7 @@ class Structure:
                 add_referred_force_and_momentum_to_node(bar.origin, pf_nodes, "pf", "origin")
                 add_referred_force_and_momentum_to_node(bar.end, pf_nodes, "pf", "end")
 
+        # Compose the force vector
         while current_search <= self.get_number_of_nodes():
             for key, bar in self.bars.items():
                 origin = bar.origin
@@ -1070,6 +1078,7 @@ class Structure:
                     # Look for the next node
                     current_search += 1
 
+        # Return the opposite of the found forces because the needed values are the reactions, not the forces themselves
         return -1 * np.array(forces)
 
     def decoupled_forces_and_momentums_in_structure(self):
@@ -1163,7 +1172,7 @@ class Structure:
                 end = bar.end
 
                 if origin.solving_numeration == current_searched_node or \
-                    end.solving_numeration == current_searched_node:
+                        end.solving_numeration == current_searched_node:
                     if origin.solving_numeration == current_searched_node:
                         valid_node = origin
                     else:
@@ -1181,37 +1190,47 @@ class Structure:
 
         :return: Array with the reactions of the nodes
         """
-        # Assign the displacement of each node to its instance
-        assigned_nodes_numeration = []
-        node_to_process = 1
+        # Compute the forces and momentums referred to the nodes
+        self.forces_and_momentums_in_structure()
 
+        # Compute node reactions according the equation
         nodes_reactions = np.dot(self.assembled_matrix(), self.get_nodes_displacements())
 
-        while node_to_process < self.get_number_of_nodes():
-            for key, bar in self.bars.items():
-                origin = bar.origin
-                end = bar.end
+        # Get all nodes in the structure in solving_numeration order
+        nodes_in_structure = self.get_nodes()
 
-                if origin.solving_numeration == node_to_process or \
-                        end.solving_numeration == node_to_process:
+        # Assign each node its reactions
+        for i in range(self.get_number_of_nodes()):
+            # Since i starts at 0, the current solving_numeration = i + 1
+            current_node = nodes_in_structure[i]
+            # Index to retrieve the reactions more easily
+            index_offset = i * submatrix_size
 
-                    if origin.solving_numeration == node_to_process:
-                        valid_node = origin
-                    else:
-                        valid_node = end
+            x_reaction = nodes_reactions[index_offset]
+            y_reaction = nodes_reactions[index_offset + 1]
+            m_reaction = nodes_reactions[index_offset + 2]
 
-                    index_offset = (node_to_process - 1) * submatrix_size
+            if current_node.has_support():
+                node_forces = current_node.get_total_force_and_momentum()
+                # x reaction
+                x_reaction += node_forces[0]
+                # y reaction
+                y_reaction += node_forces[1]
+                # m reaction
+                m_reaction += node_forces[2]
 
-                    reactions = {
-                        "x": nodes_reactions[index_offset],
-                        "y": nodes_reactions[index_offset + 1],
-                        "momentum": nodes_reactions[index_offset + 2]
-                    }
+                # Update nodes_reactions with the new values
+                nodes_reactions[index_offset] = x_reaction
+                nodes_reactions[index_offset + 1] = y_reaction
+                nodes_reactions[index_offset + 2] = m_reaction
 
-                    valid_node.set_reactions(reactions)
+            reactions = {
+                "x": x_reaction,
+                "y": y_reaction,
+                "momentum": m_reaction
+            }
 
-                    assigned_nodes_numeration.append(valid_node.solving_numeration)
-                    node_to_process += 1
+            current_node.set_reactions(reactions)
 
         return nodes_reactions
 
@@ -1234,7 +1253,7 @@ class Material:
 
         if result:
             self.generic_name, self.name, self.young_mod, self.rig_mod, self.poisson_coef, \
-                self.thermal_dil_coef, self.density = result[0]
+            self.thermal_dil_coef, self.density = result[0]
         else:
             raise LookupError(
                 "Error in the query: ''" + query + "''. Or maybe the material " + name + " is not defined in the database.")
@@ -1265,7 +1284,7 @@ class Profile:
 
         if result:
             self.name, self.name_number, self.area, self.weight, self.inertia_moment_x, self.res_mod_x, \
-                self.inertia_moment_y, self.res_mod_y = result[0]
+            self.inertia_moment_y, self.res_mod_y = result[0]
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
@@ -1275,6 +1294,7 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
+
     # TODO incluir leyes de deformacion mirando un prontuario
 
     def __init__(self, dc_type, max_value, direction):
@@ -1373,6 +1393,7 @@ bars = {
 }
 
 st = Structure("S1", bars)
+st.get_nodes_reactions()
 # st.assembled_matrix()
 # disp = st.get_nodes_displacements()
 # print("==========DISPLACEMENTS==========")
@@ -1426,7 +1447,7 @@ bars2 = {
     b27.name: b27,
 }
 
-# st2 = Structure("st2", bars2)
+st2 = Structure("st2", bars2)
 # disp = st2.get_nodes_displacements()
 # print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):

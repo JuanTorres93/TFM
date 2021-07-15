@@ -203,6 +203,13 @@ class TestNode(unittest.TestCase):
         self.assertEqual(node.get_reactions(), new_reactions)
         self.assertRaises(TypeError, node.set_reactions, 0)
 
+    def test_has_support(self):
+        n1 = st.Node("N1")
+
+        self.assertFalse(n1.has_support())
+
+        n2 = st.Node("N2", support=st.Support.PINNED)
+        self.assertTrue(n2.has_support())
 
 
 class TestBar(unittest.TestCase):
@@ -978,6 +985,132 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(structure.get_nodes()[3].equals(n4))
         self.assertTrue(structure.get_nodes()[4].equals(n5))
         self.assertTrue(structure.get_nodes()[5].equals(n6))
+
+    def test_get_nodes_reactions(self):
+        # Test structure 1
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(0, 4.2, 0))
+        n3 = st.Node("N3", position=(6.8, 5.25, 0))
+        n4 = st.Node("N4", position=(13.6, 4.2, 0))
+        n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
+        n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2)
+        b2 = st.Bar("B2", n2, n3)
+        b3 = st.Bar("B3", n3, n4)
+        b4 = st.Bar("B4", n4, n5)
+        b5 = st.Bar("B5", n4, n6)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
+        b2.add_distributed_charge(dc)
+        b3.add_distributed_charge(dc)
+        b4.add_distributed_charge(dc)
+
+        pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        b5.add_punctual_force(pf, "pf")
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3,
+            b4.name: b4,
+            b5.name: b5
+        }
+
+        structure = st.Structure("S1", bars)
+        calculated = structure.get_nodes_reactions()
+        expected = np.array([30408,
+                             69506,
+                             0,
+                             0,
+                             -35020.05,
+                             -40159.83,
+                             0,
+                             -70040.1,
+                             0,
+                             -12500,
+                             -53560.23,
+                             15778.78,
+                             0,
+                             -18540.18,
+                             11256.05,
+                             -5407.6,
+                             107650,
+                             6980.4])
+
+        np.testing.assert_allclose(calculated, expected, atol=5)
+
+        # Test structure 2
+        n21 = st.Node("N21", position=(-1, 2, 0), support=st.Support.PINNED)
+        n22 = st.Node("N22", position=(-1, 5, 0))
+        n23 = st.Node("N23", position=(1, 5, 0))
+        n24 = st.Node("N24", position=(1, 4, 0))
+        n25 = st.Node("N25", position=(3, 4, 0))
+        n26 = st.Node("N26", position=(3, 5, 0))
+        n27 = st.Node("N27", position=(5, 5, 0))
+        n28 = st.Node("N28", position=(5, 2, 0), support=st.Support.FIXED)
+
+        b21 = st.Bar("B21", n21, n22)
+        b22 = st.Bar("B22", n22, n23)
+        b23 = st.Bar("B23", n23, n24)
+        b24 = st.Bar("B24", n24, n25)
+        b25 = st.Bar("B25", n25, n26)
+        b26 = st.Bar("B26", n26, n27)
+        b27 = st.Bar("B27", n27, n28)
+
+        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100000, (0, -1, 0))
+        b22.add_distributed_charge(dc2)
+        b26.add_distributed_charge(dc2)
+
+        pf21 = st.PunctualForceInBar(-40000, 0.5, (0, 1, 0))
+        pf24 = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
+        pf27 = st.PunctualForceInBar(-30000, 0.5, (0, 1, 0))
+
+        b21.add_punctual_force(pf21)
+        b24.add_punctual_force(pf24)
+        b27.add_punctual_force(pf27)
+
+        bars2 = {
+            b21.name: b21,
+            b22.name: b22,
+            b23.name: b23,
+            b24.name: b24,
+            b25.name: b25,
+            b26.name: b26,
+            b27.name: b27,
+        }
+
+        structure2 = st.Structure("st2", bars2)
+
+        calculated = structure2.get_nodes_reactions()
+        # These results are the exact same than Cespla provides
+        expected = np.array([32926.2,
+                             211293,
+                             0,
+                             20000,
+                             -100000,
+                             -18333.33,
+                             0,
+                             -100000,
+                             33333.33,
+                             0,
+                             -12500,
+                             -6250,
+                             0,
+                             -12500,
+                             6250,
+                             0,
+                             -100000,
+                             -33333.33,
+                             -15000,
+                             -100000,
+                             22083.33,
+                             -42926.2,
+                             213707,
+                             7755.35])
+
+        np.testing.assert_allclose(calculated, expected, atol=.5)
+
 
 class TestMaterial(unittest.TestCase):
     def test_constructor(self):
