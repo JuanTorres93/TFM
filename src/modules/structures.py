@@ -319,7 +319,7 @@ class Node:
         :return: True if the node has support, else otherwise
         """
         if self.support != Support.NONE:
-            return  True
+            return True
         else:
             return False
 
@@ -358,16 +358,24 @@ class Bar:
 
         # This submatrixes are here exposed for an easier way to assemble the assembled matrix from the structure class
         # Do not change their initialization
-        self.k_ii = None
-        self.k_ij = None
-        self.k_ji = None
-        self.k_jj = None
+        self.k_ii_global = None
+        self.k_ij_global = None
+        self.k_ji_global = None
+        self.k_jj_global = None
+
+        self.k_ii_local = None
+        self.k_ij_local = None
+        self.k_ji_local = None
+        self.k_jj_local = None
 
         # Distributed charges applied to the bar
         self.distributed_charges = {}
 
         # Punctual forces applied to the bar
         self.punctual_forces = {}
+
+        # Efforts of the bar
+        self.efforts = {}
 
     def set_name(self, new_name: str):
         """
@@ -444,12 +452,26 @@ class Bar:
         else:
             i = self.profile.inertia_moment_y
 
-        return np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
+        local_rigidity_matrix = np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
                          [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
                          [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
                          [-e * a / l, 0, 0, e * a / l, 0, 0],
                          [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
                          [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])
+
+        m_aux = local_rigidity_matrix[0:3, 0:3]
+        self.k_ii_local = m_aux
+
+        m_aux = local_rigidity_matrix[0:3, 3:6]
+        self.k_ij_local = m_aux
+
+        m_aux = local_rigidity_matrix[3:6, 0:3]
+        self.k_ji_local = m_aux
+
+        m_aux = local_rigidity_matrix[3:6, 3:6]
+        self.k_jj_local = m_aux
+
+        return local_rigidity_matrix
 
     def angle_from_global_to_local(self):
         """
@@ -499,19 +521,19 @@ class Bar:
         l = self.local_rigidity_matrix_2d_rigid_nodes()
 
         m_aux = g.dot(l[0:3, 0:3])
-        self.k_ii = m_aux.dot(np.transpose(g))
+        self.k_ii_global = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[0:3, 3:6])
-        self.k_ij = m_aux.dot(np.transpose(g))
+        self.k_ij_global = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[3:6, 0:3])
-        self.k_ji = m_aux.dot(np.transpose(g))
+        self.k_ji_global = m_aux.dot(np.transpose(g))
 
         m_aux = g.dot(l[3:6, 3:6])
-        self.k_jj = m_aux.dot(np.transpose(g))
+        self.k_jj_global = m_aux.dot(np.transpose(g))
 
-        top = np.hstack((self.k_ii, self.k_ij))
-        bottom = np.hstack((self.k_ji, self.k_jj))
+        top = np.hstack((self.k_ii_global, self.k_ij_global))
+        bottom = np.hstack((self.k_ji_global, self.k_jj_global))
 
         return np.vstack((top, bottom))
 
@@ -580,13 +602,12 @@ class Bar:
 
                     reaction = np.array([x_reaction, y_reaction, 0])
                     if not return_global_values:
-                        pass
-                    return {
-                        "x": reaction[0],
-                        "y": reaction[1],
-                        "m_origin": m_origin_reaction,
-                        "m_end": m_end_reaction
-                    }
+                        return {
+                            "x": reaction[0],
+                            "y": reaction[1],
+                            "m_origin": m_origin_reaction,
+                            "m_end": m_end_reaction
+                        }
 
                     # Convert reactions to global coordinates
                     matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
@@ -642,9 +663,9 @@ class Bar:
 
                 # Reactions in each axis
                 y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (
-                            bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
+                        bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
                 y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (
-                            bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+                        bar_length + 2 * distance_end_force) / pow(bar_length, 3)
                 x_reaction = - forces_in_axis[0]
 
                 reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
@@ -708,6 +729,110 @@ class Bar:
             return True
         else:
             return False
+
+    def calculate_efforts(self):
+        # Test is written in structure tests
+        # TODO escribir test y docstring
+        if (self.k_ii_local is None) or (self.k_ij_local is None) or \
+                (self.k_ji_local is None) or (self.k_jj_local is None):
+            self.local_rigidity_matrix_2d_rigid_nodes()
+
+        rigidity_matrix_by_g_trans_top_row = np.hstack(
+            (np.dot(self.k_ii_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
+             np.dot(self.k_ij_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+        rigidity_matrix_by_g_trans_bottom_row = np.hstack(
+            (np.dot(self.k_ji_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
+             np.dot(self.k_jj_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+        rigidity_matrix_by_g_trans = np.vstack(
+            (rigidity_matrix_by_g_trans_top_row,
+             rigidity_matrix_by_g_trans_bottom_row))
+
+        displacements_i = self.origin.get_displacement()
+        displacements_i = np.array([displacements_i.get("x"),
+                                    displacements_i.get("y"),
+                                    displacements_i.get("angle")])
+        displacements_i = np.vstack(displacements_i)
+
+        displacements_j = self.end.get_displacement()
+        displacements_j = np.array([displacements_j.get("x"),
+                                    displacements_j.get("y"),
+                                    displacements_j.get("angle")])
+        displacements_j = np.vstack(displacements_j)
+
+        displacements = np.vstack(
+            (displacements_i,
+             displacements_j)
+        )
+
+        efforts = np.dot(rigidity_matrix_by_g_trans, displacements)
+
+        # Locked state contribution
+        # Distributed charges
+        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
+        if distributed_charges_contribution is not None:
+            dc_x = distributed_charges_contribution.get("x")
+            dc_y = distributed_charges_contribution.get("y")
+            dc_momentum_i = distributed_charges_contribution.get("m_origin")
+            dc_momentum_j = distributed_charges_contribution.get("m_end")
+
+            ri = np.array([dc_x, dc_y, dc_momentum_i])
+            rj = np.array([dc_x, dc_y, dc_momentum_j])
+
+            ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                        ri)
+            ri = np.vstack(ri)
+
+            rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                        rj)
+            rj = np.vstack(rj)
+
+            distributed_charges_contribution = np.vstack(
+                (ri,
+                 rj)
+            )
+
+            efforts += distributed_charges_contribution
+
+        # Punctual forces
+        punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes()
+        if punctual_forces_contribution is not None:
+            dc_x_i = punctual_forces_contribution.get("x_origin")
+            dc_x_j = punctual_forces_contribution.get("x_end")
+            dc_y_i = punctual_forces_contribution.get("y_origin")
+            dc_y_j = punctual_forces_contribution.get("y_end")
+            dc_momentum_i = punctual_forces_contribution.get("m_origin")
+            dc_momentum_j = punctual_forces_contribution.get("m_end")
+
+            ri = np.array([dc_x_i, dc_y_i, dc_momentum_i])
+            rj = np.array([dc_x_j, dc_y_j, dc_momentum_j])
+
+            ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                        ri)
+            ri = np.vstack(ri)
+
+            rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                        rj)
+            rj = np.vstack(rj)
+
+            punctual_forces_contribution = np.vstack(
+                (ri,
+                 rj)
+            )
+
+            efforts += punctual_forces_contribution
+
+        self.efforts.clear()
+        self.efforts["p_ij"] = np.array([efforts[0], efforts[1], efforts[2]])
+        self.efforts["p_ji"] = np.array([efforts[3], efforts[4], efforts[5]])
+        print("Efforts for bar " + self.name + " are determined. Available using method get_efforts")
+
+    def get_efforts(self):
+        """
+        In order to be able to get the efforts it is first needed to calculate them using calculate_efforts
+        :return: efforts of the bar as a dictionary {N, Q, M}
+        """
+        # TODO escribir test
+        return self.efforts
 
 
 class Structure:
@@ -854,13 +979,13 @@ class Structure:
                 col_end = submatrix_info.get("col_end")
 
                 if i == 0:
-                    submatrix = np.add(submatrix, bar.k_ii)
+                    submatrix = np.add(submatrix, bar.k_ii_global)
                 elif i == 1:
-                    submatrix = np.add(submatrix, bar.k_ij)
+                    submatrix = np.add(submatrix, bar.k_ij_global)
                 elif i == 2:
-                    submatrix = np.add(submatrix, bar.k_ji)
+                    submatrix = np.add(submatrix, bar.k_ji_global)
                 elif i == 3:
-                    submatrix = np.add(submatrix, bar.k_jj)
+                    submatrix = np.add(submatrix, bar.k_jj_global)
 
                 matrix[row_start:row_end, col_start:col_end] = submatrix
 
@@ -1045,13 +1170,15 @@ class Structure:
         # Determine and assign node-referred forces and momentums for each node in each bar
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
-                dc_nodes = bar.get_referred_distributed_charge_to_nodes()
+                # Not sure why in distributed charges must be used the local values and in
+                # punctual forces the global ones
+                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=False)
 
                 add_referred_force_and_momentum_to_node(bar.origin, dc_nodes, "dc", "origin")
                 add_referred_force_and_momentum_to_node(bar.end, dc_nodes, "dc", "end")
 
             if bar.has_punctual_forces():
-                pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes()
+                pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
 
                 add_referred_force_and_momentum_to_node(bar.origin, pf_nodes, "pf", "origin")
                 add_referred_force_and_momentum_to_node(bar.end, pf_nodes, "pf", "end")
@@ -1124,35 +1251,19 @@ class Structure:
                 nodes_displacements.append(calculated_nodes_displacements[included_non_zero_displacement_index])
                 included_non_zero_displacement_index += 1
 
-        # Assign the displacement of each node to its instance
-        assigned_nodes_numeration = []
-        node_to_process = 1
+        nodes_in_structure = self.get_nodes()
 
-        while node_to_process < self.get_number_of_nodes():
-            for key, bar in self.bars.items():
-                origin = bar.origin
-                end = bar.end
+        for i in range(self.get_number_of_nodes()):
+            current_node = nodes_in_structure[i]
+            index_offset = i * submatrix_size
 
-                if origin.solving_numeration == node_to_process or \
-                        end.solving_numeration == node_to_process:
+            displacement = {
+                "x": nodes_displacements[index_offset],
+                "y": nodes_displacements[index_offset + 1],
+                "angle": nodes_displacements[index_offset + 2]
+            }
 
-                    if origin.solving_numeration == node_to_process:
-                        valid_node = origin
-                    else:
-                        valid_node = end
-
-                    index_offset = (node_to_process - 1) * submatrix_size
-
-                    displacement = {
-                        "x": nodes_displacements[index_offset],
-                        "y": nodes_displacements[index_offset + 1],
-                        "angle": nodes_displacements[index_offset + 2]
-                    }
-
-                    valid_node.set_displacement(displacement)
-
-                    assigned_nodes_numeration.append(valid_node.solving_numeration)
-                    node_to_process += 1
+            current_node.set_displacement(displacement)
 
         return nodes_displacements
 
@@ -1393,9 +1504,10 @@ bars = {
 }
 
 st = Structure("S1", bars)
+st.assembled_matrix()
 st.get_nodes_reactions()
-# st.assembled_matrix()
-# disp = st.get_nodes_displacements()
+disp = st.get_nodes_displacements()
+b5.calculate_efforts()
 # print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
 #     if i % 3 == 0:
@@ -1448,6 +1560,12 @@ bars2 = {
 }
 
 st2 = Structure("st2", bars2)
+st2.assembled_matrix()
+st2.get_nodes_reactions()
+st2.get_nodes_displacements()
+
+for key, bar in st2.bars.items():
+    bar.calculate_efforts()
 # disp = st2.get_nodes_displacements()
 # print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
