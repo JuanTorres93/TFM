@@ -1430,6 +1430,50 @@ class TestDistributedCharge(unittest.TestCase):
         self.assertTrue(dc1.equals(dc1))
         self.assertFalse(dc1.equals(dc2))
 
+    def test_flector_effort_law(self):
+        n1 = st.Node("N1", (0, 0, 0))
+        n2 = st.Node("N2", (2, 0, 0))
+
+        b1 = st.Bar("B1", n1, n2)
+        self.assertEqual(b1.length(), 2)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100, (0, -1, 0))
+
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0), -33.33, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.1), -15.33, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.3), 8.67, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.4), 14.67, places=2)
+
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.5), 16.67, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.7), 8.67, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 0.9), -15.33, places=2)
+        self.assertAlmostEqual(dc.flector_effort_law(b1.length(), 1), -33.33, places=2)
+
+        self.assertRaises(ValueError, dc.flector_effort_law, b1.length(), -1)
+        self.assertRaises(ValueError, dc.flector_effort_law, b1.length(), 2)
+
+    def test_shear_strength_law(self):
+        n1 = st.Node("N1", (0, 0, 0))
+        n2 = st.Node("N2", (2, 0, 0))
+
+        b1 = st.Bar("B1", n1, n2)
+        self.assertEqual(b1.length(), 2)
+
+        dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100, (0, -1, 0))
+
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0), 100, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.1), 80, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.3), 40, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.4), 20, places=2)
+
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.5), 0, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.7), -40, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 0.9), -80, places=2)
+        self.assertAlmostEqual(dc.shear_strength_law(b1.length(), 1), -100, places=2)
+
+        self.assertRaises(ValueError, dc.flector_effort_law, b1.length(), -1)
+        self.assertRaises(ValueError, dc.flector_effort_law, b1.length(), 2)
+
 
 class TestPunctualForce(unittest.TestCase):
     def test_constructor(self):
@@ -1455,6 +1499,61 @@ class TestPunctualForce(unittest.TestCase):
         self.assertFalse(pf1.equals(pf2))
         self.assertFalse(pf1.equals(pf3))
         self.assertFalse(pf1.equals(pf4))
+
+    def test_flector_effort_law(self):
+        n1 = st.Node("N1", (0, 0, 0))
+        n2 = st.Node("N2", (2, 0, 0))
+
+        b1 = st.Bar("B1", n1, n2)
+        self.assertEqual(b1.length(), 2)
+
+        origin_force_distance = 0.4
+        pf = st.PunctualForceInBar(100, origin_force_distance, (0, -1, 0))
+
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0), -28.8)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.1), -15.84)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.3), 10.08)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.4), 23.04)
+
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.5), 16)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.7), 1.92)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 0.9), -12.16)
+        self.assertAlmostEqual(pf.flector_effort_law(b1.length(), 1), -19.2)
+
+        self.assertRaises(ValueError, pf.flector_effort_law, b1.length(), -1)
+        self.assertRaises(ValueError, pf.flector_effort_law, b1.length(), 2)
+
+    def test_shear_strength_law(self):
+        n1 = st.Node("N1", (0, 0, 0))
+        n2 = st.Node("N2", (2, 0, 0))
+
+        b1 = st.Bar("B1", n1, n2)
+        self.assertEqual(b1.length(), 2)
+
+        # Test 1
+        origin_force_distance = 0.4
+        pf = st.PunctualForceInBar(100, origin_force_distance, (0, -1, 0))
+
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0), 64.8, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.2), 64.8, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.4), 64.8, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.6), -35.2, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.8), -35.2, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 1), -35.2, places=2)
+
+        # Test 2
+        origin_force_distance = 0.7
+        pf = st.PunctualForceInBar(100, origin_force_distance, (0, -1, 0))
+
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0), 21.6, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.2), 21.6, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.4), 21.6, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.6), 21.6, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 0.8), -78.4, places=2)
+        self.assertAlmostEqual(pf.shear_strength_law(b1.length(), 1), -78.4, places=2)
+
+        self.assertRaises(ValueError, pf.flector_effort_law, b1.length(), -1)
+        self.assertRaises(ValueError, pf.flector_effort_law, b1.length(), 2)
 
 
 if __name__ == '__main__':

@@ -1405,8 +1405,7 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
-
-    # TODO incluir leyes de deformacion mirando un prontuario
+    # TODO añadir métodos para las leyes de axiles
 
     def __init__(self, dc_type, max_value, direction):
         """
@@ -1434,13 +1433,46 @@ class DistributedCharge:
         else:
             return False
 
+    def flector_effort_law(self, bar_length, origin_to_end_factor):
+        """
+        Determines the point x in the flector law
+        :param bar_length: Length of the bar
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        q = self.max_value
+        x = origin_to_end_factor * bar_length
+
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+
+        m = - q / 12 * (pow(bar_length, 2) - 6 * bar_length * x + 6 * pow(x, 2))
+
+        return m
+
+    def shear_strength_law(self, bar_length, origin_to_end_factor):
+        """
+        Determines the point x in the shear strength
+        :param bar_length: Length of the bar
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        q = self.max_value
+        x = origin_to_end_factor * bar_length
+
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+
+        v = q * (bar_length / 2 - x)
+
+        return v
+
 
 class PunctualForceInBar:
     """
     Class that represents a punctual force applied in any point of a bar
     """
-
-    # TODO incluir ley de deformacion mirando un prontuario
+    # TODO añadir métodos para las leyes de axiles
 
     def __init__(self, value, origin_end_factor, direction):
         # TODO Escribir test
@@ -1471,6 +1503,56 @@ class PunctualForceInBar:
             return True
         else:
             return False
+
+    def flector_effort_law(self, bar_length, origin_to_end_factor):
+        """
+        Determines the point x in the flector law
+        :param bar_length: Length of the bar in which the punctual force is applied to.
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        f = self.value
+        a = bar_length * self.origin_end_factor
+        b = bar_length * (1 - self.origin_end_factor)
+        x = origin_to_end_factor * bar_length
+
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+
+        if origin_to_end_factor * bar_length <= a:
+            m_origin_to_force_point = f * pow(b, 2) / pow(bar_length, 3) * (
+                    bar_length * x + 2 * a * x - a * bar_length
+            )
+
+            return m_origin_to_force_point
+
+        else:
+            m_force_point_to_end = f * pow(a, 2) / pow(bar_length, 3) * (
+                    bar_length * b + pow(bar_length, 2) - bar_length * x - 2 * b * x
+            )
+
+            return m_force_point_to_end
+
+    def shear_strength_law(self, bar_length, origin_to_end_factor):
+        """
+        Determines the point x in the shear strength law
+        :param bar_length: Length of the bar in which the punctual force is applied to.
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        f = self.value
+        a = bar_length * self.origin_end_factor
+        b = bar_length * (1 - self.origin_end_factor)
+
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both included.")
+
+        if origin_to_end_factor <= self.origin_end_factor:
+            v = f * pow(b, 2) / pow(bar_length, 3) * (bar_length + 2 * a)
+        else:
+            v = - f * pow(a, 2) / pow(bar_length, 3) * (bar_length + 2 * b)
+
+        return v
 
 
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
@@ -1576,3 +1658,11 @@ for key, bar in st2.bars.items():
 #     else:
 #         label = "angle: "
 #     print(label + str(disp[i]))
+n31 = Node("N1", (0, 0, 0))
+n32 = Node("N2", (2, 0, 0))
+
+b31 = Bar("B1", n31, n32)
+pf3 = PunctualForceInBar(100, 0.3, (0, -1, 0))
+
+b31.add_punctual_force(pf)
+print(pf3.flector_effort_law(b31.length(), 0.3))
