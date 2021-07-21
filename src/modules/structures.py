@@ -476,7 +476,7 @@ class Bar:
     def angle_from_global_to_local(self):
         """
 
-        :return: Needed angle for converting the local matrix to global one
+        :return: Needed angle (in radians) for converting the local matrix to global one
         """
         reference = np.array((1, 0, 0))
         beam_line = np.subtract(self.end.position, self.origin.position)
@@ -834,6 +834,90 @@ class Bar:
         # TODO escribir test
         return self.efforts
 
+    def axial_force_law(self, origin_end_factor):
+        """
+
+        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        of the axial force is desired to be known
+        :return: Value of the axial force point corresponding to the point origin_end_factor
+        """
+        if origin_end_factor < 0 or origin_end_factor > 1:
+            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+
+        origin = self.origin
+
+        if origin.support != Support.NONE:
+            origin_reactions = origin.get_reactions()
+            N = - origin_reactions.get("y")
+        else:
+            bar_efforts = self.get_efforts()
+            N = - bar_efforts.get("p_ij")[0]
+
+        if self.has_distributed_charges():
+            for key, dc in self.get_distributed_charges().items():
+                N += dc.axial_force_law(self, origin_end_factor)
+
+        return N
+
+    def shear_strength_law(self, origin_end_factor):
+        """
+
+        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        of the shear strength is desired to be known
+        :return: Value of the shear strength corresponding to the point origin_end_factor
+        """
+        if origin_end_factor < 0 or origin_end_factor > 1:
+            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+
+        origin = self.origin
+
+        if origin.support != Support.NONE:
+            origin_reactions = origin.get_reactions()
+            V = origin_reactions.get("x")
+        else:
+            bar_efforts = self.get_efforts()
+            V = - bar_efforts.get("p_ij")[1]
+
+        if self.has_distributed_charges():
+            for key, dc in self.get_distributed_charges().items():
+                V += dc.shear_strength_law(self, origin_end_factor)
+
+        if self.has_punctual_forces():
+            for key, pf in self.get_punctual_forces().items():
+                V += pf.shear_strength_law(self, origin_end_factor)
+
+        return V
+
+    def bending_moment_law(self, origin_end_factor):
+        """
+
+        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        of the bending moment is desired to be known
+        :return: Value of the bending moment corresponding to the point origin_end_factor
+        """
+        if origin_end_factor < 0 or origin_end_factor > 1:
+            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+
+        origin = self.origin
+        x = origin_end_factor * self.length()
+
+        if origin.support != Support.NONE:
+            origin_reactions = origin.get_reactions()
+            M = - origin_reactions.get("x") * x
+        else:
+            bar_efforts = self.get_efforts()
+            M = - bar_efforts.get("p_ij")[2]
+
+        if self.has_distributed_charges():
+            for key, dc in self.get_distributed_charges().items():
+                M += dc.bending_moment_law(self, origin_end_factor)
+
+        if self.has_punctual_forces():
+            for key, pf in self.get_punctual_forces().items():
+                M += pf.bending_moment_law(self, origin_end_factor)
+
+        return M
+
 
 class Structure:
     def __init__(self, name: str, bars: dict):
@@ -860,6 +944,14 @@ class Structure:
 
         self.name = name
         self.bars = bars
+
+    def get_bars(self):
+        """
+
+        :return: bars of the structure
+        """
+        # TODO escribir test
+        return self.bars
 
     def get_number_of_nodes(self):
         """
@@ -1405,8 +1497,6 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
-    # TODO añadir métodos para las leyes de axiles
-
     def __init__(self, dc_type, max_value, direction):
         """
 
@@ -1433,37 +1523,63 @@ class DistributedCharge:
         else:
             return False
 
-    def flector_effort_law(self, bar_length, origin_to_end_factor):
+    def axial_force_law(self, bar, origin_to_end_factor):
         """
-        Determines the point x in the flector law
-        :param bar_length: Length of the bar
+        Determines the point x in the axial force law
+        :param bar: bar in which the distributed charge is applied to
         :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
         :return:
         """
-        q = self.max_value
-        x = origin_to_end_factor * bar_length
-
+        # TODO escribir test
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
-        m = - q / 12 * (pow(bar_length, 2) - 6 * bar_length * x + 6 * pow(x, 2))
+        q = self.max_value
+        x = bar.length() * origin_to_end_factor
+        bar_angle = bar.angle_from_global_to_local()
+
+        # TODO tener en cuenta la dirección global
+        N = q * x * math.sin(bar_angle)
+
+        return N
+
+    def bending_moment_law(self, bar, origin_to_end_factor):
+        """
+        Determines the point x in the flector law
+        :param bar: Bar in which the distributed charge is applied to
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+
+        q = self.max_value
+        x = origin_to_end_factor * bar.length()
+        bar_angle = bar.angle_from_global_to_local()
+
+        bar_origin_efforts = bar.get_efforts().get("p_ij")
+        v_i = bar_origin_efforts[1]
+
+        m = - q * pow(x, 2) / 2 * math.cos(bar_angle) + v_i * x
 
         return m
 
-    def shear_strength_law(self, bar_length, origin_to_end_factor):
+    def shear_strength_law(self, bar, origin_to_end_factor):
         """
         Determines the point x in the shear strength
         :param bar_length: Length of the bar
         :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
         :return:
         """
-        q = self.max_value
-        x = origin_to_end_factor * bar_length
-
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
-        v = q * (bar_length / 2 - x)
+        q = self.max_value
+        bar_length = bar.length()
+        bar_angle = bar.angle_from_global_to_local()
+        x = origin_to_end_factor * bar_length
+
+        v = q * x * math.cos(bar_angle)
 
         return v
 
@@ -1504,55 +1620,49 @@ class PunctualForceInBar:
         else:
             return False
 
-    def flector_effort_law(self, bar_length, origin_to_end_factor):
+    def bending_moment_law(self, bar, origin_to_end_factor):
         """
         Determines the point x in the flector law
-        :param bar_length: Length of the bar in which the punctual force is applied to.
+        :param bar: Bar in which the punctual force is applied to.
         :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
         :return:
         """
-        f = self.value
-        a = bar_length * self.origin_end_factor
-        b = bar_length * (1 - self.origin_end_factor)
-        x = origin_to_end_factor * bar_length
 
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
-        if origin_to_end_factor * bar_length <= a:
-            m_origin_to_force_point = f * pow(b, 2) / pow(bar_length, 3) * (
-                    bar_length * x + 2 * a * x - a * bar_length
-            )
+        p = self.value
+        bar_length = bar.length()
+        x = origin_to_end_factor * bar_length
+        distance_origin_to_force = bar_length * self.origin_end_factor
 
+        origin_node_efforts = bar.get_efforts().get("p_ij")
+        v_i = origin_node_efforts[1]
+
+        if origin_to_end_factor <= self.origin_end_factor:
+            m_origin_to_force_point = v_i * x
             return m_origin_to_force_point
-
         else:
-            m_force_point_to_end = f * pow(a, 2) / pow(bar_length, 3) * (
-                    bar_length * b + pow(bar_length, 2) - bar_length * x - 2 * b * x
-            )
-
+            m_force_point_to_end = v_i * x + p * self.direction[1] * (x - distance_origin_to_force)
             return m_force_point_to_end
 
-    def shear_strength_law(self, bar_length, origin_to_end_factor):
+    def shear_strength_law(self, bar, origin_to_end_factor):
         """
         Determines the point x in the shear strength law
-        :param bar_length: Length of the bar in which the punctual force is applied to.
+        :param bar: Bar in which the punctual force is applied to.
         :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
         :return:
         """
-        f = self.value
-        a = bar_length * self.origin_end_factor
-        b = bar_length * (1 - self.origin_end_factor)
-
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both included.")
 
-        if origin_to_end_factor <= self.origin_end_factor:
-            v = f * pow(b, 2) / pow(bar_length, 3) * (bar_length + 2 * a)
-        else:
-            v = - f * pow(a, 2) / pow(bar_length, 3) * (bar_length + 2 * b)
+        p = self.value * self.direction[1]
 
-        return v
+        # If the point is situated before the one in which the force is applied...
+        if origin_to_end_factor <= self.origin_end_factor:
+            return 0
+        else:
+            return - p
 
 
 # TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
@@ -1588,9 +1698,10 @@ bars = {
 st = Structure("S1", bars)
 st.assembled_matrix()
 st.get_nodes_reactions()
-disp = st.get_nodes_displacements()
-b5.calculate_efforts()
-# print("==========DISPLACEMENTS==========")
+st.get_nodes_displacements()
+b2.calculate_efforts()
+borrar = b2.axial_force_law(0.7)
+print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
 #     if i % 3 == 0:
 #         label = "x: "
@@ -1646,8 +1757,8 @@ st2.assembled_matrix()
 st2.get_nodes_reactions()
 st2.get_nodes_displacements()
 
-for key, bar in st2.bars.items():
-    bar.calculate_efforts()
+# for key, bar in st2.bars.items():
+#     bar.calculate_efforts()
 # disp = st2.get_nodes_displacements()
 # print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
@@ -1658,11 +1769,3 @@ for key, bar in st2.bars.items():
 #     else:
 #         label = "angle: "
 #     print(label + str(disp[i]))
-n31 = Node("N1", (0, 0, 0))
-n32 = Node("N2", (2, 0, 0))
-
-b31 = Bar("B1", n31, n32)
-pf3 = PunctualForceInBar(100, 0.3, (0, -1, 0))
-
-b31.add_punctual_force(pf)
-print(pf3.flector_effort_law(b31.length(), 0.3))
