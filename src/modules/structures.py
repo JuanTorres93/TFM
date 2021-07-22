@@ -903,20 +903,25 @@ class Bar:
 
         if origin.support != Support.NONE:
             origin_reactions = origin.get_reactions()
-            M = - origin_reactions.get("x") * x
+            shear_force_contribution = - origin_reactions.get("x") * x
+            m_contribution = - origin_reactions.get("momentum")
+
+            m = shear_force_contribution + m_contribution
         else:
             bar_efforts = self.get_efforts()
-            M = - bar_efforts.get("p_ij")[2]
+            shear_force_contribution = bar_efforts.get("p_ij")[1] * x
+            m_contribution = - bar_efforts.get("p_ij")[2]
+            m = shear_force_contribution + m_contribution
 
         if self.has_distributed_charges():
             for key, dc in self.get_distributed_charges().items():
-                M += dc.bending_moment_law(self, origin_end_factor)
+                m += dc.bending_moment_law(self, origin_end_factor)
 
         if self.has_punctual_forces():
             for key, pf in self.get_punctual_forces().items():
-                M += pf.bending_moment_law(self, origin_end_factor)
+                m += pf.bending_moment_law(self, origin_end_factor)
 
-        return M
+        return m
 
 
 class Structure:
@@ -1557,10 +1562,7 @@ class DistributedCharge:
         x = origin_to_end_factor * bar.length()
         bar_angle = bar.angle_from_global_to_local()
 
-        bar_origin_efforts = bar.get_efforts().get("p_ij")
-        v_i = bar_origin_efforts[1]
-
-        m = - q * pow(x, 2) / 2 * math.cos(bar_angle) + v_i * x
+        m = - q * pow(x, 2) / 2 * math.cos(bar_angle)
 
         return m
 
@@ -1636,14 +1638,11 @@ class PunctualForceInBar:
         x = origin_to_end_factor * bar_length
         distance_origin_to_force = bar_length * self.origin_end_factor
 
-        origin_node_efforts = bar.get_efforts().get("p_ij")
-        v_i = origin_node_efforts[1]
-
         if origin_to_end_factor <= self.origin_end_factor:
-            m_origin_to_force_point = v_i * x
+            m_origin_to_force_point = 0
             return m_origin_to_force_point
         else:
-            m_force_point_to_end = v_i * x + p * self.direction[1] * (x - distance_origin_to_force)
+            m_force_point_to_end = p * self.direction[1] * (x - distance_origin_to_force)
             return m_force_point_to_end
 
     def shear_strength_law(self, bar, origin_to_end_factor):
@@ -1700,8 +1699,7 @@ st.assembled_matrix()
 st.get_nodes_reactions()
 st.get_nodes_displacements()
 b2.calculate_efforts()
-borrar = b2.axial_force_law(0.7)
-print("==========DISPLACEMENTS==========")
+# print("==========DISPLACEMENTS==========")
 # for i in range(len(disp)):
 #     if i % 3 == 0:
 #         label = "x: "

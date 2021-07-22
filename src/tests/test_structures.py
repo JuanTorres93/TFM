@@ -1439,90 +1439,96 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        # x = 0.8 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -25994.40, rtol=0.05)
-        # x = 0.9 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -31193.28, rtol=0.05)
-        # x = 1.1 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -36392.16, rtol=0.05)
-        # x = 1.3 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -41591.04, rtol=0.05)
-        # x = 1.4 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -46789.92, rtol=0.05)
-        # x = 1.6 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -55146.7, rtol=0.05)
-        # x = 1.7 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -66661.37, rtol=0.05)
-        # x = 1.9 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -74450.45, rtol=0.05)
-        # x = 2.1 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -63924.14, rtol=0.05)
-        #
-        # # Bar 2
-        # bar = b2
-        # x = 0.6 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -148134.66, rtol=0.05)
-        # x = 0.7 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -137608.35, rtol=0.05)
-        # x = 0.8 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -127082.03, rtol=0.05)
-        # x = 0.9 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -116555.72, rtol=0.05)
-        # x = 1.1 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -106029.40, rtol=0.05)
-        # x = 1.2 / bar.length()
-        # np.testing.assert_allclose(bar.shear_strength_law(x), -95503.28, rtol=0.05)
-        # x = 1.3 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -84976.77, rtol=0.05)
-        # x = 1.4 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -74450.45, rtol=0.05)
-        # x = 1.5 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), -63924.14, rtol=0.05)
-        #
-        # # Bar 3
-        # bar = b3
-        # np.testing.assert_allclose(bar.bending_moment_law(0.3), -72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.5), -72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.7), -72926.24, rtol=0.05)
-        #
-        # # Bar 4
-        # bar = b4
-        # np.testing.assert_allclose(bar.bending_moment_law(0.3), -11292.56, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.5), -11292.56, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.7), 13707.44, rtol=0.05)
-        #
-        # # Bar 5
-        # bar = b5
-        # np.testing.assert_allclose(bar.bending_moment_law(0.3), 72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.5), 72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.7), 72926.24, rtol=0.05)
-        #
-        # # Bar 6
-        # bar = b6
-        # x = 0.5 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 66339.02, rtol=0.05)
-        # x = 0.6 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 76865.34, rtol=0.05)
-        # x = 0.7 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 87391.65, rtol=0.05)
-        # x = 0.8 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 97917.97, rtol=0.05)
-        # x = 0.9 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 108444.28, rtol=0.05)
-        # x = 1.1 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 118970.6, rtol=0.05)
-        # x = 1.2 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 129496.92, rtol=0.05)
-        # x = 1.3 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 140023.23, rtol=0.05)
-        # x = 1.4 / bar.length()
-        # np.testing.assert_allclose(bar.bending_moment_law(x), 150549.55, rtol=0.05)
-        #
-        # # Bar 7
-        # bar = b7
-        # np.testing.assert_allclose(bar.bending_moment_law(0.3), -72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(0.5), -72926.24, rtol=0.05)
-        # np.testing.assert_allclose(bar.bending_moment_law(1), -42926.24, rtol=0.05)
+        x = 0.8 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -25994.40, rtol=0.05)
+        x = 0.9 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -31193.28, rtol=0.05)
+        x = 1.1 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -36392.16, rtol=0.05)
+        x = 1.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -41591.04, rtol=0.05)
+        x = 1.4 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -46789.92, rtol=0.05)
+        x = 1.6 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -55146.7, rtol=0.05)
+        x = 1.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -66661.37, rtol=0.05)
+        x = 1.9 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -78176.03, rtol=0.05)
+        x = 2.1 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -89690.7, rtol=0.05)
+
+        # Bar 2
+        bar = b2
+        x = 0.1582 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -126600, rtol=0.05)
+        x = 0.717 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -32990, rtol=0.05)
+        x = 1.286 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 30260, rtol=0.05)
+        x = 1.751 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 57900, rtol=0.05)
+
+        # Bar 3
+        bar = b3
+        x = 0.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 86835.74, rtol=0.05)
+        x = 0.4 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 94512.18, rtol=0.05)
+        x = 0.1832 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 77160, rtol=0.05)
+        x = 0.4061 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 93420, rtol=0.05)
+        x = 0.6442 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 110800, rtol=0.05)
+        x = 0.8305 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 124400, rtol=0.05)
+
+        # Bar 4
+        bar = b4
+        x = 0.2894 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 140000, rtol=0.05)
+        x = 0.7168 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 144800, rtol=0.05)
+        x = 1.239 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 144700, rtol=0.05)
+        x = 1.724 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 138100, rtol=0.05)
+
+        # Bar 5
+        bar = b5
+        x = 0.2074 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 119200, rtol=0.05)
+        x = 0.4251 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 103300, rtol=0.05)
+        x = 0.6358 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 87950, rtol=0.05)
+        x = 0.8183 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 74640, rtol=0.05)
+
+        # Bar 6
+        bar = b6
+        x = 0.223 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 55850, rtol=0.05)
+        x = 0.7005 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 27250, rtol=0.05)
+        x = 1.248 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -33630, rtol=0.05)
+        x = 1.684 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -103400, rtol=0.05)
+
+        # Bar 7
+        bar = b7
+        x = 0.3081 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -143600, rtol=0.05)
+        x = 1.003 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -92860, rtol=0.05)
+        x = 1.79 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -44190, rtol=0.05)
+        x = 2.527 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -12540, rtol=0.05)
+        x = 2.92 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 4338, rtol=0.05)
 
 
 class TestMaterial(unittest.TestCase):
@@ -1623,13 +1629,13 @@ class TestDistributedCharge(unittest.TestCase):
             dc = item
 
         np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0), 0, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.1), 41689.91, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.3), 110781.42, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.4), 138183.03, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.5), 160821.87, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.7), 191811.26, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.9), 203749.58, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 1), 202575.59, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.1), -2381.28, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.3), -21432.45, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.4), -38102.13, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.5), -59534.57, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.7), -116687.76, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.9), -192890.02, decimal=0)
+        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 1), -238135.3, decimal=0)
 
         self.assertRaises(ValueError, dc.bending_moment_law, bar, -1)
         self.assertRaises(ValueError, dc.bending_moment_law, bar, 2)
@@ -1709,13 +1715,13 @@ class TestPunctualForce(unittest.TestCase):
             pf = item
 
         np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.1), 12771.20, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.3), 38313.61, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.4), 51084.82, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.5), 63856.02, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.7), 68398.43, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.9), 72940.73, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 1), 75211.92, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.1), 0, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.3), 0, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.4), 0, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.5), 0, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.7), -21000, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.9), -42000, decimal=0)
+        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 1), -52500, decimal=0)
 
         self.assertRaises(ValueError, pf.bending_moment_law, bar, -1)
         self.assertRaises(ValueError, pf.bending_moment_law, bar, 2)
