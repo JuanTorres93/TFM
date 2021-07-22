@@ -453,11 +453,14 @@ class Bar:
             i = self.profile.inertia_moment_y
 
         local_rigidity_matrix = np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
-                         [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3, 6 * e * i / l ** 2],
-                         [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
-                         [-e * a / l, 0, 0, e * a / l, 0, 0],
-                         [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3, -6 * e * i / l ** 2],
-                         [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2, 4 * e * i / l]])
+                                          [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3,
+                                           6 * e * i / l ** 2],
+                                          [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
+                                          [-e * a / l, 0, 0, e * a / l, 0, 0],
+                                          [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3,
+                                           -6 * e * i / l ** 2],
+                                          [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2,
+                                           4 * e * i / l]])
 
         m_aux = local_rigidity_matrix[0:3, 0:3]
         self.k_ii_local = m_aux
@@ -852,7 +855,13 @@ class Bar:
 
         if origin.support != Support.NONE:
             origin_reactions = origin.get_reactions()
-            N = - origin_reactions.get("y")
+
+            x_reaction = origin_reactions.get("x")
+            y_reaction = origin_reactions.get("y")
+
+            bar_angle = self.angle_from_global_to_local()
+
+            N = - (y_reaction * math.sin(bar_angle) + x_reaction * math.cos(bar_angle))
         else:
             bar_efforts = self.get_efforts()
             N = - bar_efforts.get("p_ij")[0]
@@ -877,7 +886,13 @@ class Bar:
 
         if origin.support != Support.NONE:
             origin_reactions = origin.get_reactions()
-            V = origin_reactions.get("x")
+
+            x_reaction = origin_reactions.get("x")
+            y_reaction = origin_reactions.get("y")
+
+            bar_angle = self.angle_from_global_to_local()
+
+            V = - y_reaction * math.cos(bar_angle) + x_reaction * math.sin(bar_angle)
         else:
             bar_efforts = self.get_efforts()
             V = - bar_efforts.get("p_ij")[1]
@@ -907,7 +922,14 @@ class Bar:
 
         if origin.support != Support.NONE:
             origin_reactions = origin.get_reactions()
-            shear_force_contribution = - origin_reactions.get("x") * x
+            bar_angle = self.angle_from_global_to_local()
+
+            x_reaction = origin_reactions.get("x")
+            y_reaction = origin_reactions.get("y")
+
+            shear_force_contribution = - x_reaction * math.sin(bar_angle) * x + \
+                                       y_reaction * math.cos(bar_angle) * x
+
             m_contribution = - origin_reactions.get("momentum")
 
             m = shear_force_contribution + m_contribution
@@ -1346,7 +1368,7 @@ class Structure:
 
         # Build the final displacement vector using the calculated and the known (zero value) ones
         for i in range(len(zero_displacement_indexes) + len(calculated_nodes_displacements)):
-            if included_zero_displacement_index >= len(zero_displacement_indexes) or\
+            if included_zero_displacement_index >= len(zero_displacement_indexes) or \
                     i != zero_displacement_indexes[included_zero_displacement_index]:
                 nodes_displacements.append(calculated_nodes_displacements[included_non_zero_displacement_index])
                 included_non_zero_displacement_index += 1
@@ -1508,6 +1530,7 @@ class DistributedCharge:
     """
     Class to represent a distributed charge applied to a single beam
     """
+
     def __init__(self, dc_type, max_value, direction):
         """
 
@@ -1596,6 +1619,7 @@ class PunctualForceInBar:
     """
     Class that represents a punctual force applied in any point of a bar
     """
+
     # TODO añadir métodos para las leyes de axiles
 
     def __init__(self, value, origin_end_factor, direction):
