@@ -162,18 +162,20 @@ class TestNode(unittest.TestCase):
         momentum_1 = {"M1": (1, 2, 3)}
         n1 = st.Node("N1", position=(1, 2, 3), forces_in_node=force_1, momentums_in_node=momentum_1)
 
-        n1.add_force("F2", (3, 2, 1), False)
+        n1.add_force("F2", (3, 2, 1), belongs_to_node=False)
 
         # expected_result = np.array([Fx, Fy, Mz])
         expected_result = np.array([4, 4, 3])
         np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
 
-        n1.add_momentum("M2", (3, 3, 1), False)
+        n1.add_momentum("M2", (3, 3, 1), belongs_to_node=False)
         expected_result = np.array([4, 4, 4])
         np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
 
-        # TODO Incluir mas tests dentro de este metodo cuando las fuerzas se especifiquen como listas y haya metodos
-        # para agregaar y quitar fuerzas aplciadas
+        n1.add_force("F3", (1, 2, 0), belongs_to_node=True)
+        expected_result = np.array([5, 6, 4])
+        np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
+
 
     def test_set_and_get_displacement(self):
         node = st.Node("N1")
@@ -426,7 +428,7 @@ class TestBar(unittest.TestCase):
         structure = st.Structure("S1", bars)
 
         # Local coordinates
-        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=False)
+        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=False).get("0")
         expected_values = {
             "x_origin": 0,
             "x_end": 0,
@@ -444,7 +446,7 @@ class TestBar(unittest.TestCase):
         self.assertAlmostEqual(calculated_values.get("m_end"), expected_values.get("m_end"), places=0)
 
         # Global coordinates
-        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
+        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True).get("0")
         expected_values = {
             "x_origin": 12500,
             "x_end": 12500,
@@ -506,11 +508,10 @@ class TestBar(unittest.TestCase):
         pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
         b5.add_punctual_force(pf, "pf")
 
-        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(False)
+        calculated_values = b5.get_referred_punctual_forces_in_bar_to_nodes(False).get("0")
         expected_values = {
             "y_origin": 12500,
             "y_end": 12500,
-            # TODO check that both signs are correct
             "m_origin": 13125,
             "m_end": - 13125
         }
@@ -545,6 +546,7 @@ class TestBar(unittest.TestCase):
 
 def get_test_structure(num_test_st):
     if num_test_st == 1:
+        # Structure solved in the fifth individual work
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
@@ -577,6 +579,7 @@ def get_test_structure(num_test_st):
         structure = st.Structure("S1", bars)
 
     elif num_test_st == 2:
+        # Invented structure
         n1 = st.Node("N1", position=(-1, 2, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(-1, 5, 0))
         n3 = st.Node("N3", position=(1, 5, 0))
@@ -619,6 +622,7 @@ def get_test_structure(num_test_st):
         structure = st.Structure("st2", bars2)
 
     elif num_test_st == 3:
+        # Horizontal bar with two applied charges to it
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.PINNED)
 
@@ -629,6 +633,25 @@ def get_test_structure(num_test_st):
 
         b1.add_distributed_charge(dc1)
         b1.add_distributed_charge(dc2)
+
+        bars = {
+            b1.name: b1
+        }
+
+        structure = st.Structure("S1", bars)
+
+    elif num_test_st == 4:
+        # Horizontal bar with two applied forces to it
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(3, 0, 0), support=st.Support.PINNED)
+
+        b1 = st.Bar("B1", n1, n2)
+
+        pf1 = st.PunctualForceInBar(100000, 1 / b1.length(), (0, -1, 0))
+        pf2 = st.PunctualForceInBar(200000, 2 / b1.length(), (0, -1, 0))
+
+        b1.add_punctual_force(pf1)
+        b1.add_punctual_force(pf2)
 
         bars = {
             b1.name: b1
@@ -729,8 +752,6 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(structure.get_number_of_nodes(), 6)
 
     def test_forces_and_momentums_in_structure(self):
-        # TODO no se deben añadir las fuerzas ni los momentos más de una vez, para cualquier número ...
-        # ... de llamadas a esta u otroas funciones
         structure = get_test_structure(1)
 
         calculated_forces = structure.forces_and_momentums_in_structure()
@@ -840,6 +861,19 @@ class TestStructure(unittest.TestCase):
 
         np.testing.assert_allclose(calculated, expected, rtol=0.02)
 
+        # Test structure 4
+        structure = get_test_structure(4)
+
+        calculated = structure.get_nodes_displacements()
+        expected = np.array([0,
+                             0,
+                             -0.008231,
+                             0,
+                             0,
+                             0.008864])
+
+        np.testing.assert_allclose(calculated, expected, rtol=0.02)
+
     def test_get_nodes(self):
         structure = get_test_structure(1)
 
@@ -930,6 +964,20 @@ class TestStructure(unittest.TestCase):
                              0])
 
         np.testing.assert_allclose(calculated, expected, atol=.5)
+
+        # Test structure 4
+        structure2 = get_test_structure(4)
+
+        calculated = structure2.get_nodes_reactions()
+        # These results are the exact same than ustatic provides
+        expected = np.array([0,
+                             133300,
+                             0,
+                             0,
+                             166700,
+                             0])
+
+        np.testing.assert_allclose(calculated, expected, atol=40)
 
     def test_calculate_efforts(self):
         # Test structure 1
@@ -1262,7 +1310,29 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_almost_equal(bar.axial_force_law(.7), -213707.44, decimal=1)
 
         # Test structure 3
+        # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
         structure = get_test_structure(3)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.axial_force_law, -2)
+        self.assertRaises(ValueError, b1.axial_force_law, 2)
+
+        # Bar 1
+        self.assertAlmostEqual(b1.axial_force_law(.3), 0, places=1)
+        self.assertAlmostEqual(b1.axial_force_law(.5), 0, places=1)
+        self.assertAlmostEqual(b1.axial_force_law(.7), 0, places=1)
+
+        # Test structure 4
+        # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
+        structure = get_test_structure(4)
         structure.assembled_matrix()
         structure.get_nodes_reactions()
         structure.get_nodes_displacements()
@@ -1449,6 +1519,30 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_allclose(bar.shear_strength_law(x), 59250, rtol=0.01)
         x = 1.629 / bar.length()
         np.testing.assert_allclose(bar.shear_strength_law(x), 188600, rtol=0.01)
+
+        # Test structure 4
+        structure = get_test_structure(4)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.shear_strength_law, -2)
+        self.assertRaises(ValueError, b1.shear_strength_law, 2)
+
+        # Bar 1
+        bar = b1
+        x = 0.5472 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -133300, rtol=0.01)
+        x = 1.493 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -33333, rtol=0.01)
+        x = 2.261 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 166700, rtol=0.01)
 
     def test_bending_moment_law(self):
         # Test structure 1
@@ -1647,6 +1741,36 @@ class TestStructure(unittest.TestCase):
         x = 1.71 / bar.length()
         np.testing.assert_allclose(bar.bending_moment_law(x), 74450, rtol=0.01)
 
+        # Test structure 4
+        structure = get_test_structure(4)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.bending_moment_law, -2)
+        self.assertRaises(ValueError, b1.bending_moment_law, 2)
+
+        # Bar 1
+        bar = b1
+        x = 0.2847 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 37960, rtol=0.01)
+        x = 0.7347 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 97960, rtol=0.01)
+        x = 1.163 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 138800, rtol=0.01)
+        x = 1.699 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 156600, rtol=0.01)
+        x = 2.288 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 118600, rtol=0.01)
+        x = 2.706 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 48980, rtol=0.01)
+
 
 class TestMaterial(unittest.TestCase):
     def test_constructor(self):
@@ -1687,6 +1811,7 @@ class TestDistributedCharge(unittest.TestCase):
 
         self.assertEqual(dc.dc_type, st.DistributedChargeType.SQUARE)
         self.assertEqual(dc.max_value, 10)
+        self.assertEqual(dc.direction, (0, -1, 0))
 
         self.assertRaises(TypeError, st.DistributedCharge, 2, 20)
 
@@ -1694,10 +1819,12 @@ class TestDistributedCharge(unittest.TestCase):
         # TODO añadir más tests cuando se tengan distintos tipos de carga distribuida
         dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10, (0, -1, 0))
         dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 20, (0, -1, 0))
+        dc3 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10, (0, 1, 0))
 
         self.assertRaises(TypeError, dc1.equals, 3)
         self.assertTrue(dc1.equals(dc1))
         self.assertFalse(dc1.equals(dc2))
+        self.assertFalse(dc1.equals(dc3))
 
     def test_axial_force_law(self):
         structure = get_test_structure(1)

@@ -1,6 +1,5 @@
 import enum
 import math
-import sys
 
 import numpy as np
 import src.modules.databaseutils as db
@@ -481,14 +480,19 @@ class Bar:
 
         :return: Needed angle (in radians) for converting the local matrix to global one
         """
+        # x axis as a reference to compute the rotated angle
         reference = np.array((1, 0, 0))
+        # Vector with origin in the origin node of the bar (beam) and with end in the end node of the bar
         beam_line = np.subtract(self.end.position, self.origin.position)
 
+        # Calculate the dot product of the previous vectors
         dot_product = reference @ beam_line
 
+        # Compute the angle between the vector using the definition of the dot product
         cosine = dot_product / np.linalg.norm(reference) / np.linalg.norm(beam_line)
         angle = np.arccos(cosine)
 
+        # Adjust the angle to the pertinent quadrant
         if self.end.x() >= self.origin.x() and self.end.y() >= self.origin.y():
             # angle = angle
             pass
@@ -504,7 +508,7 @@ class Bar:
     def system_change_matrix_2d_rigid_nodes(self):
         """
 
-        :return: System change matrix
+        :return: System change matrix from local axis to local ones
         """
         # Angle must be in radians
         angle = self.angle_from_global_to_local()
@@ -589,8 +593,7 @@ class Bar:
         :param return_global_values: Specifies whether the return value is in global of local coordinates.
         :return: reactions produced by charges that are applied directly to the Bar and not in a node.
         """
-        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
-        # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
+        # Dictionary of reactions for every found distributed charge
         referred_charges = {}
 
         # If there are distributed_charges applied to the bar
@@ -655,8 +658,9 @@ class Bar:
         not true, then the returned values are in local coordinates
         :return: Dictionary of forces and momentums of nodes in local coordinates
         """
-        # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
-        # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
+        # Dictionary of reactions for every found punctual force
+        referred_punctual_forces = {}
+
         # If there are punctual_forces applied to the bar
         if len(self.punctual_forces) > 0:
             for key, pf in self.punctual_forces.items():
@@ -688,7 +692,7 @@ class Bar:
                                                                                                            3)
 
                 if not return_global_values:
-                    return {
+                    referred_punctual_forces[str(len(referred_punctual_forces))] = {
                         "x_origin": reaction_origin[0],
                         "x_end": reaction_end[0],
                         "y_origin": reaction_origin[1],
@@ -697,13 +701,14 @@ class Bar:
                         "m_end": flector_end,
                         "m_force_point": flector_force_point
                     }
+                    continue
 
                 # Convert reactions to global coordinates
                 matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
                 reaction_origin_global = np.dot(matrix_conversion_to_global, reaction_origin)
                 reaction_end_global = np.dot(matrix_conversion_to_global, reaction_end)
 
-                return {
+                referred_punctual_forces[str(len(referred_punctual_forces))] = {
                     "x_origin": reaction_origin_global[0],
                     "x_end": reaction_end_global[0],
                     "y_origin": reaction_origin_global[1],
@@ -712,6 +717,8 @@ class Bar:
                     "m_end": flector_end,
                     "m_force_point": flector_force_point
                 }
+
+            return referred_punctual_forces
 
         elif len(self.punctual_forces) == 0:
             print("There are no punctual forces applied to bar " + self.name)
@@ -737,100 +744,141 @@ class Bar:
             return False
 
     def calculate_efforts(self):
-        # Test is written in structure tests
-        # TODO escribir test y docstring
+        """
+        Computes the efforts to which the bar is subjected to and store them in instance variables
+        :return:
+        """
+        # TEST IS WRITTEN IN STRUCTURE TESTS
+
+        # Determine the local matrixes of the origin and end nodes if they aren't available
         if (self.k_ii_local is None) or (self.k_ij_local is None) or \
                 (self.k_ji_local is None) or (self.k_jj_local is None):
             self.local_rigidity_matrix_2d_rigid_nodes()
 
+        # Equations say that, in order to compute the efforts, it is needed to multiply each submatrix of the local
+        # rigidity matrix of the bar by the transpose of the system change matrix (G). Then this resultant matrix must
+        # be multiplied by the displacements of the nodes.
+        # Here it is calculated the multiplication of the local rigidity matrix by the transpose of G
+        # Top row of the final matrix
         rigidity_matrix_by_g_trans_top_row = np.hstack(
             (np.dot(self.k_ii_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
              np.dot(self.k_ij_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+        # Bottom row of the final matrix
         rigidity_matrix_by_g_trans_bottom_row = np.hstack(
             (np.dot(self.k_ji_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
              np.dot(self.k_jj_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+        # Final matrix
         rigidity_matrix_by_g_trans = np.vstack(
             (rigidity_matrix_by_g_trans_top_row,
              rigidity_matrix_by_g_trans_bottom_row))
 
+        # Get displacements of the origin nodes
         displacements_i = self.origin.get_displacement()
         displacements_i = np.array([displacements_i.get("x"),
                                     displacements_i.get("y"),
                                     displacements_i.get("angle")])
+        # Arrange the vector so it can be multiplied by the matrix
         displacements_i = np.vstack(displacements_i)
 
+        # Get displacements of the end nodes
         displacements_j = self.end.get_displacement()
         displacements_j = np.array([displacements_j.get("x"),
                                     displacements_j.get("y"),
                                     displacements_j.get("angle")])
+        # Arrange the vector so it can be multiplied by the matrix
         displacements_j = np.vstack(displacements_j)
 
+        # Compose the final displacement vector
         displacements = np.vstack(
             (displacements_i,
              displacements_j)
         )
 
+        # Calculate the efforts in the bar
         efforts = np.dot(rigidity_matrix_by_g_trans, displacements)
 
-        # Locked state contribution
+        # In order to get the correct results, it is needed to sum to the efforts the reactions obtained in the locked
+        # state
+
+        # LOCKED STATE CONTRIBUTION
         # Distributed charges
+        # Dictionary of dictionaries containing all distributed charges in the bar
         distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
         if distributed_charges_contribution is not None:
+            # Iterate over every found distributed charge
             for key, dcc in distributed_charges_contribution.items():
                 dc_x = dcc.get("x")
                 dc_y = dcc.get("y")
                 dc_momentum_i = dcc.get("m_origin")
                 dc_momentum_j = dcc.get("m_end")
 
+                # Get contribution of the distributed charge in origin and end nodes
                 ri = np.array([dc_x, dc_y, dc_momentum_i])
                 rj = np.array([dc_x, dc_y, dc_momentum_j])
 
+                # Change reference system
                 ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
                             ri)
-                ri = np.vstack(ri)
-
                 rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
                             rj)
+
+                # Transpose the vectors in order to be able to multiply its values
+                ri = np.vstack(ri)
                 rj = np.vstack(rj)
 
+                # Compose final reaction vector
                 dcc = np.vstack(
                     (ri,
                      rj)
                 )
 
+                # Add the reactions to the efforts
                 efforts += dcc
 
         # Punctual forces
+        # Dictionary of dictionaries containing all punctual forces in the bar
         punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes()
         if punctual_forces_contribution is not None:
-            dc_x_i = punctual_forces_contribution.get("x_origin")
-            dc_x_j = punctual_forces_contribution.get("x_end")
-            dc_y_i = punctual_forces_contribution.get("y_origin")
-            dc_y_j = punctual_forces_contribution.get("y_end")
-            dc_momentum_i = punctual_forces_contribution.get("m_origin")
-            dc_momentum_j = punctual_forces_contribution.get("m_end")
+            # Iterate over every found punctual forces
+            for key, pfc in punctual_forces_contribution.items():
+                dc_x_i = pfc.get("x_origin")
+                dc_x_j = pfc.get("x_end")
+                dc_y_i = pfc.get("y_origin")
+                dc_y_j = pfc.get("y_end")
+                dc_momentum_i = pfc.get("m_origin")
+                dc_momentum_j = pfc.get("m_end")
 
-            ri = np.array([dc_x_i, dc_y_i, dc_momentum_i])
-            rj = np.array([dc_x_j, dc_y_j, dc_momentum_j])
+                # Get contribution of the punctual force in origin and end nodes
+                ri = np.array([dc_x_i, dc_y_i, dc_momentum_i])
+                rj = np.array([dc_x_j, dc_y_j, dc_momentum_j])
 
-            ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                        ri)
-            ri = np.vstack(ri)
+                # Change reference system
+                ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                            ri)
+                rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                            rj)
 
-            rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                        rj)
-            rj = np.vstack(rj)
+                # Transpose the vectors in order to be able to multiply its values
+                ri = np.vstack(ri)
+                rj = np.vstack(rj)
 
-            punctual_forces_contribution = np.vstack(
-                (ri,
-                 rj)
-            )
+                # Compose final reaction vector
+                pfc = np.vstack(
+                    (ri,
+                     rj)
+                )
 
-            efforts += punctual_forces_contribution
+                # Add the reactions to the efforts
+                efforts += pfc
 
+        # Clear all previously stored efforts
         self.efforts.clear()
-        self.efforts["p_ij"] = np.array([efforts[0], efforts[1], efforts[2]])
-        self.efforts["p_ji"] = np.array([efforts[3], efforts[4], efforts[5]])
+        # And store the new calculated ones
+        self._add_object_to_instance_dictionary(self.efforts, np.array([efforts[0], efforts[1], efforts[2]]),
+                                                "p_ij", np.ndarray)
+        self._add_object_to_instance_dictionary(self.efforts, np.array([efforts[3], efforts[4], efforts[5]]),
+                                                "p_ji", np.ndarray)
+
         print("Efforts for bar " + self.name + " are determined. Available using method get_efforts")
 
     def get_efforts(self):
@@ -861,16 +909,16 @@ class Bar:
 
             bar_angle = self.angle_from_global_to_local()
 
-            N = - (y_reaction * math.sin(bar_angle) + x_reaction * math.cos(bar_angle))
+            n = - (y_reaction * math.sin(bar_angle) + x_reaction * math.cos(bar_angle))
         else:
             bar_efforts = self.get_efforts()
-            N = - bar_efforts.get("p_ij")[0]
+            n = - bar_efforts.get("p_ij")[0]
 
         if self.has_distributed_charges():
             for key, dc in self.get_distributed_charges().items():
-                N += dc.axial_force_law(self, origin_end_factor)
+                n += dc.axial_force_law(self, origin_end_factor)
 
-        return N
+        return n
 
     def shear_strength_law(self, origin_end_factor):
         """
@@ -892,20 +940,20 @@ class Bar:
 
             bar_angle = self.angle_from_global_to_local()
 
-            V = - y_reaction * math.cos(bar_angle) + x_reaction * math.sin(bar_angle)
+            v = - y_reaction * math.cos(bar_angle) + x_reaction * math.sin(bar_angle)
         else:
             bar_efforts = self.get_efforts()
-            V = - bar_efforts.get("p_ij")[1]
+            v = - bar_efforts.get("p_ij")[1]
 
         if self.has_distributed_charges():
             for key, dc in self.get_distributed_charges().items():
-                V += dc.shear_strength_law(self, origin_end_factor)
+                v += dc.shear_strength_law(self, origin_end_factor)
 
         if self.has_punctual_forces():
             for key, pf in self.get_punctual_forces().items():
-                V += pf.shear_strength_law(self, origin_end_factor)
+                v += pf.shear_strength_law(self, origin_end_factor)
 
-        return V
+        return v
 
     def bending_moment_law(self, origin_end_factor):
         """
@@ -1304,8 +1352,9 @@ class Structure:
             if bar.has_punctual_forces():
                 pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
 
-                add_referred_force_and_momentum_to_node(bar.origin, pf_nodes, "pf", "origin")
-                add_referred_force_and_momentum_to_node(bar.end, pf_nodes, "pf", "end")
+                for key, punctual_force in pf_nodes.items():
+                    add_referred_force_and_momentum_to_node(bar.origin, punctual_force, "pf", "origin")
+                    add_referred_force_and_momentum_to_node(bar.end, punctual_force, "pf", "end")
 
         # Compose the force vector
         while current_search <= self.get_number_of_nodes():
@@ -1538,7 +1587,6 @@ class DistributedCharge:
         :param max_value: the maximum value of the distributed charge
         :param direction: unitary vector representing the direction of the force in local axis
         """
-        # TODO completar el test con lo nuevo
         if type(dc_type) not in [DistributedChargeType]:
             raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
 
@@ -1552,7 +1600,8 @@ class DistributedCharge:
             raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
 
         if self.dc_type == other_distributed_charge.dc_type and \
-                self.max_value == other_distributed_charge.max_value:
+                self.max_value == other_distributed_charge.max_value and \
+                self.direction == other_distributed_charge.direction:
             return True
         else:
             return False
@@ -1564,7 +1613,6 @@ class DistributedCharge:
         :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
         :return:
         """
-        # TODO escribir test
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
@@ -1619,11 +1667,7 @@ class PunctualForceInBar:
     """
     Class that represents a punctual force applied in any point of a bar
     """
-
-    # TODO añadir métodos para las leyes de axiles
-
     def __init__(self, value, origin_end_factor, direction):
-        # TODO Escribir test
         """
 
         :param value: the magnitud of the force
