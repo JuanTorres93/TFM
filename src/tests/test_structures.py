@@ -380,7 +380,7 @@ class TestBar(unittest.TestCase):
         dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36, direction=(0, -1, 0))
         b2.add_distributed_charge(dc, "test1")
 
-        calculated_values = b2.get_referred_distributed_charge_to_nodes(return_global_values=False)
+        calculated_values = b2.get_referred_distributed_charge_to_nodes(return_global_values=False).get("0")
         expected_values = {
             "x": 0,
             "y": 35020.05,
@@ -618,6 +618,24 @@ def get_test_structure(num_test_st):
 
         structure = st.Structure("st2", bars2)
 
+    elif num_test_st == 3:
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.PINNED)
+
+        b1 = st.Bar("B1", n1, n2)
+
+        dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100000, (0, -1, 0))
+        dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 200000, (0, -1, 0))
+
+        b1.add_distributed_charge(dc1)
+        b1.add_distributed_charge(dc2)
+
+        bars = {
+            b1.name: b1
+        }
+
+        structure = st.Structure("S1", bars)
+
     return structure
 
 class TestStructure(unittest.TestCase):
@@ -809,6 +827,19 @@ class TestStructure(unittest.TestCase):
 
         np.testing.assert_allclose(calculated, expected, atol=5 ** -8)
 
+        # Test structure 3
+        structure = get_test_structure(3)
+
+        calculated = structure.get_nodes_displacements()
+        expected = np.array([0,
+                             0,
+                             -0.005698,
+                             0,
+                             0,
+                             0.005698])
+
+        np.testing.assert_allclose(calculated, expected, rtol=0.02)
+
     def test_get_nodes(self):
         structure = get_test_structure(1)
 
@@ -883,6 +914,20 @@ class TestStructure(unittest.TestCase):
                              -42926.2,
                              213707,
                              7755.35])
+
+        np.testing.assert_allclose(calculated, expected, atol=.5)
+
+        # Test structure 3
+        structure2 = get_test_structure(3)
+
+        calculated = structure2.get_nodes_reactions()
+        # These results are the exact same than ustatic provides
+        expected = np.array([0,
+                             300000,
+                             0,
+                             0,
+                             300000,
+                             0])
 
         np.testing.assert_allclose(calculated, expected, atol=.5)
 
@@ -1215,6 +1260,26 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_almost_equal(bar.axial_force_law(.3), -213707.44, decimal=1)
         np.testing.assert_almost_equal(bar.axial_force_law(.5), -213707.44, decimal=1)
         np.testing.assert_almost_equal(bar.axial_force_law(.7), -213707.44, decimal=1)
+
+        # Test structure 3
+        structure = get_test_structure(3)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.axial_force_law, -2)
+        self.assertRaises(ValueError, b1.axial_force_law, 2)
+
+        # Bar 1
+        # self.assertAlmostEqual(b1.axial_force_law(.3), 0, places=1)
+        # self.assertAlmostEqual(b1.axial_force_law(.5), 0, places=1)
+        # self.assertAlmostEqual(b1.axial_force_law(.7), 0, places=1)
 
     def test_shear_strength_law(self):
         # Test structure 1

@@ -588,6 +588,7 @@ class Bar:
         """
         # TODO tener en cuenta todas las cargas y devolver solo un diccionatrio total. Ahora mismo solo sirve para ...
         # ... una carga aplicada, pues al procesar la primera, ya se encuentra el return
+        referred_charges = {}
 
         # If there are distributed_charges applied to the bar
         if len(self.distributed_charges) > 0:
@@ -602,18 +603,19 @@ class Bar:
 
                     reaction = np.array([x_reaction, y_reaction, 0])
                     if not return_global_values:
-                        return {
+                        referred_charges[str(len(referred_charges))] = {
                             "x": reaction[0],
                             "y": reaction[1],
                             "m_origin": m_origin_reaction,
                             "m_end": m_end_reaction
                         }
+                        continue
 
                     # Convert reactions to global coordinates
                     matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
                     reaction_global = np.dot(matrix_conversion_to_global, reaction)
 
-                    return {
+                    referred_charges[str(len(referred_charges))] = {
                         "x": reaction_global[0],
                         "y": reaction_global[1],
                         "m_origin": m_origin_reaction,
@@ -621,6 +623,7 @@ class Bar:
                     }
 
                 # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
+            return referred_charges
 
         elif len(self.distributed_charges) == 0:
             print("There are no distributed charges applied to bar " + self.name)
@@ -770,28 +773,29 @@ class Bar:
         # Distributed charges
         distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
         if distributed_charges_contribution is not None:
-            dc_x = distributed_charges_contribution.get("x")
-            dc_y = distributed_charges_contribution.get("y")
-            dc_momentum_i = distributed_charges_contribution.get("m_origin")
-            dc_momentum_j = distributed_charges_contribution.get("m_end")
+            for key, dcc in distributed_charges_contribution.items():
+                dc_x = dcc.get("x")
+                dc_y = dcc.get("y")
+                dc_momentum_i = dcc.get("m_origin")
+                dc_momentum_j = dcc.get("m_end")
 
-            ri = np.array([dc_x, dc_y, dc_momentum_i])
-            rj = np.array([dc_x, dc_y, dc_momentum_j])
+                ri = np.array([dc_x, dc_y, dc_momentum_i])
+                rj = np.array([dc_x, dc_y, dc_momentum_j])
 
-            ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                        ri)
-            ri = np.vstack(ri)
+                ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                            ri)
+                ri = np.vstack(ri)
 
-            rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                        rj)
-            rj = np.vstack(rj)
+                rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                            rj)
+                rj = np.vstack(rj)
 
-            distributed_charges_contribution = np.vstack(
-                (ri,
-                 rj)
-            )
+                dcc = np.vstack(
+                    (ri,
+                     rj)
+                )
 
-            efforts += distributed_charges_contribution
+                efforts += dcc
 
         # Punctual forces
         punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes()
@@ -1271,8 +1275,9 @@ class Structure:
                 # punctual forces the global ones
                 dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=False)
 
-                add_referred_force_and_momentum_to_node(bar.origin, dc_nodes, "dc", "origin")
-                add_referred_force_and_momentum_to_node(bar.end, dc_nodes, "dc", "end")
+                for key, distributed_charge in dc_nodes.items():
+                    add_referred_force_and_momentum_to_node(bar.origin, distributed_charge, "dc", "origin")
+                    add_referred_force_and_momentum_to_node(bar.end, distributed_charge, "dc", "end")
 
             if bar.has_punctual_forces():
                 pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
@@ -1341,12 +1346,13 @@ class Structure:
 
         # Build the final displacement vector using the calculated and the known (zero value) ones
         for i in range(len(zero_displacement_indexes) + len(calculated_nodes_displacements)):
-            if i == zero_displacement_indexes[included_zero_displacement_index]:
-                nodes_displacements.append(0)
-                included_zero_displacement_index += 1
-            else:
+            if included_zero_displacement_index >= len(zero_displacement_indexes) or\
+                    i != zero_displacement_indexes[included_zero_displacement_index]:
                 nodes_displacements.append(calculated_nodes_displacements[included_non_zero_displacement_index])
                 included_non_zero_displacement_index += 1
+            else:
+                nodes_displacements.append(0)
+                included_zero_displacement_index += 1
 
         nodes_in_structure = self.get_nodes()
 
