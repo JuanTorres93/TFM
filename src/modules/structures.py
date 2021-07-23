@@ -676,7 +676,7 @@ class Bar:
                         bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
                 y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (
                         bar_length + 2 * distance_end_force) / pow(bar_length, 3)
-                x_reaction = - forces_in_axis[0]
+                x_reaction = - forces_in_axis[0] / 2
 
                 reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
                 reaction_end = np.array([x_reaction, y_reaction_end, 0])
@@ -917,6 +917,10 @@ class Bar:
         if self.has_distributed_charges():
             for key, dc in self.get_distributed_charges().items():
                 n += dc.axial_force_law(self, origin_end_factor)
+
+        if self.has_punctual_forces():
+            for key, pf in self.get_punctual_forces().items():
+                n += pf.axial_force_law(self, origin_end_factor)
 
         return n
 
@@ -1737,107 +1741,20 @@ class PunctualForceInBar:
         else:
             return - p
 
+    def axial_force_law(self, bar, origin_to_end_factor):
+        """
+        Determines the point x in the axial force law
+        :param bar: Bar in which the punctual force is applied to.
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :return:
+        """
+        if origin_to_end_factor < 0 or origin_to_end_factor > 1:
+            raise ValueError("Error. x must be between 0 and 1, both included.")
 
-# TODO DELETE EVERYTHING DOWN HERE. IT IS JUST FOR TESTING PURPOSES
-n1 = Node("N1", position=(0, 0, 0), support=Support.PINNED)
-n2 = Node("N2", position=(0, 4.2, 0))
-n3 = Node("N3", position=(6.8, 5.25, 0))
-n4 = Node("N4", position=(13.6, 4.2, 0))
-n5 = Node("N5", position=(17.2, 3.644117647, 0))
-n6 = Node("N6", position=(13.6, 0, 0), support=Support.FIXED)
+        p = self.value * self.direction[0]
 
-b1 = Bar("B1", n1, n2)
-b2 = Bar("B2", n2, n3)
-b3 = Bar("B3", n3, n4)
-b4 = Bar("B4", n4, n5)
-b5 = Bar("B5", n4, n6)
-
-dc = DistributedCharge(DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
-b2.add_distributed_charge(dc)
-b3.add_distributed_charge(dc)
-b4.add_distributed_charge(dc)
-
-pf = PunctualForceInBar(-25000, 0.5, (0, 1, 0))
-b5.add_punctual_force(pf, "pf")
-
-bars = {
-    b1.name: b1,
-    b2.name: b2,
-    b3.name: b3,
-    b4.name: b4,
-    b5.name: b5
-}
-
-st = Structure("S1", bars)
-st.assembled_matrix()
-st.get_nodes_reactions()
-st.get_nodes_displacements()
-b2.calculate_efforts()
-# print("==========DISPLACEMENTS==========")
-# for i in range(len(disp)):
-#     if i % 3 == 0:
-#         label = "x: "
-#     elif i % 3 == 1:
-#         label = "y: "
-#     else:
-#         label = "angle: "
-#     print(label + str(disp[i]))
-
-
-# Structure 2
-n21 = Node("N21", position=(-1, 2, 0), support=Support.PINNED)
-n22 = Node("N22", position=(-1, 5, 0))
-n23 = Node("N23", position=(1, 5, 0))
-n24 = Node("N24", position=(1, 4, 0))
-n25 = Node("N25", position=(3, 4, 0))
-n26 = Node("N26", position=(3, 5, 0))
-n27 = Node("N27", position=(5, 5, 0))
-n28 = Node("N28", position=(5, 2, 0), support=Support.FIXED)
-
-b21 = Bar("B21", n21, n22)
-b22 = Bar("B22", n22, n23)
-b23 = Bar("B23", n23, n24)
-b24 = Bar("B24", n24, n25)
-b25 = Bar("B25", n25, n26)
-b26 = Bar("B26", n26, n27)
-b27 = Bar("B27", n27, n28)
-
-dc2 = DistributedCharge(DistributedChargeType.SQUARE, 100000, (0, -1, 0))
-b22.add_distributed_charge(dc2)
-b26.add_distributed_charge(dc2)
-
-pf21 = PunctualForceInBar(-40000, 0.5, (0, 1, 0))
-pf24 = PunctualForceInBar(-25000, 0.5, (0, 1, 0))
-pf27 = PunctualForceInBar(-30000, 0.5, (0, 1, 0))
-
-b21.add_punctual_force(pf21)
-b24.add_punctual_force(pf24)
-b27.add_punctual_force(pf27)
-
-bars2 = {
-    b21.name: b21,
-    b22.name: b22,
-    b23.name: b23,
-    b24.name: b24,
-    b25.name: b25,
-    b26.name: b26,
-    b27.name: b27,
-}
-
-st2 = Structure("st2", bars2)
-st2.assembled_matrix()
-st2.get_nodes_reactions()
-st2.get_nodes_displacements()
-
-# for key, bar in st2.bars.items():
-#     bar.calculate_efforts()
-# disp = st2.get_nodes_displacements()
-# print("==========DISPLACEMENTS==========")
-# for i in range(len(disp)):
-#     if i % 3 == 0:
-#         label = "x: "
-#     elif i % 3 == 1:
-#         label = "y: "
-#     else:
-#         label = "angle: "
-#     print(label + str(disp[i]))
+        # If the point is situated before the one in which the force is applied...
+        if origin_to_end_factor <= self.origin_end_factor:
+            return 0
+        else:
+            return - p
