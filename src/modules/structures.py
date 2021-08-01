@@ -1202,10 +1202,10 @@ class Structure:
                     # range_start is used to restrain cancellations on rollers supports
                     range_start = 0
 
-                    if node.support is Support.ROLLER_X:
+                    if node.support is Support.ROLLER_Y:
                         # Remove x component
                         target_cancellations = 1
-                    elif node.support is Support.ROLLER_Y:
+                    elif node.support is Support.ROLLER_X:
                         # Remove y component
                         range_start = 1
                         target_cancellations = 2
