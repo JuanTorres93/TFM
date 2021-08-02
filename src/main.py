@@ -1,5 +1,5 @@
 import math
-
+import sys
 from PyQt5 import QtCore, QtWidgets
 
 from src.modules import databaseutils as db
@@ -8,68 +8,65 @@ from src.modules import databaseutils as db
 db.regenerate_initial_database()
 
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        # Central widget
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
+class Window(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
+        # TODO Borrar cuando se haya puesto la estrucutra de layouts
         self.main_window_width = 1500
         self.main_windows_height = 816
 
-        # Main window definition
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(self.main_window_width, self.main_windows_height)
-        MainWindow.setCentralWidget(self.centralwidget)
+        # Central Widget
+        # This widget, in addition, is used to display the drawing scene where the user inputs the structure
+        self.central_widget = QtWidgets.QGraphicsView()
 
-        # TODO implementar los distintos elementos mediante layouts
-        # Left frame
-        self.frame_left = self.create_left_frame_main_gui()
-        self.frame_left.raise_()
+        # Create actions
+        self._create_actions()
 
-        # Right frame
-        self.frame_right = self.create_right_frame_main_gui()
+        # Menu bar
+        self._create_menu_bar()
+
+        # Structure toolbar
+        self._create_toolbars()
+
+        # Status bar
+        self._create_status_bar()
+
+        # Context menus
+        self._create_context_menu()
+
+        # Connect actions
+        self._connect_actions()
 
         # Canvas
-        self.scene = QtWidgets.QGraphicsScene(MainWindow)
+        self.scene = QtWidgets.QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 2000, 1000)
         self.scene.addText("Hello world")
         self.scene.addRect(1000, 500, 200, 200)
 
-        self.graphics_view = QtWidgets.QGraphicsView()
-        self.graphics_view.setScene(self.scene)
-        self.graphics_view.setParent(MainWindow)
-        self.graphics_view.setGeometry(QtCore.QRect(self.frame_left.width(), 0,
-                                       self.main_window_width - self.frame_left.width() - self.frame_right.width(),
-                                                    self.main_windows_height))
-        # self.graphics_view.lower()
+        self.central_widget.setScene(self.scene)
+        self.central_widget.setParent(self)
 
         # TODO el zoom se implementa con el método scale
         # self.graphics_view.scale(4, 4)
         # TODO interacción con teclado y ratón usando QGraphicsSceneEvent, no sé si lo implementa ya por defecto
-        self.graphics_view.show()
+        self.central_widget.show()
 
+        # Main window definition
+        self.setObjectName("MainWindow")
+        self.setWindowTitle("TFM")
+        self.resize(self.main_window_width, self.main_windows_height)
+        self.setCentralWidget(self.central_widget)
 
-        # # Menu bar
-        # self.menubar = QtWidgets.QMenuBar(MainWindow)
-        # self.menubar.setGeometry(QtCore.QRect(0, 0, 1081, 22))
-        # self.menubar.setObjectName("menubar")
-        #
-        # # File menu
-        # self.menuFile = QtWidgets.QMenu(self.menubar)
-        # self.menuFile.setObjectName("menuFile")
-        # MainWindow.setMenuBar(self.menubar)
-        #
-        # # Status bar
-        # self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        # self.statusbar.setObjectName("statusbar")
-        # MainWindow.setStatusBar(self.statusbar)
-        # self.menubar.addAction(self.menuFile.menuAction())
+    def new_file(self):
+        # TODO escribir funcion
+        self.scene.addRect(1000, 500, 100, 100)
 
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+    def draw_node(self):
+        # TODO escribir funcion
+        self.scene.addRect(1500, 500, 100, 100)
 
-    def create_button(self, button_name, geometry, button_text, parent=None):
+    def _create_button(self, button_name, geometry, button_text, parent=None):
         if parent is None:
             parent = self.centralwidget
 
@@ -80,7 +77,7 @@ class Ui_MainWindow(object):
 
         return button
 
-    def create_combo_box(self, name, geometry, items, parent=None):
+    def _create_combo_box(self, name, geometry, items, parent=None):
         if parent is None:
             parent = self.centralwidget
 
@@ -91,107 +88,172 @@ class Ui_MainWindow(object):
 
         return combo_box
 
-    def create_left_frame_main_gui(self):
-        frame = QtWidgets.QFrame(self.centralwidget)
-        frame_width = 120
-        frame.setGeometry(QtCore.QRect(0, 140, frame_width, 321))
-        frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        frame.setObjectName("frame_left")
+    def _create_menu_bar(self):
+        menu_bar = self.menuBar()
+        # ========== FILE MENU ==========
+        # The parent is self (the main window) because, according documentation, the parent typically is the window
+        # in which the menu is going to be used
+        file_menu = QtWidgets.QMenu("&File", self)
 
-        width = 80
-        height = 51
-        y = 20
-        # Center horizontally
-        x = int(frame_width - frame_width / 2 - width / 2)
+        file_menu.addAction(self.new_file_action)
+        file_menu.addAction(self.open_file_action)
+        file_menu.addAction(self.save_file_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self.exit_action)
 
-        y_offset = height + 20
+        menu_bar.addMenu(file_menu)
 
-        # Button Charges
-        button_position = 0
-        button_y = int(y + y_offset * button_position)
-        button_charges = self.create_button(button_name="button_charges", geometry=QtCore.QRect(x, button_y,
-                                                                                                width, height),
-                                            button_text="Cargas", parent=frame)
+        # ========== EDIT MENU ==========
+        edit_menu = QtWidgets.QMenu("&Edit", self)
 
-        # Button bar
-        button_position = 1
-        button_y = int(y + y_offset * button_position)
-        button_bar = self.create_button(button_name="button_bar", geometry=QtCore.QRect(x, button_y,
-                                                                                        width, height),
-                                        button_text="Barras", parent=frame)
+        # Structure
+        edit_menu.addAction(self.create_node_action)
+        edit_menu.addAction(self.create_bar_action)
+        edit_menu.addAction(self.create_support_action)
+        edit_menu.addAction(self.create_charge_action)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.copy_action)
+        edit_menu.addAction(self.cut_action)
+        edit_menu.addAction(self.paste_action)
 
-        # Button support
-        button_position = 2
-        button_y = int(y + y_offset * button_position)
-        button_support = self.create_button(button_name="button_support", geometry=QtCore.QRect(x, button_y,
-                                                                                                width, height),
-                                            button_text="Apoyos", parent=frame)
+        menu_bar.addMenu(edit_menu)
 
-        return frame
+        # ========== HELP MENU ==========
+        help_menu = QtWidgets.QMenu("&Help", self)
 
-    def create_right_frame_main_gui(self):
-        frame = QtWidgets.QFrame(self.centralwidget)
-        frame_width = 120
-        frame.setGeometry(QtCore.QRect(self.main_window_width - frame_width, 140, frame_width, 321))
-        frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        frame.setObjectName("frame_right")
+        help_menu.addAction(self.help_content_action)
+        help_menu.addAction(self.about_action)
 
-        width = 91
-        height = 25
-        y = 20
-        # Center horizontally
-        x = int(frame_width - frame_width / 2 - width / 2)
+        test_borrar_menu = help_menu.addMenu("Test Borrar")
+        test_borrar_menu.addAction("Test")
+        test_borrar_menu.addAction("Borrar")
 
-        y_offset = height + 10
+        menu_bar.addMenu(help_menu)
+
+    def _create_toolbars(self):
+        # ========== STRUCTURE TOOLBAR ==========
+        structure_toolbar = QtWidgets.QToolBar("Structure", self)
+
+        structure_toolbar.addAction(self.create_node_action)
+        structure_toolbar.addAction(self.create_bar_action)
+        structure_toolbar.addAction(self.create_support_action)
+        structure_toolbar.addAction(self.create_charge_action)
+
+        self.addToolBar(QtCore.Qt.LeftToolBarArea, structure_toolbar)
+
+        # ========== PROPERTIES TOOLBAR ==========
+        properties_toolbar = QtWidgets.QToolBar("Properties", self)
 
         # Label material
-        item_position = 0
-        item_y = int(y + y_offset * item_position)
-        label_material = QtWidgets.QLabel(frame)
-        label_material.setGeometry(QtCore.QRect(x, item_y, width, height))
-        label_material.setText("Material:")
-        label_material.setObjectName("label_material")
+        label_material = QtWidgets.QLabel("Material: ")
+
+        properties_toolbar.addWidget(label_material)
 
         # Material comboBox
-        item_position = 1
-        item_y = int(y + y_offset * item_position)
-        combo_items = ["Acero 1", "Acero 2"]
-        material_combo_box = self.create_combo_box(name="material_combobox", geometry=QtCore.QRect(x, item_y,
-                                                                                                   width, height),
-                                                   items=combo_items, parent=frame)
+        combo_items = ["S235", "S275"]
+        material_combo_box = QtWidgets.QComboBox()
+        material_combo_box.addItems(combo_items)
+        material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
 
-        # Label section
-        item_position = 2
-        item_y = int(y + y_offset * item_position)
-        label_seccion = QtWidgets.QLabel(frame)
-        label_seccion.setGeometry(QtCore.QRect(x, item_y, width, height),)
-        label_seccion.setText("Sección:")
-        label_seccion.setObjectName("label_seccion")
+        properties_toolbar.addWidget(material_combo_box)
 
-        # Section comboBox
-        item_position = 3
-        item_y = int(y + y_offset * item_position)
+        properties_toolbar.addSeparator()
+        # Label profile
+        label_profile = QtWidgets.QLabel("Perfil: ")
+
+        properties_toolbar.addWidget(label_profile)
+
+        # ComboBox profile
         combo_items = ["IPE 300", "IPE 200"]
-        section_combo_box = self.create_combo_box(name="section_combobox", geometry=QtCore.QRect(x, item_y,
-                                                                                                   width, height),
-                                                   items=combo_items, parent=frame)
+        profile_combo_box = QtWidgets.QComboBox()
+        profile_combo_box.addItems(combo_items)
+        profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
 
-        return frame
+        properties_toolbar.addWidget(profile_combo_box)
 
-    def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        # self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
+
+    def _create_status_bar(self):
+        self.status_bar = self.statusBar()
+        # Temporary message
+        self.status_bar.showMessage("Ready", 3000)
+
+        # Permanent message
+        f_string_example = f"Permanent {math.pi} message"
+        permanent_message = QtWidgets.QLabel(f_string_example)
+        self.status_bar.addPermanentWidget(permanent_message)
+
+    def _create_context_menu(self):
+        # Creates right-click menus
+        # Set contextMenuPolicy
+        self.central_widget.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+
+        # Widget to act as a separator in context menus, since the method .addSeparator can't be used
+        separator = QtWidgets.QAction(self)
+        separator.setSeparator(True)
+
+        # Populate widget with action
+        self.central_widget.addAction(self.create_node_action)
+        # TODO Borrar, este separador, solo esta para motivos de documentacion
+        self.central_widget.addAction(separator)
+        self.central_widget.addAction(self.create_bar_action)
+
+    def _connect_actions(self):
+        self.new_file_action.triggered.connect(self.new_file)
+        self.exit_action.triggered.connect(self.close)
+
+        self.create_node_action.triggered.connect(self.draw_node)
+
+    def _create_actions(self):
+        def _add_tip(item, tip):
+            # Status tip shows the tip in the status bar
+            item.setStatusTip(tip)
+            # Tool tip shows the tip when hovering mouse over widget in a toolbar
+            item.setToolTip(tip)
+
+        # ========== FILE ACTIONS ==========
+        # Create actions
+        self.new_file_action = QtWidgets.QAction("&New", self)
+        self.open_file_action = QtWidgets.QAction("&Open", self)
+        self.save_file_action = QtWidgets.QAction("&Save", self)
+        self.exit_action = QtWidgets.QAction("&Exit", self)
+        # Add help tips
+        _add_tip(self.new_file_action, "Create a new file")
+        _add_tip(self.open_file_action, "Open a file")
+        _add_tip(self.save_file_action, "Save the current file")
+        _add_tip(self.exit_action, "Close the application")
+
+        # ========== EDIT ACTIONS ==========
+        # Create actions
+        self.copy_action = QtWidgets.QAction("&Copy", self)
+        self.paste_action = QtWidgets.QAction("&Paste", self)
+        self.cut_action = QtWidgets.QAction("Cu&t", self)
+        # Add help tips
+
+        # ========== STRUCTURE ACTIONS ==========
+        # Create actions
+        self.create_node_action = QtWidgets.QAction("New &Node", self)
+        self.create_bar_action = QtWidgets.QAction("New &Bar", self)
+        self.create_support_action = QtWidgets.QAction("&Support", self)
+        self.create_charge_action = QtWidgets.QAction("&Charge", self)
+        # Add shortcuts
+        self.create_node_action.setShortcut("N")
+        self.create_bar_action.setShortcut("B")
+        # Add help tips
+        _add_tip(self.create_node_action, "Create a new node")
+        _add_tip(self.create_bar_action, "Create a new bar")
+        _add_tip(self.create_support_action, "Create a new support")
+        _add_tip(self.create_charge_action, "Create a new charge")
+
+        # ========== HELP ACTIONS ==========
+        # Create actions
+        self.help_content_action = QtWidgets.QAction("&Help content", self)
+        self.about_action = QtWidgets.QAction("&About", self)
+        # Add help tips
 
 
 if __name__ == "__main__":
-    import sys
-
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+    window = Window()
+    window.show()
     sys.exit(app.exec_())
