@@ -1,3 +1,4 @@
+import enum
 import math
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -6,6 +7,42 @@ from src.modules import databaseutils as db
 
 # Create the database if it does not exist
 db.regenerate_initial_database()
+
+
+@enum.unique
+class ApplicationMode(enum.Enum):
+    """
+    Enumeration for the different types of supports
+    """
+    NODE_DRAW_MODE = 1
+    NORMAL_MODE = 2
+
+
+application_mode = ApplicationMode.NORMAL_MODE
+
+
+class Node(QtWidgets.QGraphicsEllipseItem):
+    def __init__(self, x_scene, y_scene, radius, coord_change, color=QtGui.QColor(0, 0, 0)):
+        super().__init__(x_scene, y_scene, radius, radius)
+
+        self.x_scene = x_scene
+        self.y_scene = y_scene
+        self.x_centered, self.y_centered = coord_change(x_scene, y_scene)
+        self.radius = radius
+        self.setBrush(color)
+
+
+class GraphicsScene(QtWidgets.QGraphicsScene):
+    """
+    Reimplemets QGraphicsScene in order to handle the mouse events
+    """
+    def __init__(self, main_window, parent=None):
+        super().__init__(parent)
+        self.main_window = main_window
+
+    def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
+        if application_mode == ApplicationMode.NODE_DRAW_MODE:
+            self.main_window.draw_node()
 
 
 class Window(QtWidgets.QMainWindow):
@@ -52,6 +89,17 @@ class Window(QtWidgets.QMainWindow):
         self.setWindowTitle("TFM")
         self.setCentralWidget(self.central_widget)
 
+    def _set_current_mode(self, mode, message):
+        if type(mode) is not ApplicationMode:
+            raise TypeError("Error. mode must be of type ApplicationMode")
+
+        global application_mode
+        if application_mode != mode:
+            application_mode = mode
+            print("Changed mode to " + str(mode))
+
+        self.permanent_message.setText(message)
+
     def _centered_coordinates(self, x, y):
         """
         Origin point for coordinates systems in image processing is located at the top left corner, this function
@@ -60,10 +108,26 @@ class Window(QtWidgets.QMainWindow):
         :param y: desired centered y coordinate
         :return: List with x and y values of the point in the new coordinate system
         """
-        return [x + self.scene.sceneRect().width() / 2, y + self.scene.sceneRect().height() / 2]
+        scene_width = self.scene.sceneRect().width()
+        scene_height = self.scene.sceneRect().height()
+        distance_point_y_axis = abs(x - scene_width / 2)
+        distance_point_x_axis = abs(y - scene_height / 2)
+
+        if x >= scene_width / 2:
+            x_converted = distance_point_y_axis
+        else:
+            x_converted = - distance_point_y_axis
+
+        if y <= scene_height / 2:
+            y_converted = distance_point_x_axis
+        else:
+            y_converted = - distance_point_x_axis
+
+        return [x_converted, y_converted]
 
     def _create_drawing_scene(self):
-        self.scene = QtWidgets.QGraphicsScene(self)
+        self.scene = GraphicsScene(self, self)
+        # self.scene = QtWidgets.QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 2000, 2000)
 
     def new_file(self):
@@ -71,17 +135,18 @@ class Window(QtWidgets.QMainWindow):
         self.scene.addRect(1000, 500, 100, 100)
 
     def activate_draw_node_mode(self):
-        # TODO escribir funcion
-        self.permanent_message.setText("Creating NODES")
+        self._set_current_mode(ApplicationMode.NODE_DRAW_MODE, "Creating NODES")
 
+    def draw_node(self):
         # Get mouse position in scene coordinates
         view_position = self.central_widget.mapFromGlobal(QtGui.QCursor.pos())
         scene_position = self.central_widget.mapToScene(view_position)
 
         radius = 10
-        color = QtGui.QColor(0, 0, 0)
         draw_coordinates = [scene_position.x() - radius / 2, scene_position.y() - radius / 2]
-        self.scene.addEllipse(draw_coordinates[0], draw_coordinates[1], radius, radius, brush=color)
+        node = Node(draw_coordinates[0], draw_coordinates[1], radius, self._centered_coordinates)
+
+        self.scene.addItem(node)
 
     def _draw_axis_lines(self):
         # X Axis
@@ -141,7 +206,7 @@ class Window(QtWidgets.QMainWindow):
         edit_menu = QtWidgets.QMenu("&Edit", self)
 
         # Structure
-        edit_menu.addAction(self.create_node_action)
+        edit_menu.addAction(self.enable_node_mode_action)
         edit_menu.addAction(self.create_bar_action)
         edit_menu.addAction(self.create_support_action)
         edit_menu.addAction(self.create_charge_action)
@@ -168,7 +233,7 @@ class Window(QtWidgets.QMainWindow):
         # ========== STRUCTURE TOOLBAR ==========
         structure_toolbar = QtWidgets.QToolBar("Structure", self)
 
-        structure_toolbar.addAction(self.create_node_action)
+        structure_toolbar.addAction(self.enable_node_mode_action)
         structure_toolbar.addAction(self.create_bar_action)
         structure_toolbar.addAction(self.create_support_action)
         structure_toolbar.addAction(self.create_charge_action)
@@ -191,7 +256,6 @@ class Window(QtWidgets.QMainWindow):
 
         properties_toolbar.addWidget(material_combo_box)
 
-        properties_toolbar.addSeparator()
         # Label profile
         label_profile = QtWidgets.QLabel("Profile: ")
 
@@ -204,6 +268,12 @@ class Window(QtWidgets.QMainWindow):
         profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
 
         properties_toolbar.addWidget(profile_combo_box)
+
+        properties_toolbar.addSeparator()
+        # Selection properties
+        selection_properties = QtWidgets.QTextEdit()
+        selection_properties.setReadOnly(True)
+        properties_toolbar.addWidget(selection_properties)
 
         self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
 
@@ -227,7 +297,7 @@ class Window(QtWidgets.QMainWindow):
         separator.setSeparator(True)
 
         # Populate widget with action
-        self.central_widget.addAction(self.create_node_action)
+        self.central_widget.addAction(self.enable_node_mode_action)
         # TODO Borrar, este separador, solo esta para motivos de documentacion
         self.central_widget.addAction(separator)
         self.central_widget.addAction(self.create_bar_action)
@@ -236,7 +306,7 @@ class Window(QtWidgets.QMainWindow):
         self.new_file_action.triggered.connect(self.new_file)
         self.exit_action.triggered.connect(self.close)
 
-        self.create_node_action.triggered.connect(self.activate_draw_node_mode)
+        self.enable_node_mode_action.triggered.connect(self.activate_draw_node_mode)
 
     def _create_actions(self):
         def _add_tip(item, tip):
@@ -266,15 +336,15 @@ class Window(QtWidgets.QMainWindow):
 
         # ========== STRUCTURE ACTIONS ==========
         # Create actions
-        self.create_node_action = QtWidgets.QAction("New &Node", self)
+        self.enable_node_mode_action = QtWidgets.QAction("New &Node", self)
         self.create_bar_action = QtWidgets.QAction("New &Bar", self)
         self.create_support_action = QtWidgets.QAction("&Support", self)
         self.create_charge_action = QtWidgets.QAction("&Charge", self)
         # Add shortcuts
-        self.create_node_action.setShortcut("N")
+        self.enable_node_mode_action.setShortcut("N")
         self.create_bar_action.setShortcut("B")
         # Add help tips
-        _add_tip(self.create_node_action, "Create a new node")
+        _add_tip(self.enable_node_mode_action, "Create a new node")
         _add_tip(self.create_bar_action, "Create a new bar")
         _add_tip(self.create_support_action, "Create a new support")
         _add_tip(self.create_charge_action, "Create a new charge")
