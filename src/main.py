@@ -1,6 +1,6 @@
 import math
 import sys
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from src.modules import databaseutils as db
 
@@ -11,10 +11,6 @@ db.regenerate_initial_database()
 class Window(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        # TODO Borrar cuando se haya puesto la estrucutra de layouts
-        self.main_window_width = 1500
-        self.main_windows_height = 816
 
         # Central Widget
         # This widget, in addition, is used to display the drawing scene where the user inputs the structure
@@ -39,32 +35,70 @@ class Window(QtWidgets.QMainWindow):
         self._connect_actions()
 
         # Canvas
-        self.scene = QtWidgets.QGraphicsScene(self)
-        self.scene.setSceneRect(0, 0, 2000, 1000)
-        self.scene.addText("Hello world")
-        self.scene.addRect(1000, 500, 200, 200)
+        self._create_drawing_scene()
 
         self.central_widget.setScene(self.scene)
         self.central_widget.setParent(self)
 
         # TODO el zoom se implementa con el método scale
-        # self.graphics_view.scale(4, 4)
+        # self.central_widget.scale(4, 4)
         # TODO interacción con teclado y ratón usando QGraphicsSceneEvent, no sé si lo implementa ya por defecto
         self.central_widget.show()
+
+        self._draw_axis_lines()
 
         # Main window definition
         self.setObjectName("MainWindow")
         self.setWindowTitle("TFM")
-        self.resize(self.main_window_width, self.main_windows_height)
         self.setCentralWidget(self.central_widget)
+
+    def _centered_coordinates(self, x, y):
+        """
+        Origin point for coordinates systems in image processing is located at the top left corner, this function
+        provides a way to work with the origin centered in the scene
+        :param x: desired centered x coordinate
+        :param y: desired centered y coordinate
+        :return: List with x and y values of the point in the new coordinate system
+        """
+        return [x + self.scene.sceneRect().width() / 2, y + self.scene.sceneRect().height() / 2]
+
+    def _create_drawing_scene(self):
+        self.scene = QtWidgets.QGraphicsScene(self)
+        self.scene.setSceneRect(0, 0, 2000, 2000)
 
     def new_file(self):
         # TODO escribir funcion
         self.scene.addRect(1000, 500, 100, 100)
 
-    def draw_node(self):
+    def activate_draw_node_mode(self):
         # TODO escribir funcion
-        self.scene.addRect(1500, 500, 100, 100)
+        self.permanent_message.setText("Creating NODES")
+
+        # Get mouse position in scene coordinates
+        view_position = self.central_widget.mapFromGlobal(QtGui.QCursor.pos())
+        scene_position = self.central_widget.mapToScene(view_position)
+
+        radius = 10
+        color = QtGui.QColor(0, 0, 0)
+        draw_coordinates = [scene_position.x() - radius / 2, scene_position.y() - radius / 2]
+        self.scene.addEllipse(draw_coordinates[0], draw_coordinates[1], radius, radius, brush=color)
+
+    def _draw_axis_lines(self):
+        # X Axis
+        point_x1 = [0, self.scene.sceneRect().height() / 2]
+        point_x2 = [self.scene.sceneRect().width(), self.scene.sceneRect().height() / 2]
+        color = QtGui.QColor(200, 0, 0)
+        x_axis = self.scene.addLine(point_x1[0], point_x1[1], point_x2[0], point_x2[1], pen=color)
+        # Draw it at the bottom in order not to superpose user drawings
+        x_axis.setZValue(-1)
+
+        # X Axis
+        point_y1 = [self.scene.sceneRect().width() / 2, 0]
+        point_y2 = [self.scene.sceneRect().width() / 2, self.scene.sceneRect().height()]
+        color = QtGui.QColor(0, 200, 0)
+        y_axis = self.scene.addLine(point_y1[0], point_y1[1], point_y2[0], point_y2[1], pen=color)
+        # Draw it at the bottom in order not to superpose user drawings
+        y_axis.setZValue(-1)
 
     def _create_button(self, button_name, geometry, button_text, parent=None):
         if parent is None:
@@ -159,7 +193,7 @@ class Window(QtWidgets.QMainWindow):
 
         properties_toolbar.addSeparator()
         # Label profile
-        label_profile = QtWidgets.QLabel("Perfil: ")
+        label_profile = QtWidgets.QLabel("Profile: ")
 
         properties_toolbar.addWidget(label_profile)
 
@@ -180,8 +214,8 @@ class Window(QtWidgets.QMainWindow):
 
         # Permanent message
         f_string_example = f"Permanent {math.pi} message"
-        permanent_message = QtWidgets.QLabel(f_string_example)
-        self.status_bar.addPermanentWidget(permanent_message)
+        self.permanent_message = QtWidgets.QLabel(f_string_example)
+        self.status_bar.addPermanentWidget(self.permanent_message)
 
     def _create_context_menu(self):
         # Creates right-click menus
@@ -202,7 +236,7 @@ class Window(QtWidgets.QMainWindow):
         self.new_file_action.triggered.connect(self.new_file)
         self.exit_action.triggered.connect(self.close)
 
-        self.create_node_action.triggered.connect(self.draw_node)
+        self.create_node_action.triggered.connect(self.activate_draw_node_mode)
 
     def _create_actions(self):
         def _add_tip(item, tip):
@@ -256,4 +290,5 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     window.show()
+    # window.showMaximized()
     sys.exit(app.exec_())
