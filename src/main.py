@@ -1,12 +1,14 @@
 import enum
-import math
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from src.modules import databaseutils as db
+from src.modules import structures as st
 
 # Create the database if it does not exist
 db.regenerate_initial_database()
+meter_to_px = 50
+px_to_meter = 1 / meter_to_px
 
 
 @enum.unique
@@ -14,7 +16,7 @@ class ApplicationMode(enum.Enum):
     """
     Enumeration for the different types of application modes
     """
-    NODE_DRAW_MODE = 1
+    NODE_MODE = 1
     NORMAL_MODE = 2
 
 
@@ -53,6 +55,13 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # Needed for hover events to take place
         self.setAcceptHoverEvents(True)
 
+        # Node logic
+        x_meter = self.x_centered * px_to_meter
+        y_meter = self.y_centered * px_to_meter
+
+        node_name = str(x_scene) + "_" + str(y_scene)
+        self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
+
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
         Defines node behavior when the mouse enters the node
@@ -88,10 +97,16 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         super().__init__(parent)
         self.main_window = main_window
 
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.main_window.set_current_mode(ApplicationMode.NORMAL_MODE)
+
     def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
-        if application_mode == ApplicationMode.NODE_DRAW_MODE:
+        # NODE MODE functionality
+        if application_mode == ApplicationMode.NODE_MODE:
             node_radius = 10
             self.main_window.draw_node(node_radius)
+        # NORMAL MODE functionality
         elif application_mode == ApplicationMode.NORMAL_MODE:
             # Get position where the release has happened
             position = event.scenePos()
@@ -106,9 +121,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Process the found item, if any
             if item is not None:
-                self.main_window.selection_properties.append(f"Scene -> x: {item.x_scene}, y: {item.y_scene}")
-                self.main_window.selection_properties.append(f"Centered -> x: {item.x_centered}, y: {item.y_centered}")
-                self.main_window.selection_properties.append("====================")
+                # NODE item
+                if type(item) is Node:
+                    self.main_window.selection_properties.append(f"coord (m) -> x: {item.node_logic.x()}, y: {item.node_logic.y()}")
+                    self.main_window.selection_properties.append("====================")
 
 
 class Window(QtWidgets.QMainWindow):
@@ -159,11 +175,10 @@ class Window(QtWidgets.QMainWindow):
         self.setWindowTitle("TFM")
         self.setCentralWidget(self.central_widget)
 
-    def _set_current_mode(self, mode, message):
+    def set_current_mode(self, mode):
         """
         Establish the mode in which the user utilizes the application in a given moment
         :param mode: Mode to which the application is going to change
-        :param message: Permanent message to show in the status bar
         :return:
         """
         if type(mode) is not ApplicationMode:
@@ -176,6 +191,8 @@ class Window(QtWidgets.QMainWindow):
             print("Changed mode to " + str(mode))
 
             # Show the change in GUI
+            message = str(mode).split(".")[1]
+            message = message.replace("_", " ")
             self.current_mode_message.setText(message)
 
     def centered_coordinates(self, x, y):
@@ -220,10 +237,10 @@ class Window(QtWidgets.QMainWindow):
     def activate_draw_node_mode(self):
         global application_mode
 
-        if application_mode != ApplicationMode.NODE_DRAW_MODE:
-            self._set_current_mode(ApplicationMode.NODE_DRAW_MODE, "NODE MODE")
+        if application_mode != ApplicationMode.NODE_MODE:
+            self.set_current_mode(ApplicationMode.NODE_MODE)
         else:
-            self._set_current_mode(ApplicationMode.NORMAL_MODE, "NORMAL MODE")
+            self.set_current_mode(ApplicationMode.NORMAL_MODE)
 
     def draw_node(self, radius):
         """
