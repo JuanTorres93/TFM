@@ -527,12 +527,11 @@ class Window(QtWidgets.QMainWindow):
         material_layout.addWidget(label_material)
 
         # -- Material comboBox
-        combo_items = ["S235", "S275"]
-        material_combo_box = QtWidgets.QComboBox()
-        material_combo_box.addItems(combo_items)
-        material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.material_combo_box = QtWidgets.QComboBox()
+        self.material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
+        self._populate_material_combobox()
 
-        material_layout.addWidget(material_combo_box)
+        material_layout.addWidget(self.material_combo_box)
 
         splitter.addWidget(mat_container)
 
@@ -543,11 +542,10 @@ class Window(QtWidgets.QMainWindow):
         profile_layout.addWidget(label_profile)
 
         # -- ComboBox profile
-        combo_items = ["IPE 300", "IPE 200"]
-        profile_combo_box = QtWidgets.QComboBox()
-        profile_combo_box.addItems(combo_items)
-        profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
-        profile_layout.addWidget(profile_combo_box)
+        self.profile_combo_box = QtWidgets.QComboBox()
+        self.profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
+        profile_layout.addWidget(self.profile_combo_box)
+        self._populate_profile_combobox()
 
         splitter.addWidget(profile_container)
 
@@ -604,6 +602,36 @@ class Window(QtWidgets.QMainWindow):
         self.x_coordinate.setPlainText(str(x))
         self.y_coordinate.setPlainText(str(y))
         # self.z_coordinate.setPlainText(str(z))
+
+    def _populate_material_combobox(self):
+        self.material_combo_box.clear()
+        db_connection = db.create_connection()
+        query = """
+        SELECT name FROM materials ORDER BY name;
+        """
+        query_results = db.execute_read_query(db_connection, query)
+        items = []
+        for tup in query_results:
+            material = tup[0]
+            if material not in items:
+                items.append(material)
+
+        self.material_combo_box.addItems(items)
+
+    def _populate_profile_combobox(self):
+        self.profile_combo_box.clear()
+        db_connection = db.create_connection()
+        query = """
+        SELECT name, name_number FROM profiles ORDER BY name, name_number;
+        """
+        query_results = db.execute_read_query(db_connection, query)
+        items = []
+        for tup in query_results:
+            profile = f"{tup[0]} {tup[1]}"
+            if profile not in items:
+                items.append(profile)
+
+        self.profile_combo_box.addItems(items)
 
     def _create_status_bar(self):
         """
