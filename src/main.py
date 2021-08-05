@@ -31,6 +31,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
     """
     Class that holds all structure node information, as well as its graphic behavior
     """
+
     def __init__(self, main_window, x_scene, y_scene, radius, color=QtGui.QColor(0, 0, 0)):
         """
 
@@ -40,7 +41,10 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         :param radius: radius of the graphical representation
         :param color: color in which the node is drawn
         """
-        super().__init__(x_scene, y_scene, radius, radius)
+        # 0, 0 are x and y coordinates in ITEM COORDINATES
+        super().__init__(0, 0, radius, radius)
+
+        self.setPos(x_scene, y_scene)
 
         self.main_window = main_window
         self.x_scene = x_scene
@@ -64,6 +68,40 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
         node_name = str(x_scene) + "_" + str(y_scene)
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
+
+        # BORRAR
+        print(self.boundingRect())
+        print(self.sceneBoundingRect())
+        self.scene
+
+    def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
+        if new_x_centered_in_meters is None:
+            new_x_centered_in_meters = self.node_logic.x()
+            new_x_centered = self.x_centered
+        else:
+            new_x_centered = int(new_x_centered_in_meters * meter_to_px)
+            self.x_centered = new_x_centered
+
+        if new_y_centered_in_meters is None:
+            new_y_centered_in_meters = self.node_logic.y()
+            new_y_centered = self.y_centered
+        else:
+            new_y_centered = int(new_y_centered_in_meters * meter_to_px)
+            self.y_centered = new_y_centered
+
+        new_x_scene, new_y_scene = self.main_window.scene_coordinates(new_x_centered, new_y_centered)
+
+        new_x_scene = int(new_x_scene)
+        new_y_scene = int(new_y_scene)
+
+        self.x_scene, self.y_scene = new_x_scene, new_y_scene
+        self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
+
+        new_pos = QtCore.QPoint(new_x_scene - self.radius / 2, new_y_scene - self.radius / 2)
+        self.setPos(new_pos)
+
+    def sceneBoundingRect(self) -> QtCore.QRectF:
+        return QtCore.QRectF(self.x_scene, self.y_scene, self.radius, self.radius)
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -101,8 +139,16 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         self.main_window = main_window
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
+        global application_mode
+        global active_structure_element
+
+        # Go back to normal mode
         if event.key() == QtCore.Qt.Key_Escape:
             self.main_window.set_current_mode(ApplicationMode.NORMAL_MODE)
+        # Delete active element
+        elif event.key() == QtCore.Qt.Key_Delete and application_mode == ApplicationMode.NORMAL_MODE:
+            if type(active_structure_element) is Node:
+                self.main_window.delete_node(active_structure_element)
 
     def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
         # NODE MODE functionality
@@ -156,6 +202,7 @@ class Window(QtWidgets.QMainWindow):
     """
     Application main window
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -247,6 +294,30 @@ class Window(QtWidgets.QMainWindow):
 
         return [x_converted, y_converted]
 
+    def scene_coordinates(self, x_centered, y_centered):
+        # TODO rewrite docstring
+        """
+        Origin point for coordinates systems in image processing is located at the top left corner, this function
+        provides a way to convert from center coordinates to scene coordinates
+        :param x_centered: desired scene x coordinate
+        :param y_centered: desired scene y coordinate
+        :return: List with x and y values of the point in the new coordinate system (scene)
+        """
+        scene_width = self.scene.sceneRect().width()
+        scene_height = self.scene.sceneRect().height()
+
+        if x_centered >= 0:
+            x_converted = x_centered + scene_width / 2
+        else:
+            x_converted = scene_width / 2 - abs(x_centered)
+
+        if y_centered >= 0:
+            y_converted = scene_height / 2 - y_centered
+        else:
+            y_converted = scene_height / 2 + abs(y_centered)
+
+        return [x_converted, y_converted]
+
     def _create_drawing_scene(self, width, height):
         """
         Creates the drawing scene
@@ -286,6 +357,14 @@ class Window(QtWidgets.QMainWindow):
 
         # Add node to scene
         self.scene.addItem(node)
+
+        global active_structure_element
+        active_structure_element = node
+
+    def delete_node(self, node):
+        self.scene.removeItem(node)
+        global active_structure_element
+        active_structure_element = None
 
     def _draw_axis_lines(self):
         """
@@ -355,6 +434,20 @@ class Window(QtWidgets.QMainWindow):
         test_borrar_menu.addAction("Borrar")
 
         menu_bar.addMenu(help_menu)
+
+    def _update_selected_node_position(self, text, axis):
+        try:
+            new_pos = float(text)
+        except ValueError:
+            return
+
+        global active_structure_element
+        if type(active_structure_element) is Node:
+            if axis == "x":
+                active_structure_element.update_position(new_pos, None)
+            elif axis == "y":
+                active_structure_element.update_position(None, new_pos)
+            # TODO implement Z if 3D structures
 
     def _create_toolbars_and_docks(self):
         """
@@ -428,10 +521,23 @@ class Window(QtWidgets.QMainWindow):
         # ---- Coordinates
         node_coords_layout, node_coords_container = create_layout_and_container()
 
-        def create_coordinate(label_text, node_coords_layout):
+        def create_coordinate(self, label_text, node_coords_layout):
             label = QtWidgets.QLabel(label_text)
             text_item = PlainTextBox()
             text_item.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+
+            associated_axis = None
+            if label_text.startswith("x"):
+                associated_axis = "x"
+            elif label_text.startswith("y"):
+                associated_axis = "y"
+            else:
+                raise ValueError(
+                    f"Error: label_text must begin with the letter of an axis. Current value is {label_text}")
+
+            text_item.textChanged.connect(lambda:
+                                          self._update_selected_node_position(text_item.toPlainText(),
+                                                                              associated_axis))
 
             node_coords_layout.addWidget(label, 1)
             node_coords_layout.addWidget(text_item, 4)
@@ -439,9 +545,9 @@ class Window(QtWidgets.QMainWindow):
             return text_item
 
         # -------- x coordinate
-        self.x_coordinate = create_coordinate("x", node_coords_layout)
+        self.x_coordinate = create_coordinate(self, "x", node_coords_layout)
         # -------- y coordinate
-        self.y_coordinate = create_coordinate("y", node_coords_layout)
+        self.y_coordinate = create_coordinate(self, "y", node_coords_layout)
         # -------- z coordinate
         # self.z_coordinate = create_coordinate("z", node_coords_layout)
 
@@ -507,6 +613,7 @@ class Window(QtWidgets.QMainWindow):
         """
         Creates actions for menus and toolbars
         """
+
         def _add_tip(item, tip):
             """
             Adds help tips
