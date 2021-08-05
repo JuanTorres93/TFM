@@ -14,6 +14,19 @@ px_to_meter = 1 / meter_to_px
 active_structure_element = None
 
 
+def unset_active_structure_element():
+    global active_structure_element
+    # If no item is found, then deselect the current active elemente, if any
+    if active_structure_element is not None:
+        active_structure_element.change_node_color()
+        active_structure_element = None
+
+
+def set_active_structure_element(item):
+    global active_structure_element
+    active_structure_element = item
+
+
 @enum.unique
 class ApplicationMode(enum.Enum):
     """
@@ -53,11 +66,15 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
         self.radius = radius
 
+        self.color = color
         # Normal color of the node
         self._normal_color = color
+        # Color of the node when selected
+        self._hover_color = QtGui.QColor(49, 204, 55)
         # Color of the node when hovering mouse over it
-        self._hover_color = QtGui.QColor(235, 204, 55)
-        self.setBrush(color)
+        self._selected_color = QtGui.QColor(235, 204, 55)
+
+        self.change_node_color("normal")
 
         # Needed for hover events to take place
         self.setAcceptHoverEvents(True)
@@ -97,8 +114,11 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.x_scene, self.y_scene = new_x_scene, new_y_scene
         self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
 
-        new_pos = QtCore.QPoint(new_x_scene - self.radius / 2, new_y_scene - self.radius / 2)
-        self.setPos(new_pos)
+        draw_pos_x = int(new_x_scene - self.radius / 2)
+        draw_pos_y = int(new_y_scene - self.radius / 2)
+
+        draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
+        self.setPos(draw_pos)
 
     def sceneBoundingRect(self) -> QtCore.QRectF:
         return QtCore.QRectF(self.x_scene, self.y_scene, self.radius, self.radius)
@@ -109,8 +129,22 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         :param event:
         :return:
         """
-        if application_mode == ApplicationMode.NORMAL_MODE:
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                (active_structure_element is not self or (
+                    active_structure_element is self and self.color is self._normal_color
+                )):
+            self.change_node_color("hover")
+
+    def change_node_color(self, color="normal"):
+        if color == "hover":
             self.setBrush(self._hover_color)
+            self.color = self._hover_color
+        elif color == "selected":
+            self.setBrush(self._selected_color)
+            self.color = self._selected_color
+        else:
+            self.setBrush(self._normal_color)
+            self.color = self._normal_color
 
     def hoverLeaveEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -118,8 +152,9 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         :param event:
         :return:
         """
-        if application_mode == ApplicationMode.NORMAL_MODE:
-            self.setBrush(self._normal_color)
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                active_structure_element is not self:
+            self.change_node_color(self._normal_color)
 
     # Mouse clicks need to be handled from GraphicsScene class
 
@@ -170,9 +205,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Process the found item, if any
             if item is not None:
-                global active_structure_element
+                unset_active_structure_element()
+
                 # Select current element as active
-                active_structure_element = item
+                set_active_structure_element(item)
+                item.change_node_color("selected")
 
                 # NODE item
                 if type(item) is Node:
@@ -182,9 +219,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                     self.main_window.update_coordinates(x, y, z)
 
             else:
-                # If no item is found, then deselect the current active elemente, if any
-                if active_structure_element is not None:
-                    active_structure_element = None
+                unset_active_structure_element()
 
 
 class PlainTextBox(QtWidgets.QPlainTextEdit):
@@ -525,6 +560,12 @@ class Window(QtWidgets.QMainWindow):
             label = QtWidgets.QLabel(label_text)
             text_item = PlainTextBox()
             text_item.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+            text_item.setTabChangesFocus(True)
+            text_item.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            text_item.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+            text_item.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                    QtWidgets.QSizePolicy.Maximum)
 
             associated_axis = None
             if label_text.startswith("x"):
@@ -555,11 +596,6 @@ class Window(QtWidgets.QMainWindow):
 
         splitter.addWidget(QtWidgets.QLabel("Coordinates:"))
         splitter.addWidget(node_coords_container)
-
-        # TODO borrar selection_properties
-        self.selection_properties = QtWidgets.QTextEdit()
-        self.selection_properties.setReadOnly(True)
-        splitter.addWidget(self.selection_properties)
 
         # self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, properties_dock)
