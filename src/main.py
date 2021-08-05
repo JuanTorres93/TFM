@@ -10,6 +10,9 @@ db.regenerate_initial_database()
 meter_to_px = 50
 px_to_meter = 1 / meter_to_px
 
+# Currently selected nod or bar
+active_structure_element = None
+
 
 @enum.unique
 class ApplicationMode(enum.Enum):
@@ -121,10 +124,32 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Process the found item, if any
             if item is not None:
+                global active_structure_element
+                # Select current element as active
+                active_structure_element = item
+
                 # NODE item
                 if type(item) is Node:
-                    self.main_window.selection_properties.append(f"coord (m) -> x: {item.node_logic.x()}, y: {item.node_logic.y()}")
-                    self.main_window.selection_properties.append("====================")
+                    x = item.node_logic.x()
+                    y = item.node_logic.y()
+                    z = item.node_logic.z()
+                    self.main_window.update_coordinates(x, y, z)
+
+            else:
+                # If no item is found, then deselect the current active elemente, if any
+                if active_structure_element is not None:
+                    active_structure_element = None
+
+
+class PlainTextBox(QtWidgets.QPlainTextEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(60, 10)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(60, 30)
 
 
 class Window(QtWidgets.QMainWindow):
@@ -145,7 +170,7 @@ class Window(QtWidgets.QMainWindow):
         self._create_menu_bar()
 
         # Structure toolbar
-        self._create_toolbars()
+        self._create_toolbars_and_docks()
 
         # Status bar
         self._create_status_bar()
@@ -174,6 +199,8 @@ class Window(QtWidgets.QMainWindow):
         self.setObjectName("MainWindow")
         self.setWindowTitle("TFM")
         self.setCentralWidget(self.central_widget)
+
+        self.central_widget.setFocus()
 
     def set_current_mode(self, mode):
         """
@@ -329,7 +356,7 @@ class Window(QtWidgets.QMainWindow):
 
         menu_bar.addMenu(help_menu)
 
-    def _create_toolbars(self):
+    def _create_toolbars_and_docks(self):
         """
         Creates the toolbars in the main window
         """
@@ -343,42 +370,98 @@ class Window(QtWidgets.QMainWindow):
 
         self.addToolBar(QtCore.Qt.LeftToolBarArea, structure_toolbar)
 
-        # ========== PROPERTIES TOOLBAR ==========
-        properties_toolbar = QtWidgets.QToolBar("Properties", self)
+        # ========== PROPERTIES DOCK ==========
+        def create_layout_and_container():
+            """
+            QSplitter class doesn't allow to add layouts directly, so a workaround is needed.
+            This function returns a layout to which widgets can be added and a single widget that
+            holds that layout.
+            :return: layout and container widget
+            """
+            layout = QtWidgets.QHBoxLayout()
+            container = QtWidgets.QWidget()
+            container.setLayout(layout)
 
-        # Label material
-        label_material = QtWidgets.QLabel("Material: ")
+            return layout, container
 
-        properties_toolbar.addWidget(label_material)
+        properties_dock = QtWidgets.QDockWidget("Properties", self)
 
-        # Material comboBox
+        splitter = QtWidgets.QSplitter()
+        splitter.setOrientation(QtCore.Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
+        properties_dock.setWidget(splitter)
+
+        # Material
+        material_layout, mat_container = create_layout_and_container()
+
+        # -- Label material
+        label_material = QtWidgets.QLabel("Material")
+        material_layout.addWidget(label_material)
+
+        # -- Material comboBox
         combo_items = ["S235", "S275"]
         material_combo_box = QtWidgets.QComboBox()
         material_combo_box.addItems(combo_items)
         material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
 
-        properties_toolbar.addWidget(material_combo_box)
+        material_layout.addWidget(material_combo_box)
 
-        # Label profile
-        label_profile = QtWidgets.QLabel("Profile: ")
+        splitter.addWidget(mat_container)
 
-        properties_toolbar.addWidget(label_profile)
+        # Profile
+        profile_layout, profile_container = create_layout_and_container()
+        # -- Label profile
+        label_profile = QtWidgets.QLabel("Profile")
+        profile_layout.addWidget(label_profile)
 
-        # ComboBox profile
+        # -- ComboBox profile
         combo_items = ["IPE 300", "IPE 200"]
         profile_combo_box = QtWidgets.QComboBox()
         profile_combo_box.addItems(combo_items)
         profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
+        profile_layout.addWidget(profile_combo_box)
 
-        properties_toolbar.addWidget(profile_combo_box)
+        splitter.addWidget(profile_container)
 
-        properties_toolbar.addSeparator()
-        # Selection properties
+        # Properties
+        # -- Node properties
+        # ---- Coordinates
+        node_coords_layout, node_coords_container = create_layout_and_container()
+
+        def create_coordinate(label_text, node_coords_layout):
+            label = QtWidgets.QLabel(label_text)
+            text_item = PlainTextBox()
+            text_item.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+
+            node_coords_layout.addWidget(label, 1)
+            node_coords_layout.addWidget(text_item, 4)
+
+            return text_item
+
+        # -------- x coordinate
+        self.x_coordinate = create_coordinate("x", node_coords_layout)
+        # -------- y coordinate
+        self.y_coordinate = create_coordinate("y", node_coords_layout)
+        # -------- z coordinate
+        # self.z_coordinate = create_coordinate("z", node_coords_layout)
+
+        self.update_coordinates(0, 0, 0)
+
+        splitter.addWidget(QtWidgets.QLabel("Coordinates:"))
+        splitter.addWidget(node_coords_container)
+
+        # TODO borrar selection_properties
         self.selection_properties = QtWidgets.QTextEdit()
         self.selection_properties.setReadOnly(True)
-        properties_toolbar.addWidget(self.selection_properties)
+        splitter.addWidget(self.selection_properties)
 
-        self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
+        # self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, properties_dock)
+
+    def update_coordinates(self, x, y, z):
+        self.x_coordinate.setPlainText(str(x))
+        self.y_coordinate.setPlainText(str(y))
+        # self.z_coordinate.setPlainText(str(z))
 
     def _create_status_bar(self):
         """
