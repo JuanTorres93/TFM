@@ -2267,7 +2267,7 @@ class TestMaterial(unittest.TestCase):
         self.assertEqual(mat.rig_mod, 81000000000)
         self.assertEqual(mat.poisson_coef, 0.3)
         self.assertEqual(mat.thermal_dil_coef, 0.000012)
-        self.assertEqual(mat.density, 7.85)
+        self.assertEqual(mat.density, 7850)
 
         self.assertRaises(TypeError, st.Material, 4)
         self.assertRaises(LookupError, st.Material, "foobar")
@@ -2280,7 +2280,6 @@ class TestProfile(unittest.TestCase):
         self.assertEqual(pro.name, "IPE")
         self.assertEqual(pro.name_number, 80)
         self.assertEqual(pro.area, 0.000764)
-        self.assertEqual(pro.weight, 6)
         self.assertEqual(pro.inertia_moment_x, 0.000000801)
         self.assertEqual(pro.res_mod_x, 0.000020)
         self.assertEqual(pro.inertia_moment_y, 0.0000000849)

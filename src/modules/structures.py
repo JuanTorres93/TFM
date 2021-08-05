@@ -5,6 +5,10 @@ import numpy as np
 import src.modules.databaseutils as db
 import src.modules.filesystemutils as fs
 
+# Create the database if it does not exist
+# TODO force= False it is in true for testing purposes
+db.regenerate_initial_database(force=True)
+
 # For structures with rigid nodes, the size of the submatrixes is 3
 submatrix_size = 3
 
@@ -1563,7 +1567,7 @@ class Profile:
 
         conn = db.create_connection()
 
-        query = """SELECT name, name_number, area, weight, inertia_moment_x, res_mod_x,
+        query = """SELECT name, name_number, area, inertia_moment_x, res_mod_x,
         inertia_moment_y, res_mod_y
         FROM profiles WHERE name = '""" + name + "' AND name_number = " + \
                 name_number + ";"
@@ -1572,7 +1576,7 @@ class Profile:
         result = db.execute_read_query(conn, query)
 
         if result:
-            self.name, self.name_number, self.area, self.weight, self.inertia_moment_x, self.res_mod_x, \
+            self.name, self.name_number, self.area, self.inertia_moment_x, self.res_mod_x, \
             self.inertia_moment_y, self.res_mod_y = result[0]
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +

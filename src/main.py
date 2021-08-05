@@ -5,8 +5,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from src.modules import databaseutils as db
 from src.modules import structures as st
 
-# Create the database if it does not exist
-db.regenerate_initial_database()
 meter_to_px = 50
 px_to_meter = 1 / meter_to_px
 
