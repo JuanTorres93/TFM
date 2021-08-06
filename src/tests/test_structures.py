@@ -219,7 +219,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(1, 2, 3))
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         self.assertEqual(bar.name, "B1")
         self.assertEqual(bar.origin, n_ori)
@@ -228,14 +228,14 @@ class TestBar(unittest.TestCase):
         self.assertRaises(TypeError, st.Bar, "name", n_ori, (0, 0, 0))
         self.assertRaises(TypeError, st.Bar, "name", (0, 0, 0), n_end)
         self.assertRaises(TypeError, st.Bar, 3, n_ori, n_end)
-        self.assertRaises(ValueError, st.Bar, "name", n_ori, n_ori)
+        self.assertRaises(ValueError, st.Bar, "name", n_ori, n_ori, "s275j", ("IPE", 300))
         self.assertRaises(TypeError, st.Bar, "name", n_ori, n_end, material=2)
 
     def test_set_name(self):
         n_ori = st.Node("N1")
         n_end = st.Node("N2")
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
         bar.set_name("New name")
 
         self.assertEqual("New name", bar.name)
@@ -246,7 +246,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2")
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
         self.assertEqual(bar.origin, n_ori)
 
         new_origin = st.Node("N3", position=(1, 2, 3))
@@ -260,7 +260,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2")
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
         self.assertEqual(bar.end, n_end)
 
         new_end = st.Node("N3", (1, 2, 3))
@@ -270,11 +270,33 @@ class TestBar(unittest.TestCase):
         self.assertRaises(TypeError, bar.set_end, 0)
         self.assertRaises(TypeError, bar.set_end, (0, 0, 0))
 
+    def test_set_material(self):
+        n1 = st.Node("N1")
+        n2 = st.Node("N2", position=(1, 2, 3))
+
+        bar = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        self.assertTrue(bar.get_material().equals(st.Material("s275j")))
+
+        bar.set_material("s280")
+        self.assertTrue(bar.get_material().equals(st.Material("s280")))
+        self.assertFalse(bar.get_material().equals(st.Material("s275j")))
+
+    def test_set_profile(self):
+        n1 = st.Node("N1")
+        n2 = st.Node("N2", position=(1, 2, 3))
+
+        bar = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        self.assertTrue(bar.get_profile().equals(st.Profile("IPE", 300)))
+
+        bar.set_profile("IPE", 80)
+        self.assertTrue(bar.get_profile().equals(st.Profile("IPE", 80)))
+        self.assertFalse(bar.get_profile().equals(st.Profile("IPE", 300)))
+
     def test_length(self):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(1, 2, 3))
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         self.assertAlmostEqual(bar.length(), 3.741657387)
 
@@ -282,7 +304,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(0, 4.2, 0))
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         calculated_matrix = bar.local_rigidity_matrix_2d_rigid_nodes()
 
@@ -301,7 +323,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(0, 4.2, 0))
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         calculated_matrix = bar.system_change_matrix_2d_rigid_nodes()
 
@@ -321,13 +343,13 @@ class TestBar(unittest.TestCase):
         n5 = st.Node("N5", position=(17.2, 3.5, 0))
         n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.PINNED)
 
-        b1 = st.Bar("B1", n1, n2)
-        b2 = st.Bar("B2", n2, n3)
-        b3 = st.Bar("B3", n3, n4)
-        b4 = st.Bar("B4", n4, n5)
-        b5 = st.Bar("B5", n4, n6)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
+        b3 = st.Bar("B3", n3, n4, "s275j", ("IPE", 300))
+        b4 = st.Bar("B4", n4, n5, "s275j", ("IPE", 300))
+        b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         np.testing.assert_equal(b1.angle_from_global_to_local(), np.pi / 2)
         np.testing.assert_almost_equal(b2.angle_from_global_to_local(), math.radians(8.778), 3)
@@ -340,7 +362,7 @@ class TestBar(unittest.TestCase):
         n_ori = st.Node("N1")
         n_end = st.Node("N2", position=(0, 4.2, 0))
 
-        bar = st.Bar("B1", n_ori, n_end)
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         calculated_matrix = bar.global_rigidity_matrix_2d_rigid_nodes()
 
@@ -359,7 +381,7 @@ class TestBar(unittest.TestCase):
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
 
-        b2 = st.Bar("B2", n2, n3)
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
 
         self.assertRaises(TypeError, b2.add_distributed_charge, 3)
 
@@ -377,7 +399,7 @@ class TestBar(unittest.TestCase):
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
 
-        b2 = st.Bar("B2", n2, n3)
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
 
         dc = st.DistributedCharge(dc_type=st.DistributedChargeType.SQUARE, max_value=10179.36, direction=(0, -1, 0))
         b2.add_distributed_charge(dc, "test1")
@@ -403,11 +425,11 @@ class TestBar(unittest.TestCase):
         n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
         n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
-        b1 = st.Bar("B1", n1, n2)
-        b2 = st.Bar("B2", n2, n3)
-        b3 = st.Bar("B3", n3, n4)
-        b4 = st.Bar("B4", n4, n5)
-        b5 = st.Bar("B5", n4, n6)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
+        b3 = st.Bar("B3", n3, n4, "s275j", ("IPE", 300))
+        b4 = st.Bar("B4", n4, n5, "s275j", ("IPE", 300))
+        b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
 
         dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
@@ -467,7 +489,7 @@ class TestBar(unittest.TestCase):
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
 
-        b2 = st.Bar("B2", n2, n3)
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
 
         self.assertEqual(len(b2.get_distributed_charges()), 0)
         self.assertEqual(len(b2.get_punctual_forces()), 0)
@@ -487,7 +509,7 @@ class TestBar(unittest.TestCase):
         n2 = st.Node("N2", position=(0, 4.2, 0))
         n3 = st.Node("N3", position=(6.8, 5.25, 0))
 
-        b2 = st.Bar("B2", n2, n3)
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
 
         self.assertRaises(TypeError, b2.add_punctual_force, 3)
 
@@ -503,7 +525,7 @@ class TestBar(unittest.TestCase):
         n4 = st.Node("N4", position=(13.6, 4.2, 0))
         n6 = st.Node("N6", position=(13.6, 0, 0))
 
-        b5 = st.Bar("B5", n4, n6)
+        b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
 
         pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
         b5.add_punctual_force(pf, "pf")
@@ -525,7 +547,7 @@ class TestBar(unittest.TestCase):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(0, 4.2, 0))
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
         self.assertFalse(b1.has_distributed_charges())
 
         dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, -10179.36, (0, -1, 0))
@@ -536,7 +558,7 @@ class TestBar(unittest.TestCase):
         n4 = st.Node("N4", position=(13.6, 4.2, 0))
         n6 = st.Node("N6", position=(13.6, 0, 0))
 
-        b5 = st.Bar("B5", n4, n6)
+        b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
         self.assertFalse(b5.has_punctual_forces())
 
         pf = st.PunctualForceInBar(-25000, 0.5, (0, 1, 0))
@@ -554,11 +576,11 @@ def get_test_structure(num_test_st):
         n5 = st.Node("N5", position=(17.2, 3.644117647, 0))
         n6 = st.Node("N6", position=(13.6, 0, 0), support=st.Support.FIXED)
 
-        b1 = st.Bar("B1", n1, n2)
-        b2 = st.Bar("B2", n2, n3)
-        b3 = st.Bar("B3", n3, n4)
-        b4 = st.Bar("B4", n4, n5)
-        b5 = st.Bar("B5", n4, n6)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
+        b3 = st.Bar("B3", n3, n4, "s275j", ("IPE", 300))
+        b4 = st.Bar("B4", n4, n5, "s275j", ("IPE", 300))
+        b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
 
         dc = st.DistributedCharge(st.DistributedChargeType.SQUARE, 10179.36, (0, -1, 0))
         b2.add_distributed_charge(dc)
@@ -589,13 +611,13 @@ def get_test_structure(num_test_st):
         n7 = st.Node("N7", position=(5, 5, 0))
         n8 = st.Node("N8", position=(5, 2, 0), support=st.Support.FIXED)
 
-        b1 = st.Bar("B1", n1, n2)
-        b2 = st.Bar("B2", n2, n3)
-        b3 = st.Bar("B3", n3, n4)
-        b4 = st.Bar("B4", n4, n5)
-        b5 = st.Bar("B5", n5, n6)
-        b6 = st.Bar("B6", n6, n7)
-        b7 = st.Bar("B7", n7, n8)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
+        b3 = st.Bar("B3", n3, n4, "s275j", ("IPE", 300))
+        b4 = st.Bar("B4", n4, n5, "s275j", ("IPE", 300))
+        b5 = st.Bar("B5", n5, n6, "s275j", ("IPE", 300))
+        b6 = st.Bar("B6", n6, n7, "s275j", ("IPE", 300))
+        b7 = st.Bar("B7", n7, n8, "s275j", ("IPE", 300))
 
         dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100000, (0, -1, 0))
         b2.add_distributed_charge(dc2)
@@ -626,7 +648,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.PINNED)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 100000, (0, -1, 0))
         dc2 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 200000, (0, -1, 0))
@@ -645,7 +667,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(3, 0, 0), support=st.Support.PINNED)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         pf1 = st.PunctualForceInBar(100000, 1 / b1.length(), (0, -1, 0))
         pf2 = st.PunctualForceInBar(200000, 2 / b1.length(), (0, -1, 0))
@@ -664,7 +686,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(10, 0, 0), support=st.Support.FIXED)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         pf1 = st.PunctualForceInBar(200000, 0.7, (0, 1, 0))
         dc1 = st.DistributedCharge(st.DistributedChargeType.SQUARE, 150000, (0, -1, 0))
@@ -683,7 +705,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.FIXED)
         n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.PINNED)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         angle = math.radians(30)
         pf1 = st.PunctualForceInBar(100000, 0.5, (- math.cos(angle), - math.sin(angle), 0))
@@ -701,7 +723,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
         n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.ROLLER_X)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         pf1 = st.PunctualForceInBar(100000, 0.5, (0, -1, 0))
 
@@ -718,7 +740,7 @@ def get_test_structure(num_test_st):
         n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.FIXED)
         n2 = st.Node("N2", position=(2, 0, 0), support=st.Support.ROLLER_Y)
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
 
         pf1 = st.PunctualForceInBar(100000, 0.5, (0, -1, 0))
 
@@ -739,8 +761,8 @@ class TestStructure(unittest.TestCase):
         n2 = st.Node("N2", position=(0, 2, 3))
         n3 = st.Node("N3", position=(1, 2, 3))
 
-        bar_1 = st.Bar("B1", n1, n2)
-        bar_2 = st.Bar("B2", n2, n3)
+        bar_1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        bar_2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
 
         bar_list = [bar_2, bar_1]
 
@@ -758,7 +780,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(structure.bars.get('b1'), bar_1)
         self.assertEqual(structure.bars.get('b2'), bar_2)
 
-        bar_3 = st.Bar("B1", n2, n3)
+        bar_3 = st.Bar("B1", n2, n3, "s275j", ("IPE", 300))
         bar_dict = {
             'b1': bar_1,
             'b2': bar_3
@@ -2460,7 +2482,7 @@ class TestPunctualForce(unittest.TestCase):
         n1 = st.Node("N1", (0, 0, 0))
         n2 = st.Node("N2", (2, 0, 0))
 
-        b1 = st.Bar("B1", n1, n2)
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
         self.assertEqual(b1.length(), 2)
 
         # Test 1

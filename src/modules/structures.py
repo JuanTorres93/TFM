@@ -332,7 +332,7 @@ class Bar:
     Class that represents a bar in a structure.
     """
 
-    def __init__(self, name: str, origin: Node, end: Node, material="s275j", profile=("IPE", 300)):
+    def __init__(self, name: str, origin: Node, end: Node, material, profile):
         """
         Constructor for Bar class
         :param name: Name of the bar
@@ -425,8 +425,13 @@ class Bar:
         :param mat_name: str corresponds with a unique name in the materials table of the database
         :return:
         """
-        # TODO Add more materials to database and write a test for this function
         self.material = Material(mat_name)
+
+    def get_material(self):
+        """
+        :return: current material of the bar
+        """
+        return self.material
 
     def set_profile(self, profile_name: str, profile_number: int):
         """
@@ -434,8 +439,13 @@ class Bar:
         :param profile_number: str corresponds with a name_number in the profile table of the database
         :return:
         """
-        # TODO Add more profiles to database and write a test for this function
         self.profile = Profile(profile_name, profile_number)
+
+    def get_profile(self):
+        """
+        :return: current profile of the bar
+        """
+        return self.profile
 
     def local_rigidity_matrix_2d_rigid_nodes(self, use_inertia_x=True):
         """
@@ -890,7 +900,6 @@ class Bar:
         In order to be able to get the efforts it is first needed to calculate them using calculate_efforts
         :return: efforts of the bar as a dictionary {N, Q, M}
         """
-        # TODO escribir test
         return self.efforts
 
     def axial_force_law(self, origin_end_factor):
@@ -1037,7 +1046,6 @@ class Structure:
 
         :return: bars of the structure
         """
-        # TODO escribir test
         return self.bars
 
     def get_number_of_nodes(self):
@@ -1551,6 +1559,18 @@ class Material:
             raise LookupError(
                 "Error in the query: ''" + query + "''. Or maybe the material " + name + " is not defined in the database.")
 
+    def equals(self, other_material):
+        if self.generic_name == other_material.generic_name and \
+                self.name == other_material.name and \
+                self.young_mod == other_material.young_mod and \
+                self.rig_mod == other_material.rig_mod and \
+                self.poisson_coef == other_material.poisson_coef and \
+                self.thermal_dil_coef == other_material.thermal_dil_coef and \
+                self.density == other_material.density:
+            return True
+        else:
+            return False
+
 
 class Profile:
     def __init__(self, name: str, name_number):
@@ -1581,6 +1601,18 @@ class Profile:
         else:
             raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
+
+    def equals(self, other_profile):
+        if self.name == other_profile.name and \
+                self.name_number == other_profile.name_number and \
+                self.area == other_profile.area and \
+                self.inertia_moment_x == other_profile.inertia_moment_x and \
+                self.res_mod_x == other_profile.res_mod_x and \
+                self.inertia_moment_y == other_profile.inertia_moment_y and \
+                self.res_mod_y == other_profile.res_mod_y:
+            return True
+        else:
+            return False
 
 
 class DistributedCharge:
@@ -1675,6 +1707,7 @@ class PunctualForceInBar:
     """
     Class that represents a punctual force applied in any point of a bar
     """
+
     def __init__(self, value, origin_end_factor, direction):
         """
 

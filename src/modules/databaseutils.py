@@ -86,7 +86,6 @@ def regenerate_initial_database(force=False):
         );
         """,
             # More fields in http://prontuarios.info/perfiles/IPE
-            # TODO pair name, number_name must be unique
         #     """
         # CREATE TABLE IF NOT EXISTS profiles (
         # id INTEGER PRIMARY KEY AUTOINCREMENT,

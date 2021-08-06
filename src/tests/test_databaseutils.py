@@ -11,7 +11,6 @@ from src.modules import databaseutils as db
 
 class TestQuerys(unittest.TestCase):
     def test_add_material_to_db(self):
-        # TODO add tuple size assert
         self.assertRaises(ValueError, db.add_material_to_db, ("foo", "bar", 9))
         self.assertRaises(TypeError, db.add_material_to_db, (9, "foo", 9, 8, 8, 8, 8))
         self.assertRaises(TypeError, db.add_material_to_db, ("foo", 2, 9, 8, 8, 8, 8))
