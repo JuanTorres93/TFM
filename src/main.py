@@ -5,22 +5,38 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from src.modules import databaseutils as db
 from src.modules import structures as st
 
+# Conversion factors
 meter_to_px = 50
 px_to_meter = 1 / meter_to_px
 
-# Currently selected nod or bar
+# Currently selected node or bar
 active_structure_element = None
 
 
 def unset_active_structure_element():
+    """
+    Sets the active structure element to None
+    """
     global active_structure_element
-    # If no item is found, then deselect the current active elemente, if any
+
+    # If some element is currenty active
     if active_structure_element is not None:
-        active_structure_element.change_node_color()
+        # If it is a node, change its color to normal
+        if type(active_structure_element) is Node:
+            active_structure_element.change_node_color()
+
+        # Set active_structure_element to None
         active_structure_element = None
 
 
 def set_active_structure_element(item):
+    """
+    Sets the active structure element to the specified one
+    :param item: item that is desired to be the new active structure element
+    """
+    if type(item) not in [Node, Bar]:
+        raise TypeError("Error: item type must be Node or Bar")
+
     global active_structure_element
     active_structure_element = item
 
@@ -36,6 +52,11 @@ class ApplicationMode(enum.Enum):
 
 # Default mode for application is normal mode
 application_mode = ApplicationMode.NORMAL_MODE
+
+
+class Bar:
+    # TODO Write class inherited from QGraphicsLine, or something like that
+    pass
 
 
 class Node(QtWidgets.QGraphicsEllipseItem):
@@ -58,13 +79,15 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.setPos(x_scene, y_scene)
 
         self.main_window = main_window
-        self.x_scene = x_scene
-        self.y_scene = y_scene
+        # x and y coordinates in scece reference system
+        self.x_scene, self.y_scene = x_scene, y_scene
         # x and y coordinates in centered reference system
         self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
+        # Radius of the node
         self.radius = radius
 
-        self.color = color
+        # Currently used color
+        self.color = None
         # Normal color of the node
         self._normal_color = color
         # Color of the node when selected
@@ -72,54 +95,72 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # Color of the node when hovering mouse over it
         self._selected_color = QtGui.QColor(235, 204, 55)
 
+        # Change the color to the normal one
         self.change_node_color("normal")
 
         # Needed for hover events to take place
         self.setAcceptHoverEvents(True)
 
         # Node logic
+        # Position based on user click input
         x_meter = self.x_centered * px_to_meter
         y_meter = self.y_centered * px_to_meter
 
         node_name = str(x_scene) + "_" + str(y_scene)
+        # Structure node object
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
 
-        # BORRAR
-        print(self.boundingRect())
-        print(self.sceneBoundingRect())
-        self.scene
-
     def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
+        """
+        This method is called from the coordinate textBoxes. Changes the position of the node the the specified one.
+        If one of the parameters is omitted or set to None, then the current position is applied.
+        :param new_x_centered_in_meters: New x position, in centered coordinates and in meters
+        :param new_y_centered_in_meters: New y position, in centered coordinates and in meters
+        :return:
+        """
+        # If no x coordinate is specified, then use the current value
         if new_x_centered_in_meters is None:
             new_x_centered_in_meters = self.node_logic.x()
             new_x_centered = self.x_centered
+        # Otherwise, get the pixel position in centered coordinates
         else:
             new_x_centered = int(new_x_centered_in_meters * meter_to_px)
             self.x_centered = new_x_centered
 
+        # If no y coordinate is specified, then use the current value
         if new_y_centered_in_meters is None:
             new_y_centered_in_meters = self.node_logic.y()
             new_y_centered = self.y_centered
+        # Otherwise, get the pixel position in centered coordinates
         else:
             new_y_centered = int(new_y_centered_in_meters * meter_to_px)
             self.y_centered = new_y_centered
 
+        # Convert centered coordinates to scene ones in order to be able to draw them correctly
         new_x_scene, new_y_scene = self.main_window.scene_coordinates(new_x_centered, new_y_centered)
 
+        # Pixel coordinates must be integer
         new_x_scene = int(new_x_scene)
         new_y_scene = int(new_y_scene)
 
+        # Scene coordinates
         self.x_scene, self.y_scene = new_x_scene, new_y_scene
+        # Update meter coordinates in node logic
         self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
 
+        # Modify scene coordinates to draw the node at its center
         draw_pos_x = int(new_x_scene - self.radius / 2)
         draw_pos_y = int(new_y_scene - self.radius / 2)
 
-        draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
-        self.setPos(draw_pos)
+        try:
+            # Pack into a point the draw coordinates
+            draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
+        except OverflowError:
+            # If the coordinates are to big, then cancel the operation
+            return
 
-    def sceneBoundingRect(self) -> QtCore.QRectF:
-        return QtCore.QRectF(self.x_scene, self.y_scene, self.radius, self.radius)
+        # Change node position
+        self.setPos(draw_pos)
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -134,15 +175,21 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             self.change_node_color("hover")
 
     def change_node_color(self, color="normal"):
+        """
+        Changes the color of the node in a standarized way
+        :param color: string representing the color to set
+        """
         if color == "hover":
-            self.setBrush(self._hover_color)
-            self.color = self._hover_color
+            new_color = self._hover_color
         elif color == "selected":
-            self.setBrush(self._selected_color)
-            self.color = self._selected_color
+            new_color = self._selected_color
         else:
-            self.setBrush(self._normal_color)
-            self.color = self._normal_color
+            new_color = self._normal_color
+
+        # Actually change the node color
+        self.setBrush(new_color)
+        # Store logically the currently used color
+        self.color = new_color
 
     def hoverLeaveEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -172,6 +219,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         self.main_window = main_window
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
+        """
+        Function that is triggered every time a key is released
+        :param event:
+        :return:
+        """
         global application_mode
         global active_structure_element
 
@@ -184,6 +236,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                 self.main_window.delete_node(active_structure_element)
 
     def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
+        """
+        Function that is triggered every time the left mouse button is released
+        :param event:
+        :return:
+        """
         # NODE MODE functionality
         if application_mode == ApplicationMode.NODE_MODE:
             node_radius = 10
@@ -192,7 +249,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         elif application_mode == ApplicationMode.NORMAL_MODE:
             # Get position where the release has happened
             position = event.scenePos()
-            # Transform matrix is needed for itemAt methos.
+            # Transform matrix is needed for itemAt method.
             # It is used the identity matrix in order not to change anything
             transform = QtGui.QTransform(1, 0, 0,
                                          0, 1, 0,
@@ -207,10 +264,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
                 # Select current element as active
                 set_active_structure_element(item)
-                item.change_node_color("selected")
 
                 # NODE item
                 if type(item) is Node:
+                    item.change_node_color("selected")
                     x = item.node_logic.x()
                     y = item.node_logic.y()
                     z = item.node_logic.z()
@@ -221,6 +278,9 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
 
 class PlainTextBox(QtWidgets.QPlainTextEdit):
+    """
+    Extends QPlainTextEdit in order to be able to specify a sizeHint lesser than the default one
+    """
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -291,9 +351,9 @@ class Window(QtWidgets.QMainWindow):
         if type(mode) is not ApplicationMode:
             raise TypeError("Error. mode must be of type ApplicationMode")
 
-        # Change the mode internally
         global application_mode
         if application_mode != mode:
+            # Change the mode and log it to console
             application_mode = mode
             print("Changed mode to " + str(mode))
 
@@ -328,7 +388,6 @@ class Window(QtWidgets.QMainWindow):
         return [x_converted, y_converted]
 
     def scene_coordinates(self, x_centered, y_centered):
-        # TODO rewrite docstring
         """
         Origin point for coordinates systems in image processing is located at the top left corner, this function
         provides a way to convert from center coordinates to scene coordinates
@@ -366,6 +425,11 @@ class Window(QtWidgets.QMainWindow):
         self.scene.addRect(1000, 500, 100, 100)
 
     def activate_draw_node_mode(self):
+        """
+        Activates the application mode in which the nodes can be drawn with mouse clicks. The mode can be reverted back
+        to normal if this function is called again
+        :return:
+        """
         global application_mode
 
         if application_mode != ApplicationMode.NODE_MODE:
@@ -391,13 +455,17 @@ class Window(QtWidgets.QMainWindow):
         # Add node to scene
         self.scene.addItem(node)
 
-        global active_structure_element
-        active_structure_element = node
+        set_active_structure_element(node)
 
     def delete_node(self, node):
+        """
+        Removes the specified node from the scene
+        :param node: Node to be deleted
+        """
+        # Delete node
         self.scene.removeItem(node)
-        global active_structure_element
-        active_structure_element = None
+        # Unset active structure element in order not to have null references
+        unset_active_structure_element()
 
     def _draw_axis_lines(self):
         """
@@ -469,9 +537,16 @@ class Window(QtWidgets.QMainWindow):
         menu_bar.addMenu(help_menu)
 
     def _update_selected_node_position(self, text, axis):
+        """
+        This function is connected to the textboxes that represent the coordinates of the nodes
+        :param text: current text of the textbox
+        :param axis: axis in which the coordinate is going to change
+        """
         try:
+            # Parse the text to float
             new_pos = float(text)
         except ValueError:
+            # If it cannot be parsed, then do not continue
             return
 
         global active_structure_element
@@ -484,7 +559,7 @@ class Window(QtWidgets.QMainWindow):
 
     def _create_toolbars_and_docks(self):
         """
-        Creates the toolbars in the main window
+        Creates the toolbars and docks in the main window
         """
         # ========== STRUCTURE TOOLBAR ==========
         structure_toolbar = QtWidgets.QToolBar("Structure", self)
@@ -553,16 +628,30 @@ class Window(QtWidgets.QMainWindow):
         node_coords_layout, node_coords_container = create_layout_and_container()
 
         def create_coordinate(self, label_text, node_coords_layout):
+            """
+            Creates label and textbox for coordinates
+            :param self: main_window
+            :param label_text: text to display in the label
+            :param node_coords_layout: layout to add the components to
+            :return: PlainTextBox
+            """
+            # Label to display the coordinate attached to the textbox
             label = QtWidgets.QLabel(label_text)
+            # Textbox to hold the coordinate value
             text_item = PlainTextBox()
+            # No wordwrap
             text_item.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+            # No tabs inside the textbox
             text_item.setTabChangesFocus(True)
+            # Disable scrollbar
             text_item.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
             text_item.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+            # Can be resized in width, but not in height
             text_item.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                     QtWidgets.QSizePolicy.Maximum)
 
+            # associated axis to update the node coordinates qhen text_item text changes
             associated_axis = None
             if label_text.startswith("x"):
                 associated_axis = "x"
@@ -572,10 +661,12 @@ class Window(QtWidgets.QMainWindow):
                 raise ValueError(
                     f"Error: label_text must begin with the letter of an axis. Current value is {label_text}")
 
+            # Update node position when text chages
             text_item.textChanged.connect(lambda:
                                           self._update_selected_node_position(text_item.toPlainText(),
                                                                               associated_axis))
 
+            # Resize ratio
             node_coords_layout.addWidget(label, 1)
             node_coords_layout.addWidget(text_item, 4)
 
@@ -588,47 +679,82 @@ class Window(QtWidgets.QMainWindow):
         # -------- z coordinate
         # self.z_coordinate = create_coordinate("z", node_coords_layout)
 
+        # Initialize textboxes
         self.update_coordinates(0, 0, 0)
 
         splitter.addWidget(QtWidgets.QLabel("Coordinates:"))
         splitter.addWidget(node_coords_container)
 
-        # self.addToolBar(QtCore.Qt.RightToolBarArea, properties_toolbar)
+        # Widget to act as a separator. It allows the widget in the bars to be compact
+        separator = QtWidgets.QWidget()
+        separator.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                QtWidgets.QSizePolicy.Minimum)
+
+        splitter.addWidget(separator)
+
+        # Add the dock to the main window
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, properties_dock)
 
     def update_coordinates(self, x, y, z):
+        """
+        Sets the corresponding textboxes to the specified values
+        :param x: x coordinate
+        :param y: y coordinate
+        :param z: z coordinate
+        :return:
+        """
         self.x_coordinate.setPlainText(str(x))
         self.y_coordinate.setPlainText(str(y))
         # self.z_coordinate.setPlainText(str(z))
 
     def _populate_material_combobox(self):
+        """
+        Provides the items to populate the material combobox with the information in the database
+        """
+        # Clear items in the combobox
         self.material_combo_box.clear()
+        # Establish connection to the database
         db_connection = db.create_connection()
+        # Select information from database
         query = """
         SELECT name FROM materials ORDER BY name;
         """
+        # Execute query
         query_results = db.execute_read_query(db_connection, query)
+        # Add elements to a list that will hold the user options
         items = []
         for tup in query_results:
+            # query_results is a list of tuples, retrieve the wanted information
             material = tup[0]
             if material not in items:
                 items.append(material)
 
+        # Add items to the combobox
         self.material_combo_box.addItems(items)
 
     def _populate_profile_combobox(self):
+        """
+        Provides the items to populate the profile combobox with the information in the database
+        """
+        # Clear items in the combobox
         self.profile_combo_box.clear()
+        # Establish connection to the database
         db_connection = db.create_connection()
+        # Select information from database
         query = """
         SELECT name, name_number FROM profiles ORDER BY name, name_number;
         """
+        # Execute query
         query_results = db.execute_read_query(db_connection, query)
+        # Add elements to a list that will hold the user options
         items = []
         for tup in query_results:
+            # query_results is a list of tuples, retrieve the wanted information
             profile = f"{tup[0]} {tup[1]}"
             if profile not in items:
                 items.append(profile)
 
+        # Add items to the combobox
         self.profile_combo_box.addItems(items)
 
     def _create_status_bar(self):
