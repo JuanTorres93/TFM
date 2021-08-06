@@ -87,16 +87,28 @@ def regenerate_initial_database(force=False):
         """,
             # More fields in http://prontuarios.info/perfiles/IPE
             # TODO pair name, number_name must be unique
+        #     """
+        # CREATE TABLE IF NOT EXISTS profiles (
+        # id INTEGER PRIMARY KEY AUTOINCREMENT,
+        # name TEXT NOT NULL, -- IPE, HEB...
+        # name_number INTEGER NOT NULL, -- e.g. 300 in IPE 300
+        # area REAL NOT NULL,
+        # inertia_moment_x REAL NOT NULL,
+        # res_mod_x REAL NOT NULL,
+        # inertia_moment_y REAL NOT NULL,
+        # res_mod_y REAL NOT NULL
+        # );
+        # """
             """
         CREATE TABLE IF NOT EXISTS profiles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL, -- IPE, HEB...
         name_number INTEGER NOT NULL, -- e.g. 300 in IPE 300
         area REAL NOT NULL, 
         inertia_moment_x REAL NOT NULL,
         res_mod_x REAL NOT NULL,
         inertia_moment_y REAL NOT NULL,
-        res_mod_y REAL NOT NULL
+        res_mod_y REAL NOT NULL,
+        PRIMARY KEY (name, name_number)
         );
         """
         ]
