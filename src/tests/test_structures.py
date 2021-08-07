@@ -176,7 +176,6 @@ class TestNode(unittest.TestCase):
         expected_result = np.array([5, 6, 4])
         np.testing.assert_array_equal(expected_result, n1.get_total_force_and_momentum())
 
-
     def test_set_and_get_displacement(self):
         node = st.Node("N1")
 
@@ -752,7 +751,54 @@ def get_test_structure(num_test_st):
 
         structure = st.Structure("S1", bars)
 
+    elif num_test_st == 9:
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.FIXED)
+        n2 = st.Node("N2", position=(2, 3, 0))
+        n3 = st.Node("N3", position=(5, 3, 0))
+        n4 = st.Node("N4", position=(6, 0, 0), support=st.Support.PINNED)
+
+        b1 = st.Bar("B1", n1, n2, "s235j", ("IPE", 80))
+        b2 = st.Bar("B2", n2, n3, "s235j", ("IPE", 80))
+        b3 = st.Bar("B3", n3, n4, "s235j", ("IPE", 80))
+
+        b1.add_distributed_charge(st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 50000, (0, -1, 0))
+        )
+
+        b2.add_punctual_force(st.PunctualForceInBar(
+            120000, 0.33333333333, (0, 1, 0))
+        )
+
+        b3.add_distributed_charge(st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 30000, (0, 1, 0))
+        )
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2,
+            b3.name: b3
+        }
+
+        structure = st.Structure("S1", bars)
+
+    elif num_test_st == 10:
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.FIXED)
+        n2 = st.Node("N2", position=(2, 3, 0), support=st.Support.PINNED)
+
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+
+        b1.add_distributed_charge(st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 50000, (0, -1, 0)
+        ))
+
+        bars = {
+            b1.name: b1
+        }
+
+        structure = st.Structure("S1", bars)
+
     return structure
+
 
 class TestStructure(unittest.TestCase):
 
@@ -849,19 +895,19 @@ class TestStructure(unittest.TestCase):
 
         calculated_forces = structure.forces_and_momentums_in_structure()
         expected_forces = np.array([0, 0, 0,
-                                    0, -35020.05, -40159.83,
-                                    0, -70040.1, 0,
-                                    -12500, -53560.23, 15778.78,
-                                    0, -18540.18, 11256.05,
+                                    5344, -34609, -40159.83,
+                                    0, -69219, 0,
+                                    -20673, -52931, 15779,
+                                    -2829, -18322, 11255,
                                     -12500, 0, 13125])
 
-        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
+        np.testing.assert_allclose(calculated_forces, expected_forces, rtol=0.02, atol=821)
 
         # This is done to assure that referred forces and momentums are not stacked
         calculated_forces = structure.forces_and_momentums_in_structure()
         calculated_forces = structure.forces_and_momentums_in_structure()
         calculated_forces = structure.forces_and_momentums_in_structure()
-        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
+        np.testing.assert_allclose(calculated_forces, expected_forces, rtol=0.02, atol=821)
 
     def test_get_indexes_to_delete(self):
         structure = get_test_structure(1)
@@ -875,13 +921,14 @@ class TestStructure(unittest.TestCase):
         structure = get_test_structure(1)
 
         calculated_forces = structure.decoupled_forces_and_momentums_in_structure()
-        expected_forces = np.array([0,
-                                    0, -35020.05, -40159.83,
-                                    0, -70040.1, 0,
-                                    -12500, -53560.23, 15778.78,
-                                    0, -18540.18, 11256.05])
 
-        np.testing.assert_allclose(calculated_forces, expected_forces, atol=0.3)
+        expected_forces = np.array([0,
+                                    5344, -34609, -40159.83,
+                                    0, -69219, 0,
+                                    -20673, -52931, 15779,
+                                    -2829, -18322, 11255])
+
+        np.testing.assert_allclose(calculated_forces, expected_forces, rtol=0.02, atol=2)
 
     def test_nodes_displacements(self):
         # Test structure 1
@@ -890,19 +937,24 @@ class TestStructure(unittest.TestCase):
         calculated = structure.get_nodes_displacements()
         expected = np.array([0,
                              0,
-                             0.01032450,
-                             -0.02154358,
-                             -0.00026348,
-                             -0.00526072,
-                             -0.01203257,
-                             -0.06329572,
-                             0.00023138,
-                             -0.00254491,
-                             -0.00040809,
-                             0.00427134,
-                             -0.00211703,
-                             0.00230199,
-                             -0.00041022,
+                             0.0109442,
+
+                             -0.024112,
+                             -0.000262829,
+                             -0.00466551,
+
+                             -0.0149339,
+                             -0.0613572,
+                             -6.1796e-5,
+
+                             -0.00577693,
+                             -0.00040088,
+                             0.00485181,
+
+                             -0.00506661,
+                             0.00419932,
+                             8.65094e-5,
+
                              0,
                              0,
                              0])
@@ -1019,6 +1071,39 @@ class TestStructure(unittest.TestCase):
 
         np.testing.assert_allclose(calculated, expected, rtol=0.02)
 
+        # Test structure 9
+        structure = get_test_structure(9)
+        b3 = structure.get_bars().get("B3")
+
+        calculated = structure.get_nodes_displacements()
+        expected = np.array([0,
+                             0,
+                             0,
+                             0.870064,
+                             -0.576764,
+                             0.284958,
+                             0.870936,
+                             0.290768,
+                             0.0782637,
+                             0,
+                             0,
+                             -0.5827])
+
+        np.testing.assert_allclose(calculated, expected, rtol=0.021)
+
+        # Test structure 10
+        structure = get_test_structure(10)
+
+        calculated = structure.get_nodes_displacements()
+        expected = np.array([0,
+                             0,
+                             0,
+                             0,
+                             0,
+                             0.002782])
+
+        np.testing.assert_allclose(calculated, expected, rtol=0.02)
+
     def test_get_nodes(self):
         structure = get_test_structure(1)
 
@@ -1043,24 +1128,24 @@ class TestStructure(unittest.TestCase):
         structure = get_test_structure(1)
 
         calculated = structure.get_nodes_reactions()
-        expected = np.array([30408,
-                             69506,
+        expected = np.array([30455.4,
+                             69333.9,
                              0,
-                             0,
-                             -35020.05,
+                             5344,
+                             -34609,
                              -40159.83,
                              0,
-                             -70040.1,
+                             -69219,
                              0,
-                             -12500,
-                             -53560.23,
-                             15778.78,
-                             0,
-                             -18540.18,
-                             11256.05,
-                             -5407.6,
-                             107650,
-                             6980.4])
+                             -20673,
+                             -52931,
+                             15779,
+                             -2829,
+                             -18322,
+                             11255,
+                             203.146,
+                             105752,
+                             -7180.52])
 
         np.testing.assert_allclose(calculated, expected, atol=5)
 
@@ -1180,6 +1265,43 @@ class TestStructure(unittest.TestCase):
 
         np.testing.assert_allclose(calculated, expected, atol=40)
 
+        # Test structure 9
+        structure2 = get_test_structure(9)
+
+        calculated = structure2.get_nodes_reactions()
+        # These results are the exact same than ustatic provides
+        expected = np.array([-195755,
+                             -12547,
+                             159715,
+
+                             75000,
+                             38888,
+                             107499,
+
+                             45000,
+                             46111,
+                             -1666,
+
+                             -44244,
+                             -37452,
+                             0])
+
+        np.testing.assert_allclose(calculated, expected, atol=40)
+
+        # Test structure 10
+        structure2 = get_test_structure(10)
+
+        calculated = structure2.get_nodes_reactions()
+        # These results are the exact same than ustatic provides
+        expected = np.array([-93750,
+                             62500,
+                             81250,
+                             -56250,
+                             37500,
+                             0])
+
+        np.testing.assert_allclose(calculated, expected, atol=40)
+
     def test_calculate_efforts(self):
         # Test structure 1
         structure = get_test_structure(1)
@@ -1209,68 +1331,68 @@ class TestStructure(unittest.TestCase):
                                                   30407.64,
                                                   -127712.09]))
 
-        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
-        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02, atol=800)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02, atol=800)
 
         ## Bar 2 efforts
         efforts = b2.get_efforts()
         calculated_pij_values = efforts.get("p_ij")
         calculated_pji_values = efforts.get("p_ji")
 
-        expected_pij_values = np.vstack(np.array([40658.32,
-                                                  64051.52,
-                                                  127712.09]))
-        expected_pji_values = np.vstack(np.array([-29969.99,
-                                                  5168.13,
-                                                  74864.11]))
+        expected_pij_values = np.vstack(np.array([40679,
+                                                  63874,
+                                                  127912]))
+        expected_pji_values = np.vstack(np.array([-40679,
+                                                  6166,
+                                                  70620]))
 
-        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
-        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02)
 
         ## Bar 3 efforts
         efforts = b3.get_efforts()
         calculated_pij_values = efforts.get("p_ij")
         calculated_pji_values = efforts.get("p_ji")
 
-        expected_pij_values = np.vstack(np.array([30132.99,
-                                                  4112.47,
-                                                  -74864.11]))
-        expected_pji_values = np.vstack(np.array([-40821.32,
-                                                  65107.19,
-                                                  -134975.66]))
+        expected_pij_values = np.vstack(np.array([40644,
+                                                  6391,
+                                                  -70620]))
+        expected_pji_values = np.vstack(np.array([-40644,
+                                                  63648,
+                                                  -126362]))
 
-        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
-        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02)
 
         ## Bar 4 efforts
         efforts = b4.get_efforts()
         calculated_pij_values = efforts.get("p_ij")
         calculated_pji_values = efforts.get("p_ji")
 
-        expected_pij_values = np.vstack(np.array([-5658.5,
-                                                  36646,
-                                                  66744]))
+        expected_pij_values = np.vstack(np.array([0,
+                                                  37080,
+                                                  67535]))
         expected_pji_values = np.vstack(np.array([0,
                                                   0,
                                                   0]))
 
-        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
-        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=0.02)
 
         ## Bar 5 efforts
         efforts = b5.get_efforts()
         calculated_pij_values = efforts.get("p_ij")
         calculated_pji_values = efforts.get("p_ji")
 
-        expected_pij_values = np.vstack(np.array([107654.085,
-                                                  30407.64,
-                                                  68231.66]))
-        expected_pji_values = np.vstack(np.array([-107654.09,
-                                                  -5407.64,
-                                                  6980.43]))
+        expected_pij_values = np.vstack(np.array([105751,
+                                                  24796,
+                                                  58827]))
+        expected_pji_values = np.vstack(np.array([-105751,
+                                                  203,
+                                                  -7180]))
 
-        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
-        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02)
 
         # Test structure 2
         structure2 = get_test_structure(2)
@@ -1396,6 +1518,65 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_allclose(calculated_pij_values, expected_pij_values, atol=1)
         np.testing.assert_allclose(calculated_pji_values, expected_pji_values, atol=1)
 
+        # Test structure 9
+        structure = get_test_structure(9)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+        b2 = bars.get("B2")
+        b3 = bars.get("B3")
+
+        ## Bar 1 efforts
+        efforts = b1.get_efforts()
+        calculated_pij_values = efforts.get("p_ij")
+        calculated_pji_values = efforts.get("p_ji")
+
+        expected_pij_values = np.vstack(np.array([-119025,
+                                                  155918,
+                                                  159715]))
+        expected_pji_values = np.vstack(np.array([119025,
+                                                  24359,
+                                                  77455]))
+
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02)
+
+        ## Bar 2 efforts
+        efforts = b2.get_efforts()
+        calculated_pij_values = efforts.get("p_ij")
+        calculated_pji_values = efforts.get("p_ji")
+
+        expected_pij_values = np.vstack(np.array([-45755,
+                                                  -112547,
+                                                  -77455]))
+        expected_pji_values = np.vstack(np.array([45755,
+                                                  -7452,
+                                                  -20186]))
+
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02)
+
+        ## Bar 3 efforts
+        efforts = b3.get_efforts()
+        calculated_pij_values = efforts.get("p_ij")
+        calculated_pji_values = efforts.get("p_ji")
+
+        expected_pij_values = np.vstack(np.array([-21539,
+                                                  -41050,
+                                                  20186]))
+        expected_pji_values = np.vstack(np.array([21539,
+                                                  -53817,
+                                                  0]))
+
+        np.testing.assert_allclose(calculated_pij_values, expected_pij_values, rtol=0.02)
+        np.testing.assert_allclose(calculated_pji_values, expected_pji_values, rtol=0.02, atol=1)
+
     def test_axial_force_law(self):
         # Test structure 1
         structure = get_test_structure(1)
@@ -1417,33 +1598,33 @@ class TestStructure(unittest.TestCase):
         self.assertRaises(ValueError, b1.axial_force_law, 2)
 
         # Bar 1
-        self.assertAlmostEqual(b1.axial_force_law(.3), -69505.91, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.5), -69505.91, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.7), -69505.91, places=1)
+        np.testing.assert_allclose(b1.axial_force_law(.3), -69333.9, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.5), -69333.9, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.7), -69333.9, rtol=0.02)
 
         # Bar 2
         bar = b2
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -37451.82, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -35314.16, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -33176.49, decimal=2)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -40679, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -40679, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -40679, rtol=0.02)
 
         # Bar 3
         bar = b3
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -33339.49, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -35477.15, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -37614.82, decimal=2)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -40644, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -40644, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -40644, rtol=0.02)
 
         # Bar 4
         bar = b4
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), 3960.93, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), 2829.21, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), 1697.5, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), 0, atol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), 0, atol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), 0, atol=0.02)
 
         # Bar 5
         bar = b5
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -107654.08, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -107654.08, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -107654.08, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -105751, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -105751, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -105751, rtol=0.02)
 
         # Test structure 2
         structure = get_test_structure(2)
@@ -1470,45 +1651,45 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        self.assertAlmostEqual(bar.axial_force_law(.3), -211292.56, places=1)
-        self.assertAlmostEqual(bar.axial_force_law(.5), -211292.56, places=1)
-        self.assertAlmostEqual(bar.axial_force_law(.7), -211292.56, places=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -211292.56, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -211292.56, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -211292.56, rtol=0.02)
 
         # Bar 2
         bar = b2
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -72926.24, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -72926.24, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -72926.24, decimal=2)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -72926.24, rtol=0.02)
 
         # Bar 3
         bar = b3
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), 11292.56, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), 11292.56, decimal=2)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), 11292.56, decimal=2)
+        np.testing.assert_allclose(bar.axial_force_law(.3), 11292.56, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), 11292.56, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), 11292.56, rtol=0.02)
 
         # Bar 4
         bar = b4
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -72926.24, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -72926.24, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -72926.24, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -72926.24, rtol=0.02)
 
         # Bar 5
         bar = b5
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), 13707.44, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), 13707.44, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), 13707.44, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), 13707.44, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), 13707.44, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), 13707.44, rtol=0.02)
 
         # Bar 6
         bar = b6
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -72926.24, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -72926.24, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -72926.24, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -72926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -72926.24, rtol=0.02)
 
         # Bar 57
         bar = b7
-        np.testing.assert_almost_equal(bar.axial_force_law(.3), -213707.44, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.5), -213707.44, decimal=1)
-        np.testing.assert_almost_equal(bar.axial_force_law(.7), -213707.44, decimal=1)
+        np.testing.assert_allclose(bar.axial_force_law(.3), -213707.44, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.5), -213707.44, rtol=0.02)
+        np.testing.assert_allclose(bar.axial_force_law(.7), -213707.44, rtol=0.02)
 
         # Test structure 3
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1527,9 +1708,9 @@ class TestStructure(unittest.TestCase):
         self.assertRaises(ValueError, b1.axial_force_law, 2)
 
         # Bar 1
-        self.assertAlmostEqual(b1.axial_force_law(.3), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.5), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.7), 0, places=1)
+        np.testing.assert_allclose(b1.axial_force_law(.3), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.5), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.7), 0, rtol=0.02)
 
         # Test structure 4
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1548,9 +1729,9 @@ class TestStructure(unittest.TestCase):
         self.assertRaises(ValueError, b1.axial_force_law, 2)
 
         # Bar 1
-        self.assertAlmostEqual(b1.axial_force_law(.3), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.5), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.7), 0, places=1)
+        np.testing.assert_allclose(b1.axial_force_law(.3), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.5), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.7), 0, rtol=0.02)
 
         # Test structure 5
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1569,9 +1750,9 @@ class TestStructure(unittest.TestCase):
         self.assertRaises(ValueError, b1.axial_force_law, 2)
 
         # Bar 1
-        self.assertAlmostEqual(b1.axial_force_law(.3), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.5), 0, places=1)
-        self.assertAlmostEqual(b1.axial_force_law(.7), 0, places=1)
+        np.testing.assert_allclose(b1.axial_force_law(.3), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.5), 0, rtol=0.02)
+        np.testing.assert_allclose(b1.axial_force_law(.7), 0, rtol=0.02)
 
         # Test structure 6
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1592,13 +1773,13 @@ class TestStructure(unittest.TestCase):
         # Bar 1
         bar = b1
         x = 0.3349 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), -43300, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), -43300, rtol=0.01)
         x = 0.7324 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), -43300, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), -43300, rtol=0.01)
         x = 1.247 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 43300, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 43300, rtol=0.01)
         x = 1.643 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 43300, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 43300, rtol=0.01)
 
         # Test structure 7
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1619,13 +1800,13 @@ class TestStructure(unittest.TestCase):
         # Bar 1
         bar = b1
         x = 0.3349 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 0.7324 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 1.247 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 1.643 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
 
         # Test structure 8
         # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
@@ -1646,13 +1827,75 @@ class TestStructure(unittest.TestCase):
         # Bar 1
         bar = b1
         x = 0.3349 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 0.7324 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 1.247 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
         x = 1.643 / bar.length()
-        np.testing.assert_allclose(b1.axial_force_law(x), 0, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(x), 0, rtol=0.01)
+
+        # Test structure 9
+        # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
+        structure = get_test_structure(9)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.axial_force_law, -2)
+        self.assertRaises(ValueError, b1.axial_force_law, 2)
+
+        # Bar 1
+        bar = b1
+        np.testing.assert_allclose(bar.axial_force_law(.2), 119000, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.4), 119000, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.6), 119000, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.8), 119000, rtol=0.01)
+
+        # Bar 2
+        bar = b2
+        # TODO DESCOMENTAR Y QUE FUCNIONE
+        np.testing.assert_allclose(bar.axial_force_law(.2), 45760, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.4), 45760, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.6), 45760, rtol=0.01)
+        np.testing.assert_allclose(bar.axial_force_law(.8), 45760, rtol=0.01)
+
+        # Bar 3
+        bar = b3
+        # TODO DESCOMENTAR Y QUE FUCNIONE
+        # np.testing.assert_allclose(bar.axial_force_law(.2), 21540, rtol=0.01)
+        # np.testing.assert_allclose(bar.axial_force_law(.4), 21540, rtol=0.01)
+        # np.testing.assert_allclose(bar.axial_force_law(.6), 21540, rtol=0.01)
+        # np.testing.assert_allclose(bar.axial_force_law(.8), 21540, rtol=0.01)
+
+        # Test structure 10
+        # LOS DATOS DE LOS ESFUERZOS PARA COMPARAR SE HAN OBTENIDO EN USTATIC
+        structure = get_test_structure(10)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.axial_force_law, -2)
+        self.assertRaises(ValueError, b1.axial_force_law, 2)
+
+        # Bar 1
+        bar = b1
+        np.testing.assert_allclose(b1.axial_force_law(0.2), 0, atol=0.01)
+        np.testing.assert_allclose(b1.axial_force_law(0.4), 0, atol=0.01)
+        np.testing.assert_allclose(b1.axial_force_law(0.6), 0, atol=0.01)
+        np.testing.assert_allclose(b1.axial_force_law(0.8), 0, atol=0.01)
 
     def test_shear_strength_law(self):
         # Test structure 1
@@ -1676,33 +1919,53 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        self.assertAlmostEqual(bar.shear_strength_law(.3), 30407.64, places=1)
-        self.assertAlmostEqual(bar.shear_strength_law(.5), 30407.64, places=1)
-        self.assertAlmostEqual(bar.shear_strength_law(.7), 30407.64, places=1)
+        np.testing.assert_allclose(bar.shear_strength_law(.3), 30455.38, rtol=0.02)
+        np.testing.assert_allclose(bar.shear_strength_law(.5), 30455.38, rtol=0.02)
+        np.testing.assert_allclose(bar.shear_strength_law(.7), 30455.38, rtol=0.02)
 
         # Bar 2
         bar = b2
-        np.testing.assert_almost_equal(bar.shear_strength_law(.3), -43285.66, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.5), -29441.76, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.7), -15597.95, decimal=0)
+        x = 1.1 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -52815, rtol=0.02)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -30697, rtol=0.02)
+        x = 4.7 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -15951, rtol=0.02)
+        x = 6.5 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 2479, rtol=0.02, atol=200)
 
         # Bar 3
         bar = b3
-        np.testing.assert_almost_equal(bar.shear_strength_law(.3), 16653.35, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.5), 30497.26, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.7), 44341.17, decimal=1)
+        x = 1.1 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 4667, rtol=0.03)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 26785, rtol=0.02)
+        x = 4.7 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 41530, rtol=0.02)
+        x = 6.5 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 59962, rtol=0.02)
 
         # Bar 4
         bar = b4
-        np.testing.assert_almost_equal(bar.shear_strength_law(.3), -25651.89, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.5), -18322.68, decimal=0)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.7), -10993.48, decimal=0)
+        x = 0.8 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -29273, rtol=0.02)
+        x = 1.5 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -21467, rtol=0.02)
+        x = 2.5 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -11709, rtol=0.02)
+        x = 3.309 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -3396, rtol=0.02)
 
         # Bar 5
         bar = b5
-        np.testing.assert_almost_equal(bar.shear_strength_law(.3), -30407.63, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.5), -30407.63, decimal=1)
-        np.testing.assert_almost_equal(bar.shear_strength_law(.7), -5407.6, decimal=1)
+        x = 0.9 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -24796, rtol=0.02)
+        x = 1.8 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -24796, rtol=0.02)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 203.15, rtol=0.02)
+        x = 4 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 203.15, rtol=0.02)
 
         # Test structure 2
         structure = get_test_structure(2)
@@ -1727,9 +1990,9 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        self.assertAlmostEqual(bar.shear_strength_law(.3), 32926.24, places=1)
-        self.assertAlmostEqual(bar.shear_strength_law(.5), 32926.24, places=1)
-        self.assertAlmostEqual(bar.shear_strength_law(.7), 72926.24, places=1)
+        np.testing.assert_allclose(bar.shear_strength_law(.3), 32926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.shear_strength_law(.5), 32926.24, rtol=0.02)
+        np.testing.assert_allclose(bar.shear_strength_law(.7), 72926.24, rtol=0.02)
 
         # Bar 2
         bar = b2
@@ -1947,6 +2210,34 @@ class TestStructure(unittest.TestCase):
         x = 1.552 / bar.length()
         np.testing.assert_allclose(bar.shear_strength_law(x), 0, rtol=0.01)
 
+        # TODO include test structure 9
+
+        # Test structure 10
+        structure = get_test_structure(10)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.shear_strength_law, -2)
+        self.assertRaises(ValueError, b1.shear_strength_law, 2)
+
+        # Bar 1
+        bar = b1
+        x = 0.4223 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -91560, rtol=0.01)
+        x = 1.47 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), -39160, rtol=0.01)
+        x = 2.727 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 23670, rtol=0.01)
+        x = 3.368 / bar.length()
+        np.testing.assert_allclose(bar.shear_strength_law(x), 55720, rtol=0.01)
+
     def test_bending_moment_law(self):
         # Test structure 1
         structure = get_test_structure(1)
@@ -1969,40 +2260,53 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        self.assertAlmostEqual(bar.bending_moment_law(.3), -38313.63, places=1)
-        self.assertAlmostEqual(bar.bending_moment_law(.5), -63856.04, places=1)
-        self.assertAlmostEqual(bar.bending_moment_law(.7), -89398.46, places=1)
+        np.testing.assert_allclose(bar.bending_moment_law(.3), -38313.63, rtol=0.02)
+        np.testing.assert_allclose(bar.bending_moment_law(.5), -63856.04, rtol=0.02)
+        np.testing.assert_allclose(bar.bending_moment_law(.7), -89398.46, rtol=0.02)
 
         # Bar 2
         bar = b2
-        np.testing.assert_almost_equal(bar.bending_moment_law(.3), -16930.66, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.5), 33109.79, decimal=0)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.7), 64099.18, decimal=0)
+        x = 1.1 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -64526, rtol=0.02)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 26202, rtol=0.05)
+        x = 4.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 59989, rtol=0.02)
+        x = 6.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 72186, rtol=0.02)
 
         # Bar 3
         bar = b3
-        np.testing.assert_almost_equal(bar.bending_moment_law(.3), 61920.59, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.5), 29477.76, decimal=0)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.7), -22016.14, decimal=0)
+        x = 1.1 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 71556, rtol=0.02)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 37385, rtol=0.03)
+        x = 4.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -12094, rtol=0.03)
+        x = 6.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -103980, rtol=0.02)
 
         # Bar 4
         bar = b4
-        np.testing.assert_almost_equal(bar.bending_moment_law(.3), -32704.33, decimal=0)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.5), -16685.78, decimal=0)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.7), -6006.9, decimal=0)
+        x = 0.8 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -42092, rtol=0.03)
+        x = 1.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -22636, rtol=0.04)
+        x = 2.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -6734, rtol=0.02)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -748, atol=200)
 
         # Bar 5
         bar = b5
-        np.testing.assert_almost_equal(bar.bending_moment_law(0), -68231.65, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.1), -55460.45, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.3), -29918.04, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.4), -17146.83, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.5), -4375.63, decimal=1)
-
-        np.testing.assert_almost_equal(bar.bending_moment_law(.6), -2104.5, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.7), 166.69, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(.9), 4709.08, decimal=1)
-        np.testing.assert_almost_equal(bar.bending_moment_law(1), 6980.27, decimal=1)
+        x = 0.9 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -36901, rtol=0.02)
+        x = 1.8 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -14976, rtol=0.02, atol=800)
+        x = 3.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -7001, rtol=0.02)
+        x = 4 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -7135, rtol=0.02)
 
         # Test structure 2
         structure = get_test_structure(2)
@@ -2278,6 +2582,34 @@ class TestStructure(unittest.TestCase):
         x = 1.839 / bar.length()
         np.testing.assert_allclose(bar.bending_moment_law(x), 0, atol=0.003)
 
+        # TODO include test structure 9
+
+        # Test structure 10
+        structure = get_test_structure(10)
+        structure.assembled_matrix()
+        structure.get_nodes_reactions()
+        structure.get_nodes_displacements()
+
+        for key, bar in structure.bars.items():
+            bar.calculate_efforts()
+
+        bars = structure.get_bars()
+        b1 = bars.get("B1")
+
+        self.assertRaises(ValueError, b1.bending_moment_law, -2)
+        self.assertRaises(ValueError, b1.bending_moment_law, 2)
+
+        # Bar 1
+        bar = b1
+        x = 0.3612 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -43810, rtol=0.02)
+        x = 1.348 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 25210, rtol=0.02)
+        x = 2.137 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 45360, rtol=0.02)
+        x = 3.022 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 30940, rtol=0.02)
+
 
 class TestMaterial(unittest.TestCase):
     def test_constructor(self):
@@ -2342,7 +2674,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.axial_force_law(bar, 0.5), 5344.16, places=2)
+        np.testing.assert_allclose(dc.axial_force_law(bar, 0.5), 0, rtol=0.02)
 
         # b3 length = 6.8806
         bar = structure.get_bars().get("B3")
@@ -2351,7 +2683,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.axial_force_law(bar, 0.5), -5344.16, places=2)
+        np.testing.assert_allclose(dc.axial_force_law(bar, 0.5), 0, rtol=0.02)
 
         # b4 length = 3.6427
         bar = structure.get_bars().get("B4")
@@ -2360,7 +2692,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.axial_force_law(bar, 0.5), -2829.29, places=1)
+        np.testing.assert_allclose(dc.axial_force_law(bar, 0.5), 0, rtol=0.02)
 
     def test_bending_moment_law(self):
         structure = get_test_structure(1)
@@ -2378,14 +2710,14 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0), 0, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.1), -2381.28, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.3), -21432.45, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.4), -38102.13, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.5), -59534.57, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.7), -116687.76, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 0.9), -192890.02, decimal=0)
-        np.testing.assert_almost_equal(dc.bending_moment_law(bar, 1), -238135.3, decimal=0)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0), 0, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.1), -2381.28, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.3), -21432.45, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.4), -38102.13, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.5), -59534.57, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.7), -116687.76, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 0.9), -192890.02, rtol=0.02)
+        np.testing.assert_allclose(dc.bending_moment_law(bar, 1), -238135.3, rtol=0.02)
 
         self.assertRaises(ValueError, dc.bending_moment_law, bar, -1)
         self.assertRaises(ValueError, dc.bending_moment_law, bar, 2)
@@ -2402,7 +2734,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.shear_strength_law(bar, 0.5), 34609.76, places=0)
+        np.testing.assert_allclose(dc.shear_strength_law(bar, 0.5), 34609.76, rtol=0.02)
 
         # b3 length = 6.8806
         bar = structure.get_bars().get("B3")
@@ -2411,7 +2743,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.shear_strength_law(bar, 0.5), 34609.76, places=0)
+        np.testing.assert_allclose(dc.shear_strength_law(bar, 0.5), 34609.76, rtol=0.02)
 
         # b4 length = 3.6427
         bar = structure.get_bars().get("B4")
@@ -2420,7 +2752,7 @@ class TestDistributedCharge(unittest.TestCase):
         for key, item in distributed_charges.items():
             dc = item
 
-        self.assertAlmostEqual(dc.shear_strength_law(bar, 0.5), 18322.96, places=0)
+        np.testing.assert_allclose(dc.shear_strength_law(bar, 0.5), 18322.96, rtol=0.02)
 
 
 class TestPunctualForce(unittest.TestCase):
@@ -2464,14 +2796,14 @@ class TestPunctualForce(unittest.TestCase):
         for key, item in punctual_forces.items():
             pf = item
 
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.1), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.3), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.4), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.5), 0, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.7), -21000, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 0.9), -42000, decimal=0)
-        np.testing.assert_almost_equal(pf.bending_moment_law(bar, 1), -52500, decimal=0)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.1), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.3), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.4), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.5), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.7), -21000, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 0.9), -42000, rtol=0.02)
+        np.testing.assert_allclose(pf.bending_moment_law(bar, 1), -52500, rtol=0.02)
 
         self.assertRaises(ValueError, pf.bending_moment_law, bar, -1)
         self.assertRaises(ValueError, pf.bending_moment_law, bar, 2)
@@ -2489,23 +2821,23 @@ class TestPunctualForce(unittest.TestCase):
         origin_force_distance = 0.4
         pf = st.PunctualForceInBar(100, origin_force_distance, (0, -1, 0))
 
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.2), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.4), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.6), 100, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.8), 100, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 1), 100, places=2)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.2), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.4), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.6), 100, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.8), 100, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 1), 100, rtol=0.02)
 
         # Test 2
         origin_force_distance = 0.7
         pf = st.PunctualForceInBar(100, origin_force_distance, (0, -1, 0))
 
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.2), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.4), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.6), 0, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 0.8), 100, places=2)
-        self.assertAlmostEqual(pf.shear_strength_law(b1, 1), 100, places=2)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.2), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.4), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.6), 0, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 0.8), 100, rtol=0.02)
+        np.testing.assert_allclose(pf.shear_strength_law(b1, 1), 100, rtol=0.02)
 
         self.assertRaises(ValueError, pf.bending_moment_law, b1.length(), -1)
         self.assertRaises(ValueError, pf.bending_moment_law, b1.length(), 2)

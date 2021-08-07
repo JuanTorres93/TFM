@@ -817,7 +817,7 @@ class Bar:
         # LOCKED STATE CONTRIBUTION
         # Distributed charges
         # Dictionary of dictionaries containing all distributed charges in the bar
-        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
+        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=True)
         if distributed_charges_contribution is not None:
             # Iterate over every found distributed charge
             for key, dcc in distributed_charges_contribution.items():
@@ -1311,8 +1311,9 @@ class Structure:
             if original_charge == "dc":
                 key_base = "dc"
                 # TODO Si se añaden más tipos de carga, modificarlo igual que para la fuerza puntual
+                global_x_force = values.get("x")
                 global_y_force = values.get("y")
-                force = np.array((0, global_y_force, 0))
+                force = np.array((global_x_force, global_y_force, 0))
                 if node_position == "origin":
                     momentum = np.array([0, 0, values.get("m_origin")])
                 else:
@@ -1359,7 +1360,7 @@ class Structure:
             if bar.has_distributed_charges():
                 # Not sure why in distributed charges must be used the local values and in
                 # punctual forces the global ones
-                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=False)
+                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
 
                 for key, distributed_charge in dc_nodes.items():
                     add_referred_force_and_momentum_to_node(bar.origin, distributed_charge, "dc", "origin")
@@ -1657,13 +1658,9 @@ class DistributedCharge:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
         q = self.max_value
-        x = bar.length() * origin_to_end_factor
-        bar_angle = bar.angle_from_global_to_local()
+        n = q * self.direction[0]
 
-        # TODO tener en cuenta la dirección global
-        N = q * x * math.sin(bar_angle)
-
-        return N
+        return n
 
     def bending_moment_law(self, bar, origin_to_end_factor):
         """
@@ -1679,7 +1676,7 @@ class DistributedCharge:
         x = origin_to_end_factor * bar.length()
         bar_angle = bar.angle_from_global_to_local()
 
-        m = - q * pow(x, 2) / 2 * math.cos(bar_angle)
+        m = q * pow(x, 2) / 2 * self.direction[1]
 
         return m
 
@@ -1698,7 +1695,7 @@ class DistributedCharge:
         bar_angle = bar.angle_from_global_to_local()
         x = origin_to_end_factor * bar_length
 
-        v = q * x * math.cos(bar_angle)
+        v = - q * x * self.direction[1]
 
         return v
 
