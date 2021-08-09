@@ -1580,6 +1580,26 @@ class DistributedCharge:
         self.direction = direction
         # If new parameters are included, they must be added to the equals function and to the test
 
+    def _redefine_direction(self, bar):
+        bar_angle = bar.angle_from_global_to_local()
+
+        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            x_direction = abs(math.sin(bar_angle))
+            y_direction = abs(math.cos(bar_angle))
+
+            if self.direction[1] < 0:
+                y_direction *= -1
+
+            if (bar_angle < math.pi / 2 and bar_angle < 0) or \
+                    (bar_angle < 3 * math.pi / 2 and bar_angle < math.pi):
+                x_direction *= -1
+
+            direction = (x_direction, y_direction, 0)
+        else:
+            direction = self.direction
+
+        return direction
+
     def equals(self, other_distributed_charge):
         if type(other_distributed_charge) not in [DistributedCharge]:
             raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
@@ -1600,20 +1620,7 @@ class DistributedCharge:
         """
         bar_length = bar.length()
         bar_angle = bar.angle_from_global_to_local()
-        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
-            x_direction = abs(math.sin(bar_angle))
-            y_direction = abs(math.cos(bar_angle))
-
-            if self.direction[1] < 0:
-                y_direction *= -1
-
-            if (bar_angle < math.pi / 2 and bar_angle < 0) or \
-                    (bar_angle < 3 * math.pi / 2 and bar_angle < math.pi):
-                x_direction *= -1
-
-            direction = (x_direction, y_direction, 0)
-        else:
-            direction = self.direction
+        direction = self._redefine_direction(bar)
 
         forces = self.max_value * np.array(direction)
 
@@ -1678,11 +1685,16 @@ class DistributedCharge:
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
+        direction = self._redefine_direction(bar)
+
         q = self.max_value
         x = origin_to_end_factor * bar.length()
-        bar_angle = bar.angle_from_global_to_local()
 
-        m = q * pow(x, 2) / 2 * self.direction[1]
+        m = q * pow(x, 2) / 2 * direction[1]
+
+        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            bar_angle = bar.angle_from_global_to_local()
+            m *= math.cos(bar_angle)
 
         return m
 
@@ -1696,12 +1708,19 @@ class DistributedCharge:
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
+        direction = self._redefine_direction(bar)
+
         q = self.max_value
         bar_length = bar.length()
-        bar_angle = bar.angle_from_global_to_local()
         x = origin_to_end_factor * bar_length
 
-        v = - q * x * self.direction[1]
+        v_general = - q * x * direction[1]
+
+        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            bar_angle = bar.angle_from_global_to_local()
+            v_general *= math.cos(bar_angle)
+
+        v = v_general
 
         return v
 

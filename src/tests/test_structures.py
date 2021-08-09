@@ -2017,6 +2017,7 @@ class TestStructure(unittest.TestCase):
         np.testing.assert_allclose(bar.shear_strength_law(x), -26526, rtol=0.02)
         x = 5.8 / bar.length()
         np.testing.assert_allclose(bar.shear_strength_law(x), -2950, rtol=0.02, atol=205)
+        np.testing.assert_allclose(bar.shear_strength_law(1), 3785.11, rtol=0.02)
 
         # Bar 3
         bar = b3
@@ -2338,53 +2339,56 @@ class TestStructure(unittest.TestCase):
 
         # Bar 1
         bar = b1
-        np.testing.assert_allclose(bar.bending_moment_law(.3), -38313.63, rtol=0.02)
-        np.testing.assert_allclose(bar.bending_moment_law(.5), -63856.04, rtol=0.02)
-        np.testing.assert_allclose(bar.bending_moment_law(.7), -89398.46, rtol=0.02)
+        np.testing.assert_allclose(bar.bending_moment_law(0), 0, rtol=0.02, atol=1)
+        np.testing.assert_allclose(bar.bending_moment_law(1), -116132.24, rtol=0.02, atol=1)
+        x = 0.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -19350, rtol=0.02)
+        x = 1.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -41570, rtol=0.02)
+        x = 3.5 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -97795, rtol=0.02)
 
         # Bar 2
         bar = b2
-        x = 1.1 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -64526, rtol=0.02)
-        x = 3.3 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), 26202, rtol=0.05)
-        x = 4.7 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), 59989, rtol=0.02)
-        x = 6.5 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), 72186, rtol=0.02)
+        x = 1.541 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -35030, rtol=0.02)
+        x = 1.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -27477, rtol=0.02)
+        x = 3.761 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 40730, rtol=0.02)
+        x = 5.548 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 66500, rtol=0.02)
 
         # Bar 3
         bar = b3
-        x = 1.1 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), 71556, rtol=0.02)
-        x = 3.3 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), 37385, rtol=0.03)
-        x = 4.7 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -12094, rtol=0.03)
-        x = 6.5 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -103980, rtol=0.02)
+        x = 1.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 61773, rtol=0.02)
+        x = 3.4 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), 27331, rtol=0.03)
+        x = 5.8 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -69319, rtol=0.03)
 
         # Bar 4
         bar = b4
-        x = 0.8 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -42092, rtol=0.03)
+        x = 0.3 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -32607, rtol=0.02)
         x = 1.5 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -22636, rtol=0.04)
-        x = 2.5 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -6734, rtol=0.02)
-        x = 3.3 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -748, atol=200)
+        np.testing.assert_allclose(bar.bending_moment_law(x), -9139, rtol=0.022)
+        x = 2.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -112, rtol=0.02, atol=44)
 
         # Bar 5
         bar = b5
-        x = 0.9 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -36901, rtol=0.02)
-        x = 1.8 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -14976, rtol=0.02, atol=800)
-        x = 3.3 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -7001, rtol=0.02)
-        x = 4 / bar.length()
-        np.testing.assert_allclose(bar.bending_moment_law(x), -7135, rtol=0.02)
+        x = 0.7 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -48244, rtol=0.022)
+        x = 0.7722 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -45230, rtol=0.02)
+        x = 1.684 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -20030, rtol=0.02)
+        x = 2.561 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -7292, rtol=0.02)
+        x = 3.586 / bar.length()
+        np.testing.assert_allclose(bar.bending_moment_law(x), -4578, rtol=0.02)
 
         # Test structure 2
         structure = get_test_structure(2)
