@@ -31,6 +31,7 @@ class DistributedChargeType(enum.Enum):
     Enumeration for the different types of distributed charges
     """
     SQUARE = 1
+    PARALLEL_TO_BAR = 2
 
 
 class Node:
@@ -613,34 +614,13 @@ class Bar:
         # If there are distributed_charges applied to the bar
         if len(self.distributed_charges) > 0:
             for key, dc in self.distributed_charges.items():
-                bar_length = self.length()
-                forces = dc.max_value * np.array(dc.direction)
-                if dc.dc_type == DistributedChargeType.SQUARE:
-                    x_reaction = 0
-                    y_reaction = - forces[1] * bar_length / 2
-                    m_origin_reaction = - forces[1] * pow(bar_length, 2) / 12
-                    m_end_reaction = forces[1] * pow(bar_length, 2) / 12
-
-                    reaction = np.array([x_reaction, y_reaction, 0])
-                    if not return_global_values:
-                        referred_charges[str(len(referred_charges))] = {
-                            "x": reaction[0],
-                            "y": reaction[1],
-                            "m_origin": m_origin_reaction,
-                            "m_end": m_end_reaction
-                        }
-                        continue
-
-                    # Convert reactions to global coordinates
-                    matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
-                    reaction_global = np.dot(matrix_conversion_to_global, reaction)
-
-                    referred_charges[str(len(referred_charges))] = {
-                        "x": reaction_global[0],
-                        "y": reaction_global[1],
-                        "m_origin": m_origin_reaction,
-                        "m_end": m_end_reaction
-                    }
+                referred = dc.refer_to_nodes(self, return_global_values)
+                referred_charges[str(len(referred_charges))] = {
+                    "x": referred.get("x"),
+                    "y": referred.get("y"),
+                    "m_origin": referred.get("m_origin"),
+                    "m_end": referred.get("m_end")
+                }
 
                 # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
             return referred_charges
@@ -678,58 +658,15 @@ class Bar:
         # If there are punctual_forces applied to the bar
         if len(self.punctual_forces) > 0:
             for key, pf in self.punctual_forces.items():
-                bar_length = self.length()
-                distance_origin_force = bar_length * pf.origin_end_factor
-                distance_end_force = bar_length * (1 - pf.origin_end_factor)
-
-                # Decompose force according each axis
-                forces_in_axis = tuple([pf.value * x for x in pf.direction])
-
-                # Reactions in each axis
-                y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (
-                        bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
-                y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (
-                        bar_length + 2 * distance_end_force) / pow(bar_length, 3)
-                x_reaction = - forces_in_axis[0] / 2
-
-                reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
-                reaction_end = np.array([x_reaction, y_reaction_end, 0])
-
-                # Flector momentums
-                flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(
-                    bar_length, 2)
-                flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length,
-                                                                                                           2)
-                # TODO Repasar el signo en flector_force_point
-                flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force,
-                                                                                                  2) / pow(bar_length,
-                                                                                                           3)
-
-                if not return_global_values:
-                    referred_punctual_forces[str(len(referred_punctual_forces))] = {
-                        "x_origin": reaction_origin[0],
-                        "x_end": reaction_end[0],
-                        "y_origin": reaction_origin[1],
-                        "y_end": reaction_end[1],
-                        "m_origin": flector_origin,
-                        "m_end": flector_end,
-                        "m_force_point": flector_force_point
-                    }
-                    continue
-
-                # Convert reactions to global coordinates
-                matrix_conversion_to_global = self.system_change_matrix_2d_rigid_nodes()
-                reaction_origin_global = np.dot(matrix_conversion_to_global, reaction_origin)
-                reaction_end_global = np.dot(matrix_conversion_to_global, reaction_end)
-
+                referred = pf.refer_to_nodes(self, return_global_values)
                 referred_punctual_forces[str(len(referred_punctual_forces))] = {
-                    "x_origin": reaction_origin_global[0],
-                    "x_end": reaction_end_global[0],
-                    "y_origin": reaction_origin_global[1],
-                    "y_end": reaction_end_global[1],
-                    "m_origin": flector_origin,
-                    "m_end": flector_end,
-                    "m_force_point": flector_force_point
+                    "x_origin": referred.get("x_origin"),
+                    "x_end": referred.get("x_end"),
+                    "y_origin": referred.get("y_origin"),
+                    "y_end": referred.get("y_end"),
+                    "m_origin": referred.get("m_origin"),
+                    "m_end": referred.get("m_end"),
+                    "m_force_point": referred.get("m_force_point")
                 }
 
             return referred_punctual_forces
@@ -769,18 +706,21 @@ class Bar:
                 (self.k_ji_local is None) or (self.k_jj_local is None):
             self.local_rigidity_matrix_2d_rigid_nodes()
 
+        # FREE STATE CONTRIBUTION
         # Equations say that, in order to compute the efforts, it is needed to multiply each submatrix of the local
         # rigidity matrix of the bar by the transpose of the system change matrix (G). Then this resultant matrix must
         # be multiplied by the displacements of the nodes.
-        # Here it is calculated the multiplication of the local rigidity matrix by the transpose of G
+        # Here, it is calculated the multiplication of the local rigidity matrix by the transpose of G
         # Top row of the final matrix
+        transpose_system_change_matrix = np.transpose(self.system_change_matrix_2d_rigid_nodes())
+
         rigidity_matrix_by_g_trans_top_row = np.hstack(
-            (np.dot(self.k_ii_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
-             np.dot(self.k_ij_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+            (np.dot(self.k_ii_local, transpose_system_change_matrix),
+             np.dot(self.k_ij_local, transpose_system_change_matrix)))
         # Bottom row of the final matrix
         rigidity_matrix_by_g_trans_bottom_row = np.hstack(
-            (np.dot(self.k_ji_local, np.transpose(self.system_change_matrix_2d_rigid_nodes())),
-             np.dot(self.k_jj_local, np.transpose(self.system_change_matrix_2d_rigid_nodes()))))
+            (np.dot(self.k_ji_local, transpose_system_change_matrix),
+             np.dot(self.k_jj_local, transpose_system_change_matrix)))
         # Final matrix
         rigidity_matrix_by_g_trans = np.vstack(
             (rigidity_matrix_by_g_trans_top_row,
@@ -813,11 +753,10 @@ class Bar:
 
         # In order to get the correct results, it is needed to sum to the efforts the reactions obtained in the locked
         # state
-
         # LOCKED STATE CONTRIBUTION
         # Distributed charges
         # Dictionary of dictionaries containing all distributed charges in the bar
-        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=True)
+        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
         if distributed_charges_contribution is not None:
             # Iterate over every found distributed charge
             for key, dcc in distributed_charges_contribution.items():
@@ -831,10 +770,8 @@ class Bar:
                 rj = np.array([dc_x, dc_y, dc_momentum_j])
 
                 # Change reference system
-                ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                            ri)
-                rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
-                            rj)
+                ri = np.dot(transpose_system_change_matrix, ri)
+                rj = np.dot(transpose_system_change_matrix, rj)
 
                 # Transpose the vectors in order to be able to multiply its values
                 ri = np.vstack(ri)
@@ -851,7 +788,7 @@ class Bar:
 
         # Punctual forces
         # Dictionary of dictionaries containing all punctual forces in the bar
-        punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes()
+        punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
         if punctual_forces_contribution is not None:
             # Iterate over every found punctual forces
             for key, pfc in punctual_forces_contribution.items():
@@ -1360,7 +1297,11 @@ class Structure:
             if bar.has_distributed_charges():
                 # Not sure why in distributed charges must be used the local values and in
                 # punctual forces the global ones
-                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
+
+                if bar.origin.has_support() or bar.end.has_support():
+                    dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
+                else:
+                    dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=False)
 
                 for key, distributed_charge in dc_nodes.items():
                     add_referred_force_and_momentum_to_node(bar.origin, distributed_charge, "dc", "origin")
@@ -1498,7 +1439,7 @@ class Structure:
         # Compute node reactions according the equation
         nodes_reactions = np.dot(self.assembled_matrix(), self.get_nodes_displacements())
 
-        # Get all nodes in the structure in solving_numeration order
+        # Get all nodes in the structure in solving_nueeeeeeen order
         nodes_in_structure = self.get_nodes()
 
         # Assign each node its reactions
@@ -1626,10 +1567,13 @@ class DistributedCharge:
 
         :param dc_type: type of distributed charge. Must be of type DistributedChargeType
         :param max_value: the maximum value of the distributed charge
-        :param direction: unitary vector representing the direction of the force in local axis
+        :param direction: unitary vector representing the direction of the force in local axis. If dc_type is
+        PARALLEL_TO_BAR, the direction must be (0, 1, 0) or (0, -1, 0)
         """
         if type(dc_type) not in [DistributedChargeType]:
             raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
+
+        # TODO normalizar el vector direction
 
         self.dc_type = dc_type
         self.max_value = max_value
@@ -1646,6 +1590,68 @@ class DistributedCharge:
             return True
         else:
             return False
+
+    def refer_to_nodes(self, bar, return_global_values):
+        """
+        Refer the distributed charge to the nodes of the bar provided
+        :param bar: Bar over which the charge is applied to
+        :param return_global_values: True if global values are wanted to be returned, False if local values are wanted
+        :return: dictionary containing the referred values
+        """
+        bar_length = bar.length()
+        bar_angle = bar.angle_from_global_to_local()
+        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            x_direction = abs(math.sin(bar_angle))
+            y_direction = abs(math.cos(bar_angle))
+
+            if self.direction[1] < 0:
+                y_direction *= -1
+
+            if (bar_angle < math.pi / 2 and bar_angle < 0) or \
+                    (bar_angle < 3 * math.pi / 2 and bar_angle < math.pi):
+                x_direction *= -1
+
+            direction = (x_direction, y_direction, 0)
+        else:
+            direction = self.direction
+
+        forces = self.max_value * np.array(direction)
+
+        if self.dc_type in [DistributedChargeType.SQUARE, DistributedChargeType.PARALLEL_TO_BAR]:
+            x_reaction = 0
+            y_reaction = - forces[1] * bar_length / 2
+
+            momentum_abs = forces[1] * pow(bar_length, 2) / 12
+
+            if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+                momentum_abs = momentum_abs * math.cos(bar_angle)
+
+            m_origin_reaction = - momentum_abs
+            m_end_reaction = - m_origin_reaction
+
+            if not return_global_values:
+                referred_charge = {
+                    "x": x_reaction,
+                    "y": y_reaction,
+                    "m_origin": m_origin_reaction,
+                    "m_end": m_end_reaction
+                }
+            else:
+                # Convert reactions to global coordinates
+                reaction_forces = np.array([x_reaction, y_reaction, 0])
+                matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
+                reaction_forces_global = np.dot(matrix_conversion_to_global, reaction_forces)
+
+                referred_charge = {
+                    "x": reaction_forces_global[0],
+                    "y": reaction_forces_global[1],
+                    "m_origin": m_origin_reaction,
+                    "m_end": m_end_reaction
+                }
+
+        # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
+
+        return referred_charge
 
     def axial_force_law(self, bar, origin_to_end_factor):
         """
@@ -1733,6 +1739,68 @@ class PunctualForceInBar:
             return True
         else:
             return False
+
+    def refer_to_nodes(self, bar, return_global_values):
+        """
+        Refer the punctual force to the nodes of the bar provided
+        :param bar: Bar over which the charge is applied to
+        :param return_global_values: True if global values are wanted to be returned, False if local values are wanted
+        :return: dictionary containing the referred values
+        """
+        bar_length = bar.length()
+        distance_origin_force = bar_length * self.origin_end_factor
+        distance_end_force = bar_length * (1 - self.origin_end_factor)
+
+        # Decompose force according each axis
+        forces_in_axis = tuple([self.value * x for x in self.direction])
+
+        # Reactions in each axis
+        y_reaction_origin = - forces_in_axis[1] * pow(distance_end_force, 2) * (
+                bar_length + 2 * distance_origin_force) / pow(bar_length, 3)
+        y_reaction_end = - forces_in_axis[1] * pow(distance_origin_force, 2) * (
+                bar_length + 2 * distance_end_force) / pow(bar_length, 3)
+        x_reaction = - forces_in_axis[0] / 2
+
+        reaction_origin = np.array([x_reaction, y_reaction_origin, 0])
+        reaction_end = np.array([x_reaction, y_reaction_end, 0])
+
+        # Flector momentums
+        flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(
+            bar_length, 2)
+        flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length,
+                                                                                                   2)
+        # TODO Repasar el signo en flector_force_point
+        flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force,
+                                                                                          2) / pow(bar_length,
+                                                                                                   3)
+
+        if not return_global_values:
+            referred_punctual_force = {
+                "x_origin": reaction_origin[0],
+                "x_end": reaction_end[0],
+                "y_origin": reaction_origin[1],
+                "y_end": reaction_end[1],
+                "m_origin": flector_origin,
+                "m_end": flector_end,
+                "m_force_point": flector_force_point
+            }
+        else:
+            # Convert reactions to global coordinates
+            matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
+            reaction_origin_global = np.dot(matrix_conversion_to_global, reaction_origin)
+            reaction_end_global = np.dot(matrix_conversion_to_global, reaction_end)
+
+            referred_punctual_force = {
+                "x_origin": reaction_origin_global[0],
+                "x_end": reaction_end_global[0],
+                "y_origin": reaction_origin_global[1],
+                "y_end": reaction_end_global[1],
+                "m_origin": flector_origin,
+                "m_end": flector_end,
+                "m_force_point": flector_force_point
+            }
+
+        return referred_punctual_force
 
     def bending_moment_law(self, bar, origin_to_end_factor):
         """
