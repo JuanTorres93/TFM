@@ -621,8 +621,6 @@ class Bar:
                     "m_origin": referred.get("m_origin"),
                     "m_end": referred.get("m_end")
                 }
-
-                # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
             return referred_charges
 
         elif len(self.distributed_charges) == 0:
@@ -769,10 +767,6 @@ class Bar:
                 ri = np.array([dc_x, dc_y, dc_momentum_i])
                 rj = np.array([dc_x, dc_y, dc_momentum_j])
 
-                # Change reference system
-                ri = np.dot(transpose_system_change_matrix, ri)
-                rj = np.dot(transpose_system_change_matrix, rj)
-
                 # Transpose the vectors in order to be able to multiply its values
                 ri = np.vstack(ri)
                 rj = np.vstack(rj)
@@ -851,7 +845,7 @@ class Bar:
 
         origin = self.origin
 
-        if origin.support != Support.NONE:
+        if origin.has_support():
             origin_reactions = origin.get_reactions()
 
             x_reaction = origin_reactions.get("x")
@@ -1247,7 +1241,6 @@ class Structure:
             # If the charge applied to the bar is a distributed charge
             if original_charge == "dc":
                 key_base = "dc"
-                # TODO Si se añaden más tipos de carga, modificarlo igual que para la fuerza puntual
                 global_x_force = values.get("x")
                 global_y_force = values.get("y")
                 force = np.array((global_x_force, global_y_force, 0))
@@ -1295,13 +1288,7 @@ class Structure:
         # Determine and assign node-referred forces and momentums for each node in each bar
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
-                # Not sure why in distributed charges must be used the local values and in
-                # punctual forces the global ones
-
-                if bar.origin.has_support() or bar.end.has_support():
-                    dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
-                else:
-                    dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=False)
+                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
 
                 for key, distributed_charge in dc_nodes.items():
                     add_referred_force_and_momentum_to_node(bar.origin, distributed_charge, "dc", "origin")
@@ -1397,7 +1384,7 @@ class Structure:
 
             current_node.set_displacement(displacement)
 
-        return nodes_displacements
+        return np.array(nodes_displacements)
 
     def get_nodes(self):
         """
@@ -1619,44 +1606,40 @@ class DistributedCharge:
         :return: dictionary containing the referred values
         """
         bar_length = bar.length()
-        bar_angle = bar.angle_from_global_to_local()
         direction = self._redefine_direction(bar)
 
         forces = self.max_value * np.array(direction)
 
         if self.dc_type in [DistributedChargeType.SQUARE, DistributedChargeType.PARALLEL_TO_BAR]:
-            x_reaction = 0
+            x_reaction = - forces[0] * bar_length / 2
             y_reaction = - forces[1] * bar_length / 2
 
             momentum_abs = forces[1] * pow(bar_length, 2) / 12
 
-            if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
-                momentum_abs = momentum_abs * math.cos(bar_angle)
-
             m_origin_reaction = - momentum_abs
             m_end_reaction = - m_origin_reaction
 
-            if not return_global_values:
-                referred_charge = {
-                    "x": x_reaction,
-                    "y": y_reaction,
-                    "m_origin": m_origin_reaction,
-                    "m_end": m_end_reaction
-                }
-            else:
-                # Convert reactions to global coordinates
-                reaction_forces = np.array([x_reaction, y_reaction, 0])
-                matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
-                reaction_forces_global = np.dot(matrix_conversion_to_global, reaction_forces)
-
-                referred_charge = {
-                    "x": reaction_forces_global[0],
-                    "y": reaction_forces_global[1],
-                    "m_origin": m_origin_reaction,
-                    "m_end": m_end_reaction
-                }
-
         # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
+
+        if not return_global_values:
+            referred_charge = {
+                "x": x_reaction,
+                "y": y_reaction,
+                "m_origin": m_origin_reaction,
+                "m_end": m_end_reaction
+            }
+        else:
+            # Convert reactions to global coordinates
+            reaction_forces = np.array([x_reaction, y_reaction, 0])
+            matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
+            reaction_forces_global = np.dot(matrix_conversion_to_global, reaction_forces)
+
+            referred_charge = {
+                "x": reaction_forces_global[0],
+                "y": reaction_forces_global[1],
+                "m_origin": m_origin_reaction,
+                "m_end": m_end_reaction
+            }
 
         return referred_charge
 
@@ -1670,8 +1653,11 @@ class DistributedCharge:
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
             raise ValueError("Error. x must be between 0 and 1, both inclusive.")
 
+        direction = self._redefine_direction(bar)
+
         q = self.max_value
-        n = q * self.direction[0]
+        x = bar.length() * origin_to_end_factor
+        n = - q * direction[0] * x
 
         return n
 
@@ -1692,10 +1678,6 @@ class DistributedCharge:
 
         m = q * pow(x, 2) / 2 * direction[1]
 
-        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
-            bar_angle = bar.angle_from_global_to_local()
-            m *= math.cos(bar_angle)
-
         return m
 
     def shear_strength_law(self, bar, origin_to_end_factor):
@@ -1715,10 +1697,6 @@ class DistributedCharge:
         x = origin_to_end_factor * bar_length
 
         v_general = - q * x * direction[1]
-
-        if self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
-            bar_angle = bar.angle_from_global_to_local()
-            v_general *= math.cos(bar_angle)
 
         v = v_general
 
