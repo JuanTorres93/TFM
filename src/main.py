@@ -5,12 +5,20 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from src.modules import databaseutils as db
 from src.modules import structures as st
 
-# Constants
+# CONSTANTS
 NODE_RADIUS = 10
 Z_VALUE_NODES = 2
 Z_VALUE_BARS = 1
 Z_VALUE_AXIS = -1
-# Conversion factors
+# -- Colors
+# ---- Normal color of the node
+NORMAL_COLOR = QtGui.QColor(0, 0, 0)
+# ---- Color of the node when hovering mouse over it
+HOVER_COLOR_NORMAL_MODE = QtGui.QColor(49, 204, 55)
+HOVER_COLOR_BAR_MODE = QtGui.QColor(203, 39, 23)
+# ---- Color of the node when selected
+SELECTED_COLOR = QtGui.QColor(235, 204, 55)
+# -- Conversion factors
 METER_TO_PX = 50
 PX_TO_METER = 1 / METER_TO_PX
 
@@ -29,6 +37,8 @@ def unset_active_structure_element():
         # If it is a node, change its color to normal
         if type(active_structure_element) is Node:
             active_structure_element.change_node_color()
+        elif type(active_structure_element) is Bar:
+            active_structure_element.change_bar_color()
 
         # Set active_structure_element to None
         active_structure_element = None
@@ -39,9 +49,6 @@ def set_active_structure_element(item):
     Sets the active structure element to the specified one
     :param item: item that is desired to be the new active structure element
     """
-    if type(item) not in [Node, Bar]:
-        raise TypeError("Error: item type must be Node or Bar")
-
     global active_structure_element
     active_structure_element = item
 
@@ -238,7 +245,7 @@ class Window(QtWidgets.QMainWindow):
         # Add node to scene
         self.scene.addItem(node)
 
-        set_active_structure_element(node)
+        # set_active_structure_element(node)
 
     def draw_bar(self, node_origin, node_end):
         """
@@ -254,7 +261,7 @@ class Window(QtWidgets.QMainWindow):
             # Add node to scene
             self.scene.addItem(bar)
 
-            set_active_structure_element(bar)
+            # set_active_structure_element(bar)
 
     def delete_node(self, node):
         """
@@ -263,6 +270,16 @@ class Window(QtWidgets.QMainWindow):
         """
         # Delete node
         self.scene.removeItem(node)
+        # Unset active structure element in order not to have null references
+        unset_active_structure_element()
+
+    def delete_bar(self, bar):
+        """
+        Removes the specified bar from the scene
+        :param bar: Bar to be deleted
+        """
+        # Delete node
+        self.scene.removeItem(bar)
         # Unset active structure element in order not to have null references
         unset_active_structure_element()
 
@@ -356,6 +373,24 @@ class Window(QtWidgets.QMainWindow):
                 active_structure_element.update_position(None, new_pos)
             # TODO implement Z if 3D structures
 
+    def _update_selected_bar_material(self, material):
+        """
+        This function is connected to the material combobox that represent the material of the bar
+        :param material: material name to update to
+        """
+        global active_structure_element
+        if type(active_structure_element) is Bar:
+            active_structure_element.update_material(material)
+
+    def _update_selected_bar_profile(self, profile):
+        """
+        This function is connected to the profile combobox that represent the profile of the bar
+        :param profile: tuple with profile name and number
+        """
+        global active_structure_element
+        if type(active_structure_element) is Bar:
+            active_structure_element.update_profile(profile)
+
     def _create_toolbars_and_docks(self):
         """
         Creates the toolbars and docks in the main window
@@ -402,6 +437,9 @@ class Window(QtWidgets.QMainWindow):
         self.material_combo_box = QtWidgets.QComboBox()
         self.material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         self._populate_material_combobox()
+        self.material_combo_box.currentTextChanged.connect(lambda: self._update_selected_bar_material(
+            self.get_currently_selected_material()
+        ))
 
         material_layout.addWidget(self.material_combo_box)
 
@@ -418,6 +456,9 @@ class Window(QtWidgets.QMainWindow):
         self.profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         profile_layout.addWidget(self.profile_combo_box)
         self._populate_profile_combobox()
+        self.profile_combo_box.currentTextChanged.connect(lambda: self._update_selected_bar_profile(
+            self.get_currently_selected_profile()
+        ))
 
         splitter.addWidget(profile_container)
 
@@ -496,7 +537,7 @@ class Window(QtWidgets.QMainWindow):
 
     def update_coordinates(self, x, y, z):
         """
-        Sets the corresponding textboxes to the specified values
+        Sets the corresponding textboxes to the specified values.
         :param x: x coordinate
         :param y: y coordinate
         :param z: z coordinate
@@ -507,11 +548,19 @@ class Window(QtWidgets.QMainWindow):
         # self.z_coordinate.setPlainText(str(z))
 
     def get_currently_selected_material(self):
+        """
+        Provides the material information for creating bars
+        :return: material name
+        """
         material_text = self.material_combo_box.currentText()
         material_text = material_text.replace(" ", "")
         return material_text
 
     def get_currently_selected_profile(self):
+        """
+        Provides the profile information for creating bars
+        :return: tuple of profile name and its number
+        """
         profile_text = self.profile_combo_box.currentText()
         return tuple(profile_text.split(" "))
 
@@ -690,7 +739,9 @@ class Bar(QtWidgets.QGraphicsLineItem):
         super().__init__(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
         # Appearance
-        pen = QtGui.QPen(QtGui.QColor(0, 0, 0), 3)
+        self.color = NORMAL_COLOR
+        self.drawn_thickness = 3
+        pen = QtGui.QPen(NORMAL_COLOR, self.drawn_thickness)
         self.setPen(pen)
 
         self.setAcceptHoverEvents(True)
@@ -706,9 +757,34 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.bar_logic = st.Bar(bar_name, origin_node_logic, end_node_logic,
                                 material, profile)
 
-    # TODO change color on hover and selected
+    def change_bar_color(self, color="normal"):
+        """
+        Changes the color of the node in a standarized way
+        :param color: string representing the color to set
+        """
+        if color == "hover":
+            new_color = HOVER_COLOR_NORMAL_MODE
+        elif color == "selected":
+            new_color = SELECTED_COLOR
+        elif color == "hover_bar":
+            new_color = HOVER_COLOR_BAR_MODE
+        else:
+            new_color = NORMAL_COLOR
+
+        new_pen = QtGui.QPen(new_color, self.drawn_thickness)
+        # Actually change the color
+        self.setPen(new_pen)
+        # Store logically the currently used color
+        self.color = new_color
 
     def update_point_position(self, point_reference, new_x_scene, new_y_scene):
+        """
+        Updates the position of one of the points of the line
+        :param point_reference: Point to update. "origin" for origin node, something else for end node
+        :param new_x_scene: new x position in scene coordinates
+        :param new_y_scene: new y position in scene coordinates
+        :return:
+        """
         if point_reference == "origin":
             self.x1_scene = new_x_scene
             self.y1_scene = new_y_scene
@@ -717,6 +793,48 @@ class Bar(QtWidgets.QGraphicsLineItem):
             self.y2_scene = new_y_scene
 
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
+    def update_material(self, new_material):
+        """
+        Changes the material of the bar
+        :param new_material: name of the new material
+        :return:
+        """
+        self.bar_logic.set_material(new_material)
+
+    def update_profile(self, new_profile):
+        """
+        Changes the profile of the bar
+        :param new_profile: tuple containing name and number of the profile
+        :return:
+        """
+        self.bar_logic.set_profile(new_profile[0], new_profile[1])
+
+    def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
+        """
+        Defines node behavior when the mouse enters the node
+        :param event:
+        :return:
+        """
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                (active_structure_element is not self or (
+                        active_structure_element is self and self.color is NORMAL_COLOR
+                )):
+            self.change_bar_color("hover")
+
+    def hoverLeaveEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
+        """
+        Defines node behavior when the mouse exits the node
+        :param event:
+        :return:
+        """
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                active_structure_element is not self:
+            self.change_bar_color()
+        elif application_mode == ApplicationMode.BAR_MODE:
+            self.change_bar_color()
+
+    # Mouse clicks need to be handled from GraphicsScene class
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):
@@ -735,14 +853,13 @@ class Node(QtWidgets.QGraphicsEllipseItem):
     Class that holds all structure node information, as well as its graphic behavior
     """
 
-    def __init__(self, main_window, x_scene, y_scene, radius, color=QtGui.QColor(0, 0, 0)):
+    def __init__(self, main_window, x_scene, y_scene, radius):
         """
 
         :param main_window: main_window of the application
         :param x_scene: x position in scene coordinates
         :param y_scene: y position in scene coordinates
         :param radius: radius of the graphical representation
-        :param color: color in which the node is drawn
         """
         # 0, 0 are x and y coordinates in ITEM COORDINATES
         super().__init__(0, 0, radius, radius)
@@ -758,14 +875,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.radius = radius
 
         # Currently used color
-        self.color = None
-        # Normal color of the node
-        self._normal_color = color
-        # Color of the node when hovering mouse over it
-        self._hover_color_normal = QtGui.QColor(49, 204, 55)
-        self._hover_color_bar_mode = QtGui.QColor(203, 39, 23)
-        # Color of the node when selected
-        self._selected_color = QtGui.QColor(235, 204, 55)
+        self.color = NORMAL_COLOR
 
         # Change the color to the normal one
         self.change_node_color("normal")
@@ -848,12 +958,11 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         """
         if application_mode == ApplicationMode.NORMAL_MODE and \
                 (active_structure_element is not self or (
-                    active_structure_element is self and self.color is self._normal_color
+                    active_structure_element is self and self.color is NORMAL_COLOR
                 )):
             self.change_node_color("hover")
         elif application_mode == ApplicationMode.BAR_MODE:
             self.change_node_color("hover_bar")
-
 
     def change_node_color(self, color="normal"):
         """
@@ -861,13 +970,13 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         :param color: string representing the color to set
         """
         if color == "hover":
-            new_color = self._hover_color_normal
+            new_color = HOVER_COLOR_NORMAL_MODE
         elif color == "selected":
-            new_color = self._selected_color
+            new_color = SELECTED_COLOR
         elif color == "hover_bar":
-            new_color = self._hover_color_bar_mode
+            new_color = HOVER_COLOR_BAR_MODE
         else:
-            new_color = self._normal_color
+            new_color = NORMAL_COLOR
 
         # Actually change the node color
         self.setBrush(new_color)
@@ -923,6 +1032,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         elif event.key() == QtCore.Qt.Key_Delete and application_mode == ApplicationMode.NORMAL_MODE:
             if type(active_structure_element) is Node:
                 self.main_window.delete_node(active_structure_element)
+            elif type(active_structure_element) is Bar:
+                self.main_window.delete_bar(active_structure_element)
 
     def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
         """
@@ -960,25 +1071,47 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Get the item under the cursor
             item = self._get_item_at_mouse_position(event)
 
-            # Process the found item, if any
-            if item is not None:
-                unset_active_structure_element()
+            unset_active_structure_element()
+            # Select current element as active
+            set_active_structure_element(item)
 
-                # Select current element as active
-                set_active_structure_element(item)
+            self._update_active_element_info()
 
-                # NODE item
-                if type(item) is Node:
-                    item.change_node_color("selected")
-                    x = item.node_logic.x()
-                    y = item.node_logic.y()
-                    z = item.node_logic.z()
-                    self.main_window.update_coordinates(x, y, z)
+    def _update_active_element_info(self):
+        """
+        Updates the interface elements to show information about the active element
+        :return:
+        """
+        # NODE item
+        if type(active_structure_element) is Node:
+            # Change node color
+            active_structure_element.change_node_color("selected")
+            # Get coordinates of the node
+            x = active_structure_element.node_logic.x()
+            y = active_structure_element.node_logic.y()
+            z = active_structure_element.node_logic.z()
+            # Show coordinates in the textboxes
+            self.main_window.update_coordinates(x, y, z)
+        # BAR item
+        elif type(active_structure_element) is Bar:
+            # Change bar color
+            active_structure_element.change_bar_color("selected")
+            material_name = active_structure_element.bar_logic.get_material().name
+            profile_name = " ".join([active_structure_element.bar_logic.get_profile().name,
+                                     str(active_structure_element.bar_logic.get_profile().name_number)])
 
-            else:
-                unset_active_structure_element()
+            self.main_window.material_combo_box.setCurrentText(material_name)
+            self.main_window.profile_combo_box.setCurrentText(profile_name)
+        # No item
+        elif active_structure_element is None:
+            pass
 
     def _get_item_at_mouse_position(self, event):
+        """
+
+        :param event: Mouse event
+        :return: item under the cursor
+        """
         # Get position where the release has happened
         position = event.scenePos()
         # Transform matrix is needed for itemAt method.
