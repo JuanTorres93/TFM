@@ -340,7 +340,7 @@ class Bar:
         :param origin: Node that acts as the origin of the bar
         :param end: Node that acts as the end of the bar
         :param material: string that represents a material stored in the database
-        :param profile: string that represents a beam profile stored in the database
+        :param profile: tuple that represents a beam profile stored in the database
         """
         if type(origin) not in [Node] or type(end) not in [Node]:
             raise TypeError("Nodes must be of type 'Node'")

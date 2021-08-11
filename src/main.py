@@ -9,6 +9,7 @@ from src.modules import structures as st
 NODE_RADIUS = 10
 Z_VALUE_NODES = 2
 Z_VALUE_BARS = 1
+Z_VALUE_AXIS = -1
 # Conversion factors
 METER_TO_PX = 50
 PX_TO_METER = 1 / METER_TO_PX
@@ -245,14 +246,15 @@ class Window(QtWidgets.QMainWindow):
         :param node_origin:
         :param node_end:
         """
-        bar = Bar(node_origin, node_end)
+        if node_origin is not node_end:
+            bar = Bar(self, node_origin, node_end)
 
-        bar.setZValue(Z_VALUE_BARS)
+            bar.setZValue(Z_VALUE_BARS)
 
-        # Add node to scene
-        self.scene.addItem(bar)
+            # Add node to scene
+            self.scene.addItem(bar)
 
-        set_active_structure_element(bar)
+            set_active_structure_element(bar)
 
     def delete_node(self, node):
         """
@@ -276,7 +278,7 @@ class Window(QtWidgets.QMainWindow):
         # Draw axis
         x_axis = self.scene.addLine(point_x1[0], point_x1[1], point_x2[0], point_x2[1], pen=color)
         # Draw it at the bottom in order not to superpose user drawings
-        x_axis.setZValue(-1)
+        x_axis.setZValue(Z_VALUE_AXIS)
 
         # Y Axis
         point_y1 = [self.scene.sceneRect().width() / 2, 0]
@@ -285,7 +287,7 @@ class Window(QtWidgets.QMainWindow):
         # Draw axis
         y_axis = self.scene.addLine(point_y1[0], point_y1[1], point_y2[0], point_y2[1], pen=color)
         # Draw it at the bottom in order not to superpose user drawings
-        y_axis.setZValue(-1)
+        y_axis.setZValue(Z_VALUE_AXIS)
 
     def _create_menu_bar(self):
         """
@@ -504,6 +506,15 @@ class Window(QtWidgets.QMainWindow):
         self.y_coordinate.setPlainText(str(y))
         # self.z_coordinate.setPlainText(str(z))
 
+    def get_currently_selected_material(self):
+        material_text = self.material_combo_box.currentText()
+        material_text = material_text.replace(" ", "")
+        return material_text
+
+    def get_currently_selected_profile(self):
+        profile_text = self.profile_combo_box.currentText()
+        return tuple(profile_text.split(" "))
+
     def _populate_material_combobox(self):
         """
         Provides the items to populate the material combobox with the information in the database
@@ -654,7 +665,9 @@ class Window(QtWidgets.QMainWindow):
 
 
 class Bar(QtWidgets.QGraphicsLineItem):
-    def __init__(self, node_origin, node_end):
+    def __init__(self, main_window, node_origin, node_end):
+        self.main_window = main_window
+
         # Origin point
         self.node_origin = node_origin
         self.x1_scene = node_origin.x_scene + NODE_RADIUS / 2
@@ -676,8 +689,24 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         super().__init__(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
+        # Appearance
         pen = QtGui.QPen(QtGui.QColor(0, 0, 0), 3)
         self.setPen(pen)
+
+        self.setAcceptHoverEvents(True)
+
+        # Bar logic
+        bar_name = f"B_{self.x1_scene}_{self.y1_scene}_{self.x2_scene}_{self.y2_scene}"
+        origin_node_logic = node_origin.node_logic
+        end_node_logic = node_end.node_logic
+        # TODO Change for a default material that can be set in normal mode
+        material = self.main_window.get_currently_selected_material()
+        # TODO Change for a default profile that can be set in normal mode
+        profile = self.main_window.get_currently_selected_profile()
+        self.bar_logic = st.Bar(bar_name, origin_node_logic, end_node_logic,
+                                material, profile)
+
+    # TODO change color on hover and selected
 
     def update_point_position(self, point_reference, new_x_scene, new_y_scene):
         if point_reference == "origin":
@@ -749,7 +778,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         x_meter = self.x_centered * PX_TO_METER
         y_meter = self.y_centered * PX_TO_METER
 
-        node_name = str(x_scene) + "_" + str(y_scene)
+        node_name = "N_" + str(x_scene) + "_" + str(y_scene)
         # Structure node object
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
 
@@ -808,6 +837,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
             # Change node position
             self.setPos(draw_pos)
+            # This signal communicates with Bar to change its position
             self.signals.position_changed.emit()
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
