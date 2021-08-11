@@ -5,9 +5,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from src.modules import databaseutils as db
 from src.modules import structures as st
 
+# Constants
+NODE_RADIUS = 10
+Z_VALUE_NODES = 2
+Z_VALUE_BARS = 1
 # Conversion factors
-meter_to_px = 50
-px_to_meter = 1 / meter_to_px
+METER_TO_PX = 50
+PX_TO_METER = 1 / METER_TO_PX
 
 # Currently selected node or bar
 active_structure_element = None
@@ -48,247 +52,11 @@ class ApplicationMode(enum.Enum):
     """
     NODE_MODE = 1
     NORMAL_MODE = 2
+    BAR_MODE = 3
 
 
 # Default mode for application is normal mode
 application_mode = ApplicationMode.NORMAL_MODE
-
-
-class Bar:
-    # TODO Write class inherited from QGraphicsLine, or something like that
-    pass
-
-
-class Node(QtWidgets.QGraphicsEllipseItem):
-    """
-    Class that holds all structure node information, as well as its graphic behavior
-    """
-
-    def __init__(self, main_window, x_scene, y_scene, radius, color=QtGui.QColor(0, 0, 0)):
-        """
-
-        :param main_window: main_window of the application
-        :param x_scene: x position in scene coordinates
-        :param y_scene: y position in scene coordinates
-        :param radius: radius of the graphical representation
-        :param color: color in which the node is drawn
-        """
-        # 0, 0 are x and y coordinates in ITEM COORDINATES
-        super().__init__(0, 0, radius, radius)
-
-        self.setPos(x_scene, y_scene)
-
-        self.main_window = main_window
-        # x and y coordinates in scece reference system
-        self.x_scene, self.y_scene = x_scene, y_scene
-        # x and y coordinates in centered reference system
-        self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
-        # Radius of the node
-        self.radius = radius
-
-        # Currently used color
-        self.color = None
-        # Normal color of the node
-        self._normal_color = color
-        # Color of the node when selected
-        self._hover_color = QtGui.QColor(49, 204, 55)
-        # Color of the node when hovering mouse over it
-        self._selected_color = QtGui.QColor(235, 204, 55)
-
-        # Change the color to the normal one
-        self.change_node_color("normal")
-
-        # Needed for hover events to take place
-        self.setAcceptHoverEvents(True)
-
-        # Node logic
-        # Position based on user click input
-        x_meter = self.x_centered * px_to_meter
-        y_meter = self.y_centered * px_to_meter
-
-        node_name = str(x_scene) + "_" + str(y_scene)
-        # Structure node object
-        self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
-
-    def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
-        """
-        This method is called from the coordinate textBoxes. Changes the position of the node the the specified one.
-        If one of the parameters is omitted or set to None, then the current position is applied.
-        :param new_x_centered_in_meters: New x position, in centered coordinates and in meters
-        :param new_y_centered_in_meters: New y position, in centered coordinates and in meters
-        :return:
-        """
-        # If no x coordinate is specified, then use the current value
-        if new_x_centered_in_meters is None:
-            new_x_centered_in_meters = self.node_logic.x()
-            new_x_centered = self.x_centered
-        # Otherwise, get the pixel position in centered coordinates
-        else:
-            new_x_centered = int(new_x_centered_in_meters * meter_to_px)
-            self.x_centered = new_x_centered
-
-        # If no y coordinate is specified, then use the current value
-        if new_y_centered_in_meters is None:
-            new_y_centered_in_meters = self.node_logic.y()
-            new_y_centered = self.y_centered
-        # Otherwise, get the pixel position in centered coordinates
-        else:
-            new_y_centered = int(new_y_centered_in_meters * meter_to_px)
-            self.y_centered = new_y_centered
-
-        # Convert centered coordinates to scene ones in order to be able to draw them correctly
-        new_x_scene, new_y_scene = self.main_window.scene_coordinates(new_x_centered, new_y_centered)
-
-        # Pixel coordinates must be integer
-        new_x_scene = int(new_x_scene)
-        new_y_scene = int(new_y_scene)
-
-        # Scene coordinates
-        self.x_scene, self.y_scene = new_x_scene, new_y_scene
-        # Update meter coordinates in node logic
-        self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
-
-        # Modify scene coordinates to draw the node at its center
-        draw_pos_x = int(new_x_scene - self.radius / 2)
-        draw_pos_y = int(new_y_scene - self.radius / 2)
-
-        try:
-            # Pack into a point the draw coordinates
-            draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
-        except OverflowError:
-            # If the coordinates are to big, then cancel the operation
-            return
-
-        # Change node position
-        self.setPos(draw_pos)
-
-    def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
-        """
-        Defines node behavior when the mouse enters the node
-        :param event:
-        :return:
-        """
-        if application_mode == ApplicationMode.NORMAL_MODE and \
-                (active_structure_element is not self or (
-                    active_structure_element is self and self.color is self._normal_color
-                )):
-            self.change_node_color("hover")
-
-    def change_node_color(self, color="normal"):
-        """
-        Changes the color of the node in a standarized way
-        :param color: string representing the color to set
-        """
-        if color == "hover":
-            new_color = self._hover_color
-        elif color == "selected":
-            new_color = self._selected_color
-        else:
-            new_color = self._normal_color
-
-        # Actually change the node color
-        self.setBrush(new_color)
-        # Store logically the currently used color
-        self.color = new_color
-
-    def hoverLeaveEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
-        """
-        Defines node behavior when the mouse exits the node
-        :param event:
-        :return:
-        """
-        if application_mode == ApplicationMode.NORMAL_MODE and \
-                active_structure_element is not self:
-            self.change_node_color(self._normal_color)
-
-    # Mouse clicks need to be handled from GraphicsScene class
-
-
-class GraphicsScene(QtWidgets.QGraphicsScene):
-    """
-    Reimplementation of QGraphicsScene in order to be able to handle the mouse events
-    """
-
-    def __init__(self, main_window, parent=None):
-        """
-
-        :param main_window: main window of the application
-        :param parent:
-        """
-        super().__init__(parent)
-        self.main_window = main_window
-
-    def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
-        """
-        Function that is triggered every time a key is released
-        :param event:
-        :return:
-        """
-        global application_mode
-        global active_structure_element
-
-        # Go back to normal mode
-        if event.key() == QtCore.Qt.Key_Escape:
-            self.main_window.set_current_mode(ApplicationMode.NORMAL_MODE)
-        # Delete active element
-        elif event.key() == QtCore.Qt.Key_Delete and application_mode == ApplicationMode.NORMAL_MODE:
-            if type(active_structure_element) is Node:
-                self.main_window.delete_node(active_structure_element)
-
-    def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
-        """
-        Function that is triggered every time the left mouse button is released
-        :param event:
-        :return:
-        """
-        # NODE MODE functionality
-        if application_mode == ApplicationMode.NODE_MODE:
-            node_radius = 10
-            self.main_window.draw_node(node_radius)
-        # NORMAL MODE functionality
-        elif application_mode == ApplicationMode.NORMAL_MODE:
-            # Get position where the release has happened
-            position = event.scenePos()
-            # Transform matrix is needed for itemAt method.
-            # It is used the identity matrix in order not to change anything
-            transform = QtGui.QTransform(1, 0, 0,
-                                         0, 1, 0,
-                                         0, 0, 1)
-
-            # Get the item at event position
-            item = self.itemAt(position, transform)
-
-            # Process the found item, if any
-            if item is not None:
-                unset_active_structure_element()
-
-                # Select current element as active
-                set_active_structure_element(item)
-
-                # NODE item
-                if type(item) is Node:
-                    item.change_node_color("selected")
-                    x = item.node_logic.x()
-                    y = item.node_logic.y()
-                    z = item.node_logic.z()
-                    self.main_window.update_coordinates(x, y, z)
-
-            else:
-                unset_active_structure_element()
-
-
-class PlainTextBox(QtWidgets.QPlainTextEdit):
-    """
-    Extends QPlainTextEdit in order to be able to specify a sizeHint lesser than the default one
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def sizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(60, 10)
-
-    def minimumSizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(60, 30)
 
 
 class Window(QtWidgets.QMainWindow):
@@ -437,6 +205,19 @@ class Window(QtWidgets.QMainWindow):
         else:
             self.set_current_mode(ApplicationMode.NORMAL_MODE)
 
+    def activate_draw_bar_mode(self):
+        """
+        Activates the application mode in which the bars can be drawn with mouse clicks. The mode can be reverted back
+        to normal if this function is called again
+        :return:
+        """
+        global application_mode
+
+        if application_mode != ApplicationMode.BAR_MODE:
+            self.set_current_mode(ApplicationMode.BAR_MODE)
+        else:
+            self.set_current_mode(ApplicationMode.NORMAL_MODE)
+
     def draw_node(self, radius):
         """
         Draws a node at the cursor position
@@ -451,11 +232,36 @@ class Window(QtWidgets.QMainWindow):
         draw_coordinates = [scene_position.x() - radius / 2, scene_position.y() - radius / 2]
         # Create node instance
         node = Node(self, draw_coordinates[0], draw_coordinates[1], radius)
+        node.setZValue(Z_VALUE_NODES)
 
         # Add node to scene
         self.scene.addItem(node)
 
         set_active_structure_element(node)
+
+    def draw_bar(self, x1_scene, y1_scene, x2_scene, y2_scene):
+        """
+        Draws a node at the cursor position
+        :param x1_scene: x position of the first point in the line
+        :param y1_scene: y position of the first point in the line
+        :param x2_scene: x position of the second point in the line
+        :param y2_scene: y position of the second point in the line
+        """
+        # Coordinates to draw the circle in its center instead of in its top-left corner
+        draw_coordinates = [x1_scene + NODE_RADIUS / 2,
+                            y1_scene + NODE_RADIUS / 2,
+                            x2_scene + NODE_RADIUS / 2,
+                            y2_scene + NODE_RADIUS / 2]
+
+        bar = Bar(draw_coordinates[0], draw_coordinates[1],
+                  draw_coordinates[2], draw_coordinates[3])
+
+        bar.setZValue(Z_VALUE_BARS)
+
+        # Add node to scene
+        self.scene.addItem(bar)
+
+        set_active_structure_element(bar)
 
     def delete_node(self, node):
         """
@@ -513,7 +319,7 @@ class Window(QtWidgets.QMainWindow):
 
         # Structure
         edit_menu.addAction(self.enable_node_mode_action)
-        edit_menu.addAction(self.create_bar_action)
+        edit_menu.addAction(self.enable_bar_mode_action)
         edit_menu.addAction(self.create_support_action)
         edit_menu.addAction(self.create_charge_action)
         edit_menu.addSeparator()
@@ -565,7 +371,7 @@ class Window(QtWidgets.QMainWindow):
         structure_toolbar = QtWidgets.QToolBar("Structure", self)
 
         structure_toolbar.addAction(self.enable_node_mode_action)
-        structure_toolbar.addAction(self.create_bar_action)
+        structure_toolbar.addAction(self.enable_bar_mode_action)
         structure_toolbar.addAction(self.create_support_action)
         structure_toolbar.addAction(self.create_charge_action)
 
@@ -786,7 +592,7 @@ class Window(QtWidgets.QMainWindow):
         self.central_widget.addAction(self.enable_node_mode_action)
         # TODO Borrar, este separador, solo esta para motivos de documentacion
         self.central_widget.addAction(separator)
-        self.central_widget.addAction(self.create_bar_action)
+        self.central_widget.addAction(self.enable_bar_mode_action)
 
     def _connect_actions(self):
         """
@@ -796,6 +602,7 @@ class Window(QtWidgets.QMainWindow):
         self.exit_action.triggered.connect(self.close)
 
         self.enable_node_mode_action.triggered.connect(self.activate_draw_node_mode)
+        self.enable_bar_mode_action.triggered.connect(self.activate_draw_bar_mode)
 
     def _create_actions(self):
         """
@@ -835,16 +642,16 @@ class Window(QtWidgets.QMainWindow):
 
         # ========== STRUCTURE ACTIONS ==========
         # Create actions
-        self.enable_node_mode_action = QtWidgets.QAction("New &Node", self)
-        self.create_bar_action = QtWidgets.QAction("New &Bar", self)
+        self.enable_node_mode_action = QtWidgets.QAction("&Node mode", self)
+        self.enable_bar_mode_action = QtWidgets.QAction("&Bar mode", self)
         self.create_support_action = QtWidgets.QAction("&Support", self)
         self.create_charge_action = QtWidgets.QAction("&Charge", self)
         # Add shortcuts
         self.enable_node_mode_action.setShortcut("N")
-        self.create_bar_action.setShortcut("B")
+        self.enable_bar_mode_action.setShortcut("B")
         # Add help tips
         _add_tip(self.enable_node_mode_action, "Create a new node")
-        _add_tip(self.create_bar_action, "Create a new bar")
+        _add_tip(self.enable_bar_mode_action, "Create a new bar")
         _add_tip(self.create_support_action, "Create a new support")
         _add_tip(self.create_charge_action, "Create a new charge")
 
@@ -853,6 +660,288 @@ class Window(QtWidgets.QMainWindow):
         self.help_content_action = QtWidgets.QAction("&Help content", self)
         self.about_action = QtWidgets.QAction("&About", self)
         # Add help tips
+
+
+class Bar(QtWidgets.QGraphicsLineItem):
+    def __init__(self, x1_scene, y1_scene, x2_scene, y2_scene):
+        super().__init__(x1_scene, y1_scene, x2_scene, y2_scene)
+
+
+class Node(QtWidgets.QGraphicsEllipseItem):
+    """
+    Class that holds all structure node information, as well as its graphic behavior
+    """
+
+    def __init__(self, main_window, x_scene, y_scene, radius, color=QtGui.QColor(0, 0, 0)):
+        """
+
+        :param main_window: main_window of the application
+        :param x_scene: x position in scene coordinates
+        :param y_scene: y position in scene coordinates
+        :param radius: radius of the graphical representation
+        :param color: color in which the node is drawn
+        """
+        # 0, 0 are x and y coordinates in ITEM COORDINATES
+        super().__init__(0, 0, radius, radius)
+
+        self.setPos(x_scene, y_scene)
+
+        self.main_window = main_window
+        # x and y coordinates in scece reference system
+        self.x_scene, self.y_scene = x_scene, y_scene
+        # x and y coordinates in centered reference system
+        self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
+        # Radius of the node
+        self.radius = radius
+
+        # Currently used color
+        self.color = None
+        # Normal color of the node
+        self._normal_color = color
+        # Color of the node when hovering mouse over it
+        self._hover_color_normal = QtGui.QColor(49, 204, 55)
+        self._hover_color_bar_mode = QtGui.QColor(203, 39, 23)
+        # Color of the node when selected
+        self._selected_color = QtGui.QColor(235, 204, 55)
+
+        # Change the color to the normal one
+        self.change_node_color("normal")
+
+        # Needed for hover events to take place
+        self.setAcceptHoverEvents(True)
+
+        # Node logic
+        # Position based on user click input
+        x_meter = self.x_centered * PX_TO_METER
+        y_meter = self.y_centered * PX_TO_METER
+
+        node_name = str(x_scene) + "_" + str(y_scene)
+        # Structure node object
+        self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
+
+    def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
+        """
+        This method is called from the coordinate textBoxes. Changes the position of the node the the specified one.
+        If one of the parameters is omitted or set to None, then the current position is applied.
+        :param new_x_centered_in_meters: New x position, in centered coordinates and in meters
+        :param new_y_centered_in_meters: New y position, in centered coordinates and in meters
+        :return:
+        """
+        # If no x coordinate is specified, then use the current value
+        if new_x_centered_in_meters is None:
+            new_x_centered_in_meters = self.node_logic.x()
+            new_x_centered = self.x_centered
+        # Otherwise, get the pixel position in centered coordinates
+        else:
+            new_x_centered = int(new_x_centered_in_meters * METER_TO_PX)
+            self.x_centered = new_x_centered
+
+        # If no y coordinate is specified, then use the current value
+        if new_y_centered_in_meters is None:
+            new_y_centered_in_meters = self.node_logic.y()
+            new_y_centered = self.y_centered
+        # Otherwise, get the pixel position in centered coordinates
+        else:
+            new_y_centered = int(new_y_centered_in_meters * METER_TO_PX)
+            self.y_centered = new_y_centered
+
+        if new_x_centered_in_meters != self.node_logic.x() or new_y_centered_in_meters != self.node_logic.y():
+            # Convert centered coordinates to scene ones in order to be able to draw them correctly
+            new_x_scene, new_y_scene = self.main_window.scene_coordinates(new_x_centered, new_y_centered)
+
+            # Pixel coordinates must be integer
+            new_x_scene = int(new_x_scene)
+            new_y_scene = int(new_y_scene)
+
+            # Scene coordinates
+            self.x_scene, self.y_scene = new_x_scene, new_y_scene
+            # Update meter coordinates in node logic
+            self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
+
+            # Modify scene coordinates to draw the node at its center
+            draw_pos_x = int(new_x_scene + self.radius / 2)
+            draw_pos_y = int(new_y_scene + self.radius / 2)
+
+            try:
+                # Pack into a point the draw coordinates
+                draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
+            except OverflowError:
+                # If the coordinates are to big, then cancel the operation
+                return
+
+            # Change node position
+            self.setPos(draw_pos)
+
+    def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
+        """
+        Defines node behavior when the mouse enters the node
+        :param event:
+        :return:
+        """
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                (active_structure_element is not self or (
+                    active_structure_element is self and self.color is self._normal_color
+                )):
+            self.change_node_color("hover")
+        elif application_mode == ApplicationMode.BAR_MODE:
+            self.change_node_color("hover_bar")
+
+
+    def change_node_color(self, color="normal"):
+        """
+        Changes the color of the node in a standarized way
+        :param color: string representing the color to set
+        """
+        if color == "hover":
+            new_color = self._hover_color_normal
+        elif color == "selected":
+            new_color = self._selected_color
+        elif color == "hover_bar":
+            new_color = self._hover_color_bar_mode
+        else:
+            new_color = self._normal_color
+
+        # Actually change the node color
+        self.setBrush(new_color)
+        # Store logically the currently used color
+        self.color = new_color
+
+    def hoverLeaveEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
+        """
+        Defines node behavior when the mouse exits the node
+        :param event:
+        :return:
+        """
+        if application_mode == ApplicationMode.NORMAL_MODE and \
+                active_structure_element is not self:
+            self.change_node_color()
+        elif application_mode == ApplicationMode.BAR_MODE:
+            self.change_node_color()
+
+    # Mouse clicks need to be handled from GraphicsScene class
+
+
+class GraphicsScene(QtWidgets.QGraphicsScene):
+    """
+    Reimplementation of QGraphicsScene in order to be able to handle the mouse events
+    """
+
+    def __init__(self, main_window, parent=None):
+        """
+
+        :param main_window: main window of the application
+        :param parent:
+        """
+        super().__init__(parent)
+        self.main_window = main_window
+
+        # Dictionary to track the mouse clicks when in bar mode in order to store
+        # the points of the bar
+        self.points_for_bar_creation = None
+
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
+        """
+        Function that is triggered every time a key is released
+        :param event:
+        :return:
+        """
+        global application_mode
+        global active_structure_element
+
+        # Go back to normal mode
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.main_window.set_current_mode(ApplicationMode.NORMAL_MODE)
+        # Delete active element
+        elif event.key() == QtCore.Qt.Key_Delete and application_mode == ApplicationMode.NORMAL_MODE:
+            if type(active_structure_element) is Node:
+                self.main_window.delete_node(active_structure_element)
+
+    def mouseReleaseEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
+        """
+        Function that is triggered every time the left mouse button is released
+        :param event:
+        :return:
+        """
+        # NODE MODE functionality
+        if application_mode == ApplicationMode.NODE_MODE:
+            self.main_window.draw_node(NODE_RADIUS)
+        # BAR MODE functionality
+        elif application_mode == ApplicationMode.BAR_MODE:
+            # Get the item under the cursor
+            item = self._get_item_at_mouse_position(event)
+
+            if type(item) is Node:
+                if self.points_for_bar_creation is None:
+                    self.points_for_bar_creation = {}
+                    self.points_for_bar_creation["x1_scene"] = item.x_scene
+                    self.points_for_bar_creation["y1_scene"] = item.y_scene
+                else:
+                    self.points_for_bar_creation["x2_scene"] = item.x_scene
+                    self.points_for_bar_creation["y2_scene"] = item.y_scene
+            else:
+                self.points_for_bar_creation = None
+
+            print(self.points_for_bar_creation)
+            # Create bar
+            if self.points_for_bar_creation is not None and len(self.points_for_bar_creation) >= 4:
+                x1_scene = self.points_for_bar_creation.get("x1_scene")
+                y1_scene = self.points_for_bar_creation.get("y1_scene")
+                x2_scene = self.points_for_bar_creation.get("x2_scene")
+                y2_scene = self.points_for_bar_creation.get("y2_scene")
+                self.points_for_bar_creation = None
+
+                self.main_window.draw_bar(x1_scene, y1_scene, x2_scene, y2_scene)
+        # NORMAL MODE functionality
+        elif application_mode == ApplicationMode.NORMAL_MODE:
+            # Get the item under the cursor
+            item = self._get_item_at_mouse_position(event)
+
+            # Process the found item, if any
+            if item is not None:
+                unset_active_structure_element()
+
+                # Select current element as active
+                set_active_structure_element(item)
+
+                # NODE item
+                if type(item) is Node:
+                    item.change_node_color("selected")
+                    x = item.node_logic.x()
+                    y = item.node_logic.y()
+                    z = item.node_logic.z()
+                    self.main_window.update_coordinates(x, y, z)
+
+            else:
+                unset_active_structure_element()
+
+    def _get_item_at_mouse_position(self, event):
+        # Get position where the release has happened
+        position = event.scenePos()
+        # Transform matrix is needed for itemAt method.
+        # It is used the identity matrix in order not to change anything
+        transform = QtGui.QTransform(1, 0, 0,
+                                     0, 1, 0,
+                                     0, 0, 1)
+
+        # Get the item at event position
+        item = self.itemAt(position, transform)
+
+        return item
+
+
+class PlainTextBox(QtWidgets.QPlainTextEdit):
+    """
+    Extends QPlainTextEdit in order to be able to specify a sizeHint lesser than the default one
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(60, 10)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(60, 30)
+
 
 
 if __name__ == "__main__":
