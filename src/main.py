@@ -239,22 +239,13 @@ class Window(QtWidgets.QMainWindow):
 
         set_active_structure_element(node)
 
-    def draw_bar(self, x1_scene, y1_scene, x2_scene, y2_scene):
+    def draw_bar(self, node_origin, node_end):
         """
         Draws a node at the cursor position
-        :param x1_scene: x position of the first point in the line
-        :param y1_scene: y position of the first point in the line
-        :param x2_scene: x position of the second point in the line
-        :param y2_scene: y position of the second point in the line
+        :param node_origin:
+        :param node_end:
         """
-        # Coordinates to draw the circle in its center instead of in its top-left corner
-        draw_coordinates = [x1_scene + NODE_RADIUS / 2,
-                            y1_scene + NODE_RADIUS / 2,
-                            x2_scene + NODE_RADIUS / 2,
-                            y2_scene + NODE_RADIUS / 2]
-
-        bar = Bar(draw_coordinates[0], draw_coordinates[1],
-                  draw_coordinates[2], draw_coordinates[3])
+        bar = Bar(node_origin, node_end)
 
         bar.setZValue(Z_VALUE_BARS)
 
@@ -663,8 +654,51 @@ class Window(QtWidgets.QMainWindow):
 
 
 class Bar(QtWidgets.QGraphicsLineItem):
-    def __init__(self, x1_scene, y1_scene, x2_scene, y2_scene):
-        super().__init__(x1_scene, y1_scene, x2_scene, y2_scene)
+    def __init__(self, node_origin, node_end):
+        # Origin point
+        self.node_origin = node_origin
+        self.x1_scene = node_origin.x_scene + NODE_RADIUS / 2
+        self.y1_scene = node_origin.y_scene + NODE_RADIUS / 2
+        self.node_origin.signals.position_changed.connect(lambda: self.update_point_position(
+            "origin",
+            self.node_origin.x_scene,
+            self.node_origin.y_scene
+        ))
+        # End Point
+        self.node_end = node_end
+        self.x2_scene = node_end.x_scene + NODE_RADIUS / 2
+        self.y2_scene = node_end.y_scene + NODE_RADIUS / 2
+        self.node_end.signals.position_changed.connect(lambda: self.update_point_position(
+            "end",
+            self.node_end.x_scene,
+            self.node_end.y_scene
+        ))
+
+        super().__init__(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
+        pen = QtGui.QPen(QtGui.QColor(0, 0, 0), 3)
+        self.setPen(pen)
+
+    def update_point_position(self, point_reference, new_x_scene, new_y_scene):
+        if point_reference == "origin":
+            self.x1_scene = new_x_scene
+            self.y1_scene = new_y_scene
+        else:
+            self.x2_scene = new_x_scene
+            self.y2_scene = new_y_scene
+
+        self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
+
+class NodeSignals(QtWidgets.QGraphicsObject):
+    """
+    The class from which inherits Node cannot emit signals. This class is aimed to hold the needed custom signals
+    of the Node class and emit them when necessary
+    """
+    position_changed = QtCore.pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
 
 
 class Node(QtWidgets.QGraphicsEllipseItem):
@@ -719,6 +753,9 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # Structure node object
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
 
+        # Signal
+        self.signals = NodeSignals()
+
     def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
         """
         This method is called from the coordinate textBoxes. Changes the position of the node the the specified one.
@@ -759,8 +796,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
 
             # Modify scene coordinates to draw the node at its center
-            draw_pos_x = int(new_x_scene + self.radius / 2)
-            draw_pos_y = int(new_y_scene + self.radius / 2)
+            draw_pos_x = int(new_x_scene - self.radius / 2)
+            draw_pos_y = int(new_y_scene - self.radius / 2)
 
             try:
                 # Pack into a point the draw coordinates
@@ -771,6 +808,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
             # Change node position
             self.setPos(draw_pos)
+            self.signals.position_changed.emit()
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -837,7 +875,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
         # Dictionary to track the mouse clicks when in bar mode in order to store
         # the points of the bar
-        self.points_for_bar_creation = None
+        self.nodes_for_bar_creation = None
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
         """
@@ -871,26 +909,22 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             item = self._get_item_at_mouse_position(event)
 
             if type(item) is Node:
-                if self.points_for_bar_creation is None:
-                    self.points_for_bar_creation = {}
-                    self.points_for_bar_creation["x1_scene"] = item.x_scene
-                    self.points_for_bar_creation["y1_scene"] = item.y_scene
+                if self.nodes_for_bar_creation is None:
+                    self.nodes_for_bar_creation = {}
+                    self.nodes_for_bar_creation["node_origin"] = item
                 else:
-                    self.points_for_bar_creation["x2_scene"] = item.x_scene
-                    self.points_for_bar_creation["y2_scene"] = item.y_scene
+                    self.nodes_for_bar_creation["node_end"] = item
             else:
-                self.points_for_bar_creation = None
+                self.nodes_for_bar_creation = None
 
-            print(self.points_for_bar_creation)
             # Create bar
-            if self.points_for_bar_creation is not None and len(self.points_for_bar_creation) >= 4:
-                x1_scene = self.points_for_bar_creation.get("x1_scene")
-                y1_scene = self.points_for_bar_creation.get("y1_scene")
-                x2_scene = self.points_for_bar_creation.get("x2_scene")
-                y2_scene = self.points_for_bar_creation.get("y2_scene")
-                self.points_for_bar_creation = None
+            if self.nodes_for_bar_creation is not None and len(self.nodes_for_bar_creation) >= 2:
+                node_origin = self.nodes_for_bar_creation.get("node_origin")
+                node_end = self.nodes_for_bar_creation.get("node_end")
 
-                self.main_window.draw_bar(x1_scene, y1_scene, x2_scene, y2_scene)
+                self.main_window.draw_bar(node_origin, node_end)
+                self.nodes_for_bar_creation = None
+
         # NORMAL MODE functionality
         elif application_mode == ApplicationMode.NORMAL_MODE:
             # Get the item under the cursor
