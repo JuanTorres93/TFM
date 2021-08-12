@@ -32,7 +32,7 @@ def unset_active_structure_element():
     """
     global active_structure_element
 
-    # If some element is currenty active
+    # If some element is currently active
     if active_structure_element is not None:
         # If it is a node, change its color to normal
         if type(active_structure_element) is Node:
@@ -373,12 +373,19 @@ class Window(QtWidgets.QMainWindow):
                 active_structure_element.update_position(None, new_pos)
             # TODO implement Z if 3D structures
 
+    def _update_selected_node_support(self, text):
+        """
+        This function is connected to the support combobox
+        :param text: current text of the textbox
+        """
+        if type(active_structure_element) is Node:
+            active_structure_element.update_support(text)
+
     def _update_selected_bar_material(self, material):
         """
         This function is connected to the material combobox that represent the material of the bar
         :param material: material name to update to
         """
-        global active_structure_element
         if type(active_structure_element) is Bar:
             active_structure_element.update_material(material)
 
@@ -524,6 +531,22 @@ class Window(QtWidgets.QMainWindow):
 
         splitter.addWidget(QtWidgets.QLabel("Coordinates:"))
         splitter.addWidget(node_coords_container)
+
+        # ---- Support
+        support_layout, support_container = create_layout_and_container()
+
+        self.support_combo_box = QtWidgets.QComboBox()
+        self.support_combo_box.addItems([
+            "NONE", "ROLLER_X", "ROLLER_Y", "PINNED", "FIXED"
+        ])
+        self.support_combo_box.currentTextChanged.connect(lambda: self._update_selected_node_support(
+            self.support_combo_box.currentText()
+        ))
+
+        support_layout.addWidget(QtWidgets.QLabel("Support: "))
+        support_layout.addWidget(self.support_combo_box)
+
+        splitter.addWidget(support_container)
 
         # Widget to act as a separator. It allows the widget in the bars to be compact
         separator = QtWidgets.QWidget()
@@ -740,7 +763,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         # Appearance
         self.color = NORMAL_COLOR
-        self.drawn_thickness = 3
+        self.drawn_thickness = 4
         pen = QtGui.QPen(NORMAL_COLOR, self.drawn_thickness)
         self.setPen(pen)
 
@@ -750,9 +773,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
         bar_name = f"B_{self.x1_scene}_{self.y1_scene}_{self.x2_scene}_{self.y2_scene}"
         origin_node_logic = node_origin.node_logic
         end_node_logic = node_end.node_logic
-        # TODO Change for a default material that can be set in normal mode
         material = self.main_window.get_currently_selected_material()
-        # TODO Change for a default profile that can be set in normal mode
         profile = self.main_window.get_currently_selected_profile()
         self.bar_logic = st.Bar(bar_name, origin_node_logic, end_node_logic,
                                 material, profile)
@@ -892,6 +913,11 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # Structure node object
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
 
+        # Support
+        self.update_support(
+            self.main_window.support_combo_box.currentText()
+        )
+
         # Signal
         self.signals = NodeSignals()
 
@@ -949,6 +975,20 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             self.setPos(draw_pos)
             # This signal communicates with Bar to change its position
             self.signals.position_changed.emit()
+
+    def update_support(self, support_name):
+        if support_name == "ROLLER_X":
+            support = st.Support.ROLLER_X
+        elif support_name == "ROLLER_Y":
+            support = st.Support.ROLLER_Y
+        elif support_name == "PINNED":
+            support = st.Support.PINNED
+        elif support_name == "FIXED":
+            support = st.Support.FIXED
+        else:
+            support = st.Support.NONE
+
+        self.node_logic.set_support(support)
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -1092,6 +1132,12 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             z = active_structure_element.node_logic.z()
             # Show coordinates in the textboxes
             self.main_window.update_coordinates(x, y, z)
+            # Show support
+            support_name = active_structure_element.node_logic.support
+            support_name = str(support_name).split(".")
+            self.main_window.support_combo_box.setCurrentText(
+                support_name[1]
+            )
         # BAR item
         elif type(active_structure_element) is Bar:
             # Change bar color
@@ -1102,9 +1148,12 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             self.main_window.material_combo_box.setCurrentText(material_name)
             self.main_window.profile_combo_box.setCurrentText(profile_name)
+            self.main_window.update_coordinates("---", "---", "---")
+            self.main_window.support_combo_box.setCurrentText("NONE")
         # No item
         elif active_structure_element is None:
-            pass
+            self.main_window.update_coordinates("---", "---", "---")
+            self.main_window.support_combo_box.setCurrentText("NONE")
 
     def _get_item_at_mouse_position(self, event):
         """

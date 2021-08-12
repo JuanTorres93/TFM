@@ -131,7 +131,7 @@ class Node:
         :return:
         """
         if type(new_support) not in [Support]:
-            raise TypeError("new_support must be a tuple.")
+            raise TypeError("new_support must be of class Support.")
 
         self.support = new_support
 
