@@ -447,7 +447,7 @@ class Window(QtWidgets.QMainWindow):
         material_layout, mat_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
 
         # ---- Label material
-        label_material = QtWidgets.QLabel("Material")
+        label_material = QtWidgets.QLabel("Material:")
         material_layout.addWidget(label_material)
 
         # ---- Material comboBox
@@ -465,7 +465,7 @@ class Window(QtWidgets.QMainWindow):
         # -- Profile
         profile_layout, profile_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
         # ---- Label profile
-        label_profile = QtWidgets.QLabel("Profile")
+        label_profile = QtWidgets.QLabel("Profile:")
         profile_layout.addWidget(label_profile)
 
         # ---- ComboBox profile
@@ -479,6 +479,16 @@ class Window(QtWidgets.QMainWindow):
 
         bar_properties_layout.addWidget(profile_container)
         splitter.addWidget(bar_properties_container)
+
+        # -- Charges
+        bar_charges_layout, bar_charges_container = create_layout_and_container(QtWidgets.QVBoxLayout(),
+                                                                                QtWidgets.QWidget())
+
+        bar_charges_layout.addWidget(QtWidgets.QLabel("Charges:"))
+        self.add_bar_charge_button = QtWidgets.QPushButton("New charge")
+
+        bar_properties_layout.addWidget(bar_charges_container)
+        bar_properties_layout.addWidget(self.add_bar_charge_button)
 
         # Node properties
         node_properties_layout, node_properties_container = create_layout_and_container(
@@ -538,11 +548,11 @@ class Window(QtWidgets.QMainWindow):
             return text_item
 
         # ---- x coordinate
-        self.x_coordinate = create_coordinate(self, "x", node_coords_layout)
+        self.x_coordinate = create_coordinate(self, "x:", node_coords_layout)
         # ---- y coordinate
-        self.y_coordinate = create_coordinate(self, "y", node_coords_layout)
+        self.y_coordinate = create_coordinate(self, "y:", node_coords_layout)
         # ---- z coordinate
-        # self.z_coordinate = create_coordinate("z", node_coords_layout)
+        # self.z_coordinate = create_coordinate("z:", node_coords_layout)
 
         # Initialize textboxes
         self.update_coordinates(0, 0, 0)
