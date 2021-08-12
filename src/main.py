@@ -413,15 +413,17 @@ class Window(QtWidgets.QMainWindow):
         self.addToolBar(QtCore.Qt.LeftToolBarArea, structure_toolbar)
 
         # ========== PROPERTIES DOCK ==========
-        def create_layout_and_container():
+        def create_layout_and_container(layout_type, widget_type):
             """
             QSplitter class doesn't allow to add layouts directly, so a workaround is needed.
             This function returns a layout to which widgets can be added and a single widget that
             holds that layout.
+            :param widget_type: layout to  be used inside widget
+            :param layout_type: tyoe of widget to be returned
             :return: layout and container widget
             """
-            layout = QtWidgets.QHBoxLayout()
-            container = QtWidgets.QWidget()
+            layout = layout_type
+            container = widget_type
             container.setLayout(layout)
 
             return layout, container
@@ -433,14 +435,22 @@ class Window(QtWidgets.QMainWindow):
         splitter.setChildrenCollapsible(False)
         properties_dock.setWidget(splitter)
 
-        # Material
-        material_layout, mat_container = create_layout_and_container()
+        # Bar properties
+        bar_properties_layout, bar_properties_container = create_layout_and_container(
+            QtWidgets.QVBoxLayout(),
+            QtWidgets.QGroupBox()
+        )
 
-        # -- Label material
+        bar_properties_layout.addWidget(QtWidgets.QLabel("Bar properties"))
+
+        # -- Material
+        material_layout, mat_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
+
+        # ---- Label material
         label_material = QtWidgets.QLabel("Material")
         material_layout.addWidget(label_material)
 
-        # -- Material comboBox
+        # ---- Material comboBox
         self.material_combo_box = QtWidgets.QComboBox()
         self.material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         self._populate_material_combobox()
@@ -450,15 +460,15 @@ class Window(QtWidgets.QMainWindow):
 
         material_layout.addWidget(self.material_combo_box)
 
-        splitter.addWidget(mat_container)
+        bar_properties_layout.addWidget(mat_container)
 
-        # Profile
-        profile_layout, profile_container = create_layout_and_container()
-        # -- Label profile
+        # -- Profile
+        profile_layout, profile_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
+        # ---- Label profile
         label_profile = QtWidgets.QLabel("Profile")
         profile_layout.addWidget(label_profile)
 
-        # -- ComboBox profile
+        # ---- ComboBox profile
         self.profile_combo_box = QtWidgets.QComboBox()
         self.profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         profile_layout.addWidget(self.profile_combo_box)
@@ -467,12 +477,20 @@ class Window(QtWidgets.QMainWindow):
             self.get_currently_selected_profile()
         ))
 
-        splitter.addWidget(profile_container)
+        bar_properties_layout.addWidget(profile_container)
+        splitter.addWidget(bar_properties_container)
 
-        # Properties
-        # -- Node properties
-        # ---- Coordinates
-        node_coords_layout, node_coords_container = create_layout_and_container()
+        # Node properties
+        node_properties_layout, node_properties_container = create_layout_and_container(
+            QtWidgets.QVBoxLayout(),
+            QtWidgets.QGroupBox()
+        )
+
+        node_properties_layout.addWidget(QtWidgets.QLabel("Node properties"))
+        node_properties_layout.addSpacing(5)
+        # -- Coordinates
+        node_coords_layout, node_coords_container = create_layout_and_container(QtWidgets.QHBoxLayout(),
+                                                                                QtWidgets.QWidget())
 
         def create_coordinate(self, label_text, node_coords_layout):
             """
@@ -519,21 +537,21 @@ class Window(QtWidgets.QMainWindow):
 
             return text_item
 
-        # -------- x coordinate
+        # ---- x coordinate
         self.x_coordinate = create_coordinate(self, "x", node_coords_layout)
-        # -------- y coordinate
+        # ---- y coordinate
         self.y_coordinate = create_coordinate(self, "y", node_coords_layout)
-        # -------- z coordinate
+        # ---- z coordinate
         # self.z_coordinate = create_coordinate("z", node_coords_layout)
 
         # Initialize textboxes
         self.update_coordinates(0, 0, 0)
 
-        splitter.addWidget(QtWidgets.QLabel("Coordinates:"))
-        splitter.addWidget(node_coords_container)
+        node_properties_layout.addWidget(QtWidgets.QLabel("Coordinates"))
+        node_properties_layout.addWidget(node_coords_container)
 
-        # ---- Support
-        support_layout, support_container = create_layout_and_container()
+        # -- Support
+        support_layout, support_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
 
         self.support_combo_box = QtWidgets.QComboBox()
         self.support_combo_box.addItems([
@@ -546,7 +564,9 @@ class Window(QtWidgets.QMainWindow):
         support_layout.addWidget(QtWidgets.QLabel("Support: "))
         support_layout.addWidget(self.support_combo_box)
 
-        splitter.addWidget(support_container)
+        node_properties_layout.addWidget(support_container)
+
+        splitter.addWidget(node_properties_container)
 
         # Widget to act as a separator. It allows the widget in the bars to be compact
         separator = QtWidgets.QWidget()
