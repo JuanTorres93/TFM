@@ -394,9 +394,16 @@ class Window(QtWidgets.QMainWindow):
         This function is connected to the profile combobox that represent the profile of the bar
         :param profile: tuple with profile name and number
         """
-        global active_structure_element
         if type(active_structure_element) is Bar:
             active_structure_element.update_profile(profile)
+
+    def _add_distributed_charge_to_selected_bar(self):
+        """
+        This function is connected to the button distributed charge.
+        :return:
+        """
+        if type(active_structure_element) is Bar:
+            active_structure_element.add_distributed_charge()
 
     def _create_toolbars_and_docks(self):
         """
@@ -481,14 +488,15 @@ class Window(QtWidgets.QMainWindow):
         splitter.addWidget(bar_properties_container)
 
         # -- Charges
-        bar_charges_layout, bar_charges_container = create_layout_and_container(QtWidgets.QVBoxLayout(),
-                                                                                QtWidgets.QWidget())
+        self.bar_charges_layout, bar_charges_container = create_layout_and_container(QtWidgets.QVBoxLayout(),
+                                                                                     QtWidgets.QWidget())
 
-        bar_charges_layout.addWidget(QtWidgets.QLabel("Charges:"))
+        self.bar_charges_layout.addWidget(QtWidgets.QLabel("Charges:"))
         self.add_bar_charge_button = QtWidgets.QPushButton("New charge")
+        self.add_bar_charge_button.pressed.connect(lambda: self._add_distributed_charge_to_selected_bar())
 
+        self.bar_charges_layout.addWidget(self.add_bar_charge_button)
         bar_properties_layout.addWidget(bar_charges_container)
-        bar_properties_layout.addWidget(self.add_bar_charge_button)
 
         # Node properties
         node_properties_layout, node_properties_container = create_layout_and_container(
@@ -799,6 +807,13 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         self.setAcceptHoverEvents(True)
 
+        # Distributed charges
+        self.distributed_charges_container = QtWidgets.QGroupBox()
+        self.distributed_charges_layout = QtWidgets.QVBoxLayout()
+        self.distributed_charges_container.setLayout(self.distributed_charges_layout)
+        # Do NOT change the name, it is hardcoded in other function to be able to retrieve this object
+        self.distributed_charges_container.setObjectName("distributed_charges_container")
+
         # Bar logic
         bar_name = f"B_{self.x1_scene}_{self.y1_scene}_{self.x2_scene}_{self.y2_scene}"
         origin_node_logic = node_origin.node_logic
@@ -845,6 +860,11 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
+    def add_distributed_charge(self):
+        dc = BarDistributedCharge().get_widget()
+        self.distributed_charges_layout.addWidget(dc)
+        print(f"New charge added to bar {self.bar_logic.name}")
+
     def update_material(self, new_material):
         """
         Changes the material of the bar
@@ -886,6 +906,59 @@ class Bar(QtWidgets.QGraphicsLineItem):
             self.change_bar_color()
 
     # Mouse clicks need to be handled from GraphicsScene class
+
+
+class BarDistributedCharge(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QtWidgets.QHBoxLayout()
+        self.widget = QtWidgets.QWidget()
+        self.widget.setLayout(self.layout)
+
+        # CHARGE TYPE
+        self.charge_type_combo_box = QtWidgets.QComboBox()
+        self.populate_charge_type_combo_box()
+
+        # CHARGE VALUE
+        self.charge_value_text_box = PlainTextBox()
+        # No wordwrap
+        self.charge_value_text_box.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        # No tabs inside the textbox
+        self.charge_value_text_box.setTabChangesFocus(True)
+        # Disable scrollbar
+        self.charge_value_text_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.charge_value_text_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        # Can be resized in width, but not in height
+        self.charge_value_text_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                                 QtWidgets.QSizePolicy.Maximum)
+
+        # REMOVE BUTTON
+        self.remove_charge_button = SmallButton("X")
+        self.remove_charge_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                                QtWidgets.QSizePolicy.Minimum)
+        self.remove_charge_button.pressed.connect(self.widget.deleteLater)
+
+        self.layout.addWidget(self.charge_type_combo_box)
+        self.layout.addWidget(self.charge_value_text_box)
+        self.layout.addWidget(self.remove_charge_button)
+
+    def get_widget(self):
+        """
+        Simple instanciating this class didn't provide a widget. This function is meant to fix that problem
+        :return: instance of the class widget
+        """
+        return self.widget
+
+    def populate_charge_type_combo_box(self):
+        # Clear all previous items, if any
+        self.charge_type_combo_box.clear()
+        # Get full name of distributed charge types
+        distributed_charge_types = list(map(str, st.DistributedChargeType))
+        # Get only specific name of distributed charge type
+        distributed_charges = list(map(lambda x: x.split(".")[1], distributed_charge_types))
+        # Populate combobox
+        self.charge_type_combo_box.addItems(distributed_charges)
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):
@@ -1028,7 +1101,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         """
         if application_mode == ApplicationMode.NORMAL_MODE and \
                 (active_structure_element is not self or (
-                    active_structure_element is self and self.color is NORMAL_COLOR
+                        active_structure_element is self and self.color is NORMAL_COLOR
                 )):
             self.change_node_color("hover")
         elif application_mode == ApplicationMode.BAR_MODE:
@@ -1168,6 +1241,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.support_combo_box.setCurrentText(
                 support_name[1]
             )
+
+            self._hide_last_bar_charges_info_from_gui()
         # BAR item
         elif type(active_structure_element) is Bar:
             # Change bar color
@@ -1180,10 +1255,53 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.profile_combo_box.setCurrentText(profile_name)
             self.main_window.update_coordinates("---", "---", "---")
             self.main_window.support_combo_box.setCurrentText("NONE")
+
+            self._hide_last_bar_charges_info_from_gui()
+
+            if active_structure_element.distributed_charges_container not in self._get_widgets_in_layout(
+                    self.main_window.bar_charges_layout
+            ):
+                self.main_window.bar_charges_layout.addWidget(active_structure_element.distributed_charges_container)
+            else:
+                active_structure_element.distributed_charges_container.show()
         # No item
         elif active_structure_element is None:
             self.main_window.update_coordinates("---", "---", "---")
             self.main_window.support_combo_box.setCurrentText("NONE")
+            self._hide_last_bar_charges_info_from_gui()
+
+    def _hide_last_bar_charges_info_from_gui(self):
+        """
+        This function is used to update the active element information shown in the GUI. It
+        HIDES the already included distributed charges widgets in the dock.
+
+        The original idea was to remove them from the dock, but its children caused visual problems and,
+        when deleted from the layout, they disappeared also in the Bar object.
+        """
+        # Get elements that are currently contained in bar_charges_layout
+        elements_in_bar_charges_layout = self._get_widgets_in_layout(self.main_window.bar_charges_layout)
+        # Use the name of the widget to filter the ones that must be hidden
+        elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
+                                       elements_in_bar_charges_layout))
+
+        # Hide the filtered elements
+        if len(elements_to_hide) > 0:
+            for element in elements_to_hide:
+                element.hide()
+
+    def _get_widgets_in_layout(self, layout):
+        """
+        This function can be used to retrieve all widgets that have been added to a layout.
+        :param layout: Layout to get the widgets from
+        :return: list with the widgets contained in the layout
+        """
+        items = []
+        total_elements = layout.count()
+
+        for i in range(total_elements):
+            items.append(layout.itemAt(i).widget())
+
+        return items
 
     def _get_item_at_mouse_position(self, event):
         """
@@ -1209,6 +1327,7 @@ class PlainTextBox(QtWidgets.QPlainTextEdit):
     """
     Extends QPlainTextEdit in order to be able to specify a sizeHint lesser than the default one
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -1216,8 +1335,22 @@ class PlainTextBox(QtWidgets.QPlainTextEdit):
         return QtCore.QSize(60, 10)
 
     def minimumSizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(60, 30)
+        return QtCore.QSize(60, 25)
 
+
+class SmallButton(QtWidgets.QPushButton):
+    """
+    Extends QPushButton in order to be able to specify a sizeHint lesser than the default one
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(25, 25)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(25, 25)
 
 
 if __name__ == "__main__":
