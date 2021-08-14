@@ -68,6 +68,7 @@ def get_widgets_in_layout(layout):
 
     return items
 
+
 @enum.unique
 class ApplicationMode(enum.Enum):
     """
@@ -415,10 +416,16 @@ class Window(QtWidgets.QMainWindow):
     def _add_distributed_charge_to_selected_bar(self):
         """
         This function is connected to the button distributed charge.
-        :return:
         """
         if type(active_structure_element) is Bar:
             active_structure_element.add_distributed_charge()
+
+    def _add_punctual_force_to_selected_bar(self):
+        """
+        This function is connected to the button punctual force.
+        """
+        if type(active_structure_element) is Bar:
+            active_structure_element.add_punctual_force()
 
     def _create_toolbars_and_docks(self):
         """
@@ -507,11 +514,25 @@ class Window(QtWidgets.QMainWindow):
                                                                                      QtWidgets.QWidget())
 
         self.bar_charges_layout.addWidget(QtWidgets.QLabel("Charges:"))
-        self.add_bar_charge_button = QtWidgets.QPushButton("New charge")
-        self.add_bar_charge_button.pressed.connect(lambda: self._add_distributed_charge_to_selected_bar())
+        add_bar_charge_button = QtWidgets.QPushButton("New charge")
+        add_bar_charge_button.pressed.connect(lambda: self._add_distributed_charge_to_selected_bar())
 
-        self.bar_charges_layout.addWidget(self.add_bar_charge_button)
+        self.bar_charges_layout.addWidget(add_bar_charge_button)
         bar_properties_layout.addWidget(bar_charges_container)
+
+        # -- Punctual Force
+        self.bar_punctual_forces_layout, bar_punctual_forces_container = create_layout_and_container(
+            QtWidgets.QVBoxLayout(),
+            QtWidgets.QWidget())
+
+        self.bar_punctual_forces_layout.addWidget(QtWidgets.QLabel("Punctual Forces:"))
+        add_punctual_force_button = QtWidgets.QPushButton("New punctual force")
+        add_punctual_force_button.pressed.connect(
+            lambda : self._add_punctual_force_to_selected_bar()
+        )
+
+        self.bar_punctual_forces_layout.addWidget(add_punctual_force_button)
+        bar_properties_layout.addWidget(bar_punctual_forces_container)
 
         # Node properties
         node_properties_layout, node_properties_container = create_layout_and_container(
@@ -829,6 +850,13 @@ class Bar(QtWidgets.QGraphicsLineItem):
         # Do NOT change the name, it is hardcoded in other function to be able to retrieve this object
         self.distributed_charges_container.setObjectName("distributed_charges_container")
 
+        # Punctual forces
+        self.punctual_forces_container = QtWidgets.QGroupBox()
+        self.punctual_forces_layout = QtWidgets.QVBoxLayout()
+        self.punctual_forces_container.setLayout(self.punctual_forces_layout)
+        # Do NOT change the name, it is hardcoded in other function to be able to retrieve this object
+        self.punctual_forces_container.setObjectName("punctual_forces_container")
+
         # Bar logic
         bar_name = f"B_{self.x1_scene}_{self.y1_scene}_{self.x2_scene}_{self.y2_scene}"
         origin_node_logic = node_origin.node_logic
@@ -891,6 +919,23 @@ class Bar(QtWidgets.QGraphicsLineItem):
         dc = BarDistributedCharge(self, dc_name).get_widget()
         self.distributed_charges_layout.addWidget(dc)
         print(f"New charge added to bar {self.bar_logic.name}")
+
+    def add_punctual_force(self):
+        base_name = "pf"
+        pf_name = fs.get_random_name(base_name)
+        current_punctual_forces = get_widgets_in_layout(self.punctual_forces_layout)
+
+        current_forces_dict_names = list(
+            map(lambda x: x.pf_name,
+                current_punctual_forces)
+        )
+
+        while pf_name in current_forces_dict_names:
+            pf_name = fs.get_random_name(base_name)
+
+        pf = BarPunctualForce(self, pf_name).get_widget()
+        self.punctual_forces_layout.addWidget(pf)
+        print(f"New punctual force added to bar {self.bar_logic.name}")
 
     def update_material(self, new_material):
         """
@@ -1059,6 +1104,35 @@ class BarDistributedCharge(QtWidgets.QWidget):
                                                               dc_type,
                                                               value,
                                                               direction)
+
+
+class BarPunctualForce(QtWidgets.QWidget):
+    def __init__(self, bar_attached_to, pf_name):
+        super().__init__()
+        self.layout = QtWidgets.QHBoxLayout()
+        self.widget = QtWidgets.QWidget()
+        self.widget.setLayout(self.layout)
+        self.widget.pf_name = pf_name
+        self.widget.bar_attached_to = bar_attached_to
+
+        # X Component
+        self.layout.addWidget(QtWidgets.QLabel("Fx: "), 1)
+        self.x_component_text = QtWidgets.QLineEdit()
+        self.layout.addWidget(self.x_component_text, 4)
+
+        # Y Component
+        self.layout.addWidget(QtWidgets.QLabel("Fy: "), 1)
+        self.y_component_text = QtWidgets.QLineEdit()
+        self.layout.addWidget(self.y_component_text, 4)
+
+        # Origin to end factor
+
+    def get_widget(self):
+        """
+        Simple instantiating this class didn't provide a widget. This function is meant to fix that problem
+        :return: instance of the class widget
+        """
+        return self.widget
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):
@@ -1356,12 +1430,25 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.update_coordinates("---", "---", "---")
             self.main_window.support_combo_box.setCurrentText("NONE")
 
+            # Distributed charges
+            # Hide currently shown
             self._hide_last_bar_charges_info_from_gui()
-
-            if active_structure_element.distributed_charges_container not in get_widgets_in_layout(self.main_window.bar_charges_layout):
+            # Add active element
+            if active_structure_element.distributed_charges_container not in get_widgets_in_layout(
+                    self.main_window.bar_charges_layout):
                 self.main_window.bar_charges_layout.addWidget(active_structure_element.distributed_charges_container)
             else:
                 active_structure_element.distributed_charges_container.show()
+
+            # Punctual forces
+            # Hide currently shown
+            self._hide_last_bar_pundtual_forces_info_from_gui()
+            # Add active element
+            if active_structure_element.punctual_forces_container not in get_widgets_in_layout(
+                    self.main_window.bar_punctual_forces_layout):
+                self.main_window.bar_punctual_forces_layout.addWidget(active_structure_element.punctual_forces_container)
+            else:
+                active_structure_element.punctual_forces_container.show()
         # No item
         elif active_structure_element is None:
             self.main_window.update_coordinates("---", "---", "---")
@@ -1381,6 +1468,25 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         # Use the name of the widget to filter the ones that must be hidden
         elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
                                        elements_in_bar_charges_layout))
+
+        # Hide the filtered elements
+        if len(elements_to_hide) > 0:
+            for element in elements_to_hide:
+                element.hide()
+
+    def _hide_last_bar_pundtual_forces_info_from_gui(self):
+        """
+        This function is used to update the active element information shown in the GUI. It
+        HIDES the already included punctual forces widgets in the dock.
+
+        The original idea was to remove them from the dock, but its children caused visual problems and,
+        when deleted from the layout, they disappeared also in the Bar object.
+        """
+        # Get elements that are currently contained in bar_charges_layout
+        elements_in_punctual_forces_layout = get_widgets_in_layout(self.main_window.bar_punctual_forces_layout)
+        # Use the name of the widget to filter the ones that must be hidden
+        elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
+                                       elements_in_punctual_forces_layout))
 
         # Hide the filtered elements
         if len(elements_to_hide) > 0:
