@@ -2812,6 +2812,45 @@ class TestDistributedCharge(unittest.TestCase):
         self.assertFalse(dc1.equals(dc2))
         self.assertFalse(dc1.equals(dc3))
 
+    def test_set_dc_type(self):
+        dc = st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 10, (0, 1, 0)
+        )
+
+        self.assertEqual(dc.dc_type, st.DistributedChargeType.SQUARE)
+        self.assertNotEqual(dc.dc_type, st.DistributedChargeType.PARALLEL_TO_BAR)
+
+        dc.set_dc_type(st.DistributedChargeType.PARALLEL_TO_BAR)
+
+        self.assertEqual(dc.dc_type, st.DistributedChargeType.PARALLEL_TO_BAR)
+        self.assertNotEqual(dc.dc_type, st.DistributedChargeType.SQUARE)
+
+    def test_set_max_value(self):
+        dc = st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 10, (0, 1, 0)
+        )
+
+        self.assertEqual(dc.max_value, 10)
+        self.assertNotEqual(dc.max_value, 2)
+
+        dc.set_max_value(20)
+
+        self.assertEqual(dc.max_value, 20)
+        self.assertNotEqual(dc.max_value, 2)
+
+    def test_set_direction(self):
+        dc = st.DistributedCharge(
+            st.DistributedChargeType.SQUARE, 10, (0, 1, 0)
+        )
+
+        self.assertEqual(dc.direction, (0, 1, 0))
+        self.assertNotEqual(dc.direction, (0, 1, 1))
+
+        dc.set_direction((1, 0, 0))
+
+        self.assertEqual(dc.direction, (1, 0, 0))
+        self.assertNotEqual(dc.direction, (1, 1, 0))
+
     # def test_axial_force_law(self):
     #     structure = get_test_structure(1)
     #

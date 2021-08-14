@@ -6,8 +6,7 @@ import src.modules.databaseutils as db
 import src.modules.filesystemutils as fs
 
 # Create the database if it does not exist
-# TODO force= False it is in true for testing purposes
-db.regenerate_initial_database(force=True)
+db.regenerate_initial_database(force=False)
 
 # For structures with rigid nodes, the size of the submatrixes is 3
 submatrix_size = 3
@@ -455,7 +454,7 @@ class Bar:
         x axis (default) or the y axis (f equals False)
         :return: local rigidity matrix for a 2D structure with rigid nodes
         """
-        # TODO Check when it must be used inertia momentum x or y
+        # TODO Check when it must be used inertia momentum x or y in the case that bar orientation is implemented
 
         l = self.length()  # l -> beam length
         e = self.material.young_mod  # e -> Young's modulus
@@ -1566,6 +1565,30 @@ class DistributedCharge:
         self.max_value = max_value
         self.direction = direction
         # If new parameters are included, they must be added to the equals function and to the test
+
+    def set_dc_type(self, new_type):
+        """
+        Modifies the distributed charge type to the specified one
+        :param new_type: desired type to be channged to
+        """
+        if type(new_type) not in [DistributedChargeType]:
+            raise TypeError("Error: new_type must be of type DistributedChargeType")
+
+        self.dc_type = new_type
+
+    def set_max_value(self, new_max_value):
+        """
+        Modifies the distributed charge maximum value to the specified one
+        :param new_max_value: desired maximum value to be channged to
+        """
+        self.max_value = new_max_value
+
+    def set_direction(self, new_direction):
+        """
+        Modifies the distributed direction value to the specified one
+        :param new_direction: desired direction be channged to
+        """
+        self.direction = new_direction
 
     def _redefine_direction(self, bar):
         bar_angle = bar.angle_from_global_to_local()

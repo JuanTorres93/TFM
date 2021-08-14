@@ -3,6 +3,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from src.modules import databaseutils as db
+from src.modules import filesystemutils as fs
 from src.modules import structures as st
 
 # CONSTANTS
@@ -52,6 +53,20 @@ def set_active_structure_element(item):
     global active_structure_element
     active_structure_element = item
 
+
+def get_widgets_in_layout(layout):
+    """
+    This function can be used to retrieve all widgets that have been added to a layout.
+    :param layout: Layout to get the widgets from
+    :return: list with the widgets contained in the layout
+    """
+    items = []
+    total_elements = layout.count()
+
+    for i in range(total_elements):
+        items.append(layout.itemAt(i).widget())
+
+    return items
 
 @enum.unique
 class ApplicationMode(enum.Enum):
@@ -861,7 +876,19 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
     def add_distributed_charge(self):
-        dc = BarDistributedCharge().get_widget()
+        base_name = "dc"
+        dc_name = fs.get_random_name(base_name)
+        current_charges = get_widgets_in_layout(self.distributed_charges_layout)
+
+        current_charges_dict_names = list(
+            map(lambda x: x.dc_name,
+                current_charges)
+        )
+
+        while dc_name in current_charges_dict_names:
+            dc_name = fs.get_random_name(base_name)
+
+        dc = BarDistributedCharge(self, dc_name).get_widget()
         self.distributed_charges_layout.addWidget(dc)
         print(f"New charge added to bar {self.bar_logic.name}")
 
@@ -880,6 +907,30 @@ class Bar(QtWidgets.QGraphicsLineItem):
         :return:
         """
         self.bar_logic.set_profile(new_profile[0], new_profile[1])
+
+    def update_distributed_charge(self, dc_name, dc_type, value, direction):
+        """
+        Function called from update charge in class BarDistributedCharge
+        :param direction:
+        :param dc_name: name of the distributed charge in the bar logic dictionary
+        :param dc_type: distributed charge type to update
+        :param value: value to update with
+        """
+        current_distributed_charges = self.bar_logic.get_distributed_charges()
+
+        if dc_name not in current_distributed_charges.keys():
+            dc = st.DistributedCharge(
+                dc_type=dc_type,
+                max_value=value,
+                direction=direction
+            )
+
+            self.bar_logic.add_distributed_charge(dc, dc_name)
+        else:
+            dc_to_modify = current_distributed_charges.get(dc_name)
+            dc_to_modify.set_dc_type(dc_type)
+            dc_to_modify.set_max_value(value)
+            dc_to_modify.set_direction(direction)
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -909,15 +960,24 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
 
 class BarDistributedCharge(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, bar_attached_to, dc_name):
+        """
+        :param bar_attached_to: bar to which an instance of distributed charge is applied to
+        :param dc_name: name to store the distributed charge in the bar logic dictionary
+        """
         super().__init__()
         self.layout = QtWidgets.QHBoxLayout()
         self.widget = QtWidgets.QWidget()
         self.widget.setLayout(self.layout)
+        self.widget.dc_name = dc_name
+        self.widget.bar_attached_to = bar_attached_to
 
         # CHARGE TYPE
         self.charge_type_combo_box = QtWidgets.QComboBox()
         self.populate_charge_type_combo_box()
+        self.charge_type_combo_box.currentTextChanged.connect(
+            lambda: self._update_charge()
+        )
 
         # CHARGE VALUE
         self.charge_value_text_box = PlainTextBox()
@@ -932,6 +992,10 @@ class BarDistributedCharge(QtWidgets.QWidget):
         # Can be resized in width, but not in height
         self.charge_value_text_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                                  QtWidgets.QSizePolicy.Maximum)
+
+        self.charge_value_text_box.textChanged.connect(
+            lambda: self._update_charge()
+        )
 
         # REMOVE BUTTON
         self.remove_charge_button = SmallButton("X")
@@ -956,9 +1020,45 @@ class BarDistributedCharge(QtWidgets.QWidget):
         # Get full name of distributed charge types
         distributed_charge_types = list(map(str, st.DistributedChargeType))
         # Get only specific name of distributed charge type
-        distributed_charges = list(map(lambda x: x.split(".")[1], distributed_charge_types))
+        useful_distributed_charges = list(map(lambda x: x.split(".")[1], distributed_charge_types))
+        # This is just a workaround because I couldn't connect the creation of the object to the update method
+        # This forces the user to, at least, change the value of the combobox once  and, hence, call the update method
+        distributed_charges = [""]
+
+        distributed_charges.extend(
+            useful_distributed_charges
+        )
+
         # Populate combobox
         self.charge_type_combo_box.addItems(distributed_charges)
+
+    def _update_charge(self):
+        """
+        This function is connected to the charge type combobox
+        """
+        if self.charge_type_combo_box.itemText(0) == "":
+            self.charge_type_combo_box.removeItem(0)
+
+        dc_type_string = self.charge_type_combo_box.currentText()
+
+        if dc_type_string == "SQUARE":
+            dc_type = st.DistributedChargeType.SQUARE
+            direction = (0, 1, 0)
+        elif dc_type_string == "PARALLEL_TO_BAR":
+            dc_type = st.DistributedChargeType.PARALLEL_TO_BAR
+            direction = (0, 1, 0)
+        else:
+            raise ValueError(f"Error: Distributed charge type {dc_type_string} has not been implemented")
+
+        try:
+            value = float(self.charge_value_text_box.toPlainText())
+        except:
+            return
+
+        self.widget.bar_attached_to.update_distributed_charge(self.widget.dc_name,
+                                                              dc_type,
+                                                              value,
+                                                              direction)
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):
@@ -1258,9 +1358,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             self._hide_last_bar_charges_info_from_gui()
 
-            if active_structure_element.distributed_charges_container not in self._get_widgets_in_layout(
-                    self.main_window.bar_charges_layout
-            ):
+            if active_structure_element.distributed_charges_container not in get_widgets_in_layout(self.main_window.bar_charges_layout):
                 self.main_window.bar_charges_layout.addWidget(active_structure_element.distributed_charges_container)
             else:
                 active_structure_element.distributed_charges_container.show()
@@ -1279,7 +1377,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         when deleted from the layout, they disappeared also in the Bar object.
         """
         # Get elements that are currently contained in bar_charges_layout
-        elements_in_bar_charges_layout = self._get_widgets_in_layout(self.main_window.bar_charges_layout)
+        elements_in_bar_charges_layout = get_widgets_in_layout(self.main_window.bar_charges_layout)
         # Use the name of the widget to filter the ones that must be hidden
         elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
                                        elements_in_bar_charges_layout))
@@ -1288,20 +1386,6 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         if len(elements_to_hide) > 0:
             for element in elements_to_hide:
                 element.hide()
-
-    def _get_widgets_in_layout(self, layout):
-        """
-        This function can be used to retrieve all widgets that have been added to a layout.
-        :param layout: Layout to get the widgets from
-        :return: list with the widgets contained in the layout
-        """
-        items = []
-        total_elements = layout.count()
-
-        for i in range(total_elements):
-            items.append(layout.itemAt(i).widget())
-
-        return items
 
     def _get_item_at_mouse_position(self, event):
         """
