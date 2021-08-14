@@ -557,15 +557,7 @@ class Window(QtWidgets.QMainWindow):
             # Label to display the coordinate attached to the textbox
             label = QtWidgets.QLabel(label_text)
             # Textbox to hold the coordinate value
-            text_item = PlainTextBox()
-            # No wordwrap
-            text_item.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
-            # No tabs inside the textbox
-            text_item.setTabChangesFocus(True)
-            # Disable scrollbar
-            text_item.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            text_item.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
+            text_item = LineEdit()
             # Can be resized in width, but not in height
             text_item.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                     QtWidgets.QSizePolicy.Maximum)
@@ -582,7 +574,7 @@ class Window(QtWidgets.QMainWindow):
 
             # Update node position when text chages
             text_item.textChanged.connect(lambda:
-                                          self._update_selected_node_position(text_item.toPlainText(),
+                                          self._update_selected_node_position(text_item.text(),
                                                                               associated_axis))
 
             # Resize ratio
@@ -640,8 +632,11 @@ class Window(QtWidgets.QMainWindow):
         :param z: z coordinate
         :return:
         """
-        self.x_coordinate.setPlainText(str(x))
-        self.y_coordinate.setPlainText(str(y))
+        self.x_coordinate.setText(str(x))
+        self.x_coordinate.setCursorPosition(0)
+
+        self.y_coordinate.setText(str(y))
+        self.y_coordinate.setCursorPosition(0)
         # self.z_coordinate.setPlainText(str(z))
 
     def get_currently_selected_material(self):
@@ -1025,15 +1020,7 @@ class BarDistributedCharge(QtWidgets.QWidget):
         )
 
         # CHARGE VALUE
-        self.charge_value_text_box = PlainTextBox()
-        # No wordwrap
-        self.charge_value_text_box.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
-        # No tabs inside the textbox
-        self.charge_value_text_box.setTabChangesFocus(True)
-        # Disable scrollbar
-        self.charge_value_text_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.charge_value_text_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
+        self.charge_value_text_box = LineEdit()
         # Can be resized in width, but not in height
         self.charge_value_text_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                                  QtWidgets.QSizePolicy.Maximum)
@@ -1117,15 +1104,25 @@ class BarPunctualForce(QtWidgets.QWidget):
 
         # X Component
         self.layout.addWidget(QtWidgets.QLabel("Fx: "), 1)
-        self.x_component_text = QtWidgets.QLineEdit()
+        self.x_component_text = LineEdit()
         self.layout.addWidget(self.x_component_text, 4)
 
         # Y Component
         self.layout.addWidget(QtWidgets.QLabel("Fy: "), 1)
-        self.y_component_text = QtWidgets.QLineEdit()
+        self.y_component_text = LineEdit()
         self.layout.addWidget(self.y_component_text, 4)
 
         # Origin to end factor
+        self.layout.addWidget(QtWidgets.QLabel("m: "), 1)
+        self.origin_end_factor_in_meters = LineEdit()
+        self.layout.addWidget(self.origin_end_factor_in_meters, 4)
+
+        # REMOVE BUTTON
+        self.remove_punctual_force_button = SmallButton("X")
+        self.remove_punctual_force_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                                        QtWidgets.QSizePolicy.Minimum)
+        self.remove_punctual_force_button.pressed.connect(self.widget.deleteLater)
+        self.layout.addWidget(self.remove_punctual_force_button, 1)
 
     def get_widget(self):
         """
@@ -1417,6 +1414,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             )
 
             self._hide_last_bar_charges_info_from_gui()
+            self._hide_last_bar_punctual_forces_info_from_gui()
         # BAR item
         elif type(active_structure_element) is Bar:
             # Change bar color
@@ -1442,7 +1440,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             # Punctual forces
             # Hide currently shown
-            self._hide_last_bar_pundtual_forces_info_from_gui()
+            self._hide_last_bar_punctual_forces_info_from_gui()
             # Add active element
             if active_structure_element.punctual_forces_container not in get_widgets_in_layout(
                     self.main_window.bar_punctual_forces_layout):
@@ -1454,6 +1452,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.update_coordinates("---", "---", "---")
             self.main_window.support_combo_box.setCurrentText("NONE")
             self._hide_last_bar_charges_info_from_gui()
+            self._hide_last_bar_punctual_forces_info_from_gui()
 
     def _hide_last_bar_charges_info_from_gui(self):
         """
@@ -1474,7 +1473,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             for element in elements_to_hide:
                 element.hide()
 
-    def _hide_last_bar_pundtual_forces_info_from_gui(self):
+    def _hide_last_bar_punctual_forces_info_from_gui(self):
         """
         This function is used to update the active element information shown in the GUI. It
         HIDES the already included punctual forces widgets in the dock.
@@ -1485,7 +1484,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         # Get elements that are currently contained in bar_charges_layout
         elements_in_punctual_forces_layout = get_widgets_in_layout(self.main_window.bar_punctual_forces_layout)
         # Use the name of the widget to filter the ones that must be hidden
-        elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
+        elements_to_hide = list(filter(lambda x: x.objectName() == "punctual_forces_container",
                                        elements_in_punctual_forces_layout))
 
         # Hide the filtered elements
@@ -1513,9 +1512,9 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         return item
 
 
-class PlainTextBox(QtWidgets.QPlainTextEdit):
+class LineEdit(QtWidgets.QLineEdit):
     """
-    Extends QPlainTextEdit in order to be able to specify a sizeHint lesser than the default one
+    Extends QLineEdit in order to be able to specify a sizeHint lesser than the default one
     """
 
     def __init__(self, parent=None):
