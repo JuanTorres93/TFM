@@ -1760,6 +1760,27 @@ class PunctualForceInBar:
         else:
             return False
 
+    def set_value(self, new_value):
+        """
+        Changes the current value of the force to the specified one.
+        :param new_value: New value of the force.
+        """
+        self.value = new_value
+
+    def set_origin_end_factor(self, new_origin_end_factor):
+        """
+        Changes the current value of origin_end_factor to the specified one.
+        :param new_origin_end_factor: New value of origin_end_factor
+        """
+        self.origin_end_factor = new_origin_end_factor
+
+    def set_direction(self, new_direction):
+        """
+        Changes the current value of direction to the specified one.
+        :param new_direction: New value of direction
+        """
+        self.direction = new_direction
+
     def refer_to_nodes(self, bar, return_global_values):
         """
         Refer the punctual force to the nodes of the bar provided

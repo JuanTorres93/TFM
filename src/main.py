@@ -1,4 +1,5 @@
 import enum
+import numpy as np
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -346,8 +347,6 @@ class Window(QtWidgets.QMainWindow):
         # Structure
         edit_menu.addAction(self.enable_node_mode_action)
         edit_menu.addAction(self.enable_bar_mode_action)
-        edit_menu.addAction(self.create_support_action)
-        edit_menu.addAction(self.create_charge_action)
         edit_menu.addSeparator()
         edit_menu.addAction(self.copy_action)
         edit_menu.addAction(self.cut_action)
@@ -436,8 +435,6 @@ class Window(QtWidgets.QMainWindow):
 
         structure_toolbar.addAction(self.enable_node_mode_action)
         structure_toolbar.addAction(self.enable_bar_mode_action)
-        structure_toolbar.addAction(self.create_support_action)
-        structure_toolbar.addAction(self.create_charge_action)
 
         self.addToolBar(QtCore.Qt.LeftToolBarArea, structure_toolbar)
 
@@ -787,16 +784,12 @@ class Window(QtWidgets.QMainWindow):
         # Create actions
         self.enable_node_mode_action = QtWidgets.QAction("&Node mode", self)
         self.enable_bar_mode_action = QtWidgets.QAction("&Bar mode", self)
-        self.create_support_action = QtWidgets.QAction("&Support", self)
-        self.create_charge_action = QtWidgets.QAction("&Charge", self)
         # Add shortcuts
         self.enable_node_mode_action.setShortcut("N")
         self.enable_bar_mode_action.setShortcut("B")
         # Add help tips
         _add_tip(self.enable_node_mode_action, "Create a new node")
         _add_tip(self.enable_bar_mode_action, "Create a new bar")
-        _add_tip(self.create_support_action, "Create a new support")
-        _add_tip(self.create_charge_action, "Create a new charge")
 
         # ========== HELP ACTIONS ==========
         # Create actions
@@ -899,6 +892,11 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
     def add_distributed_charge(self):
+        """
+        Adds the graphical representation of a distributed charge. Called from a button
+        :return:
+        """
+        # Give a unique name in order to be able to retrieve its values
         base_name = "dc"
         dc_name = fs.get_random_name(base_name)
         current_charges = get_widgets_in_layout(self.distributed_charges_layout)
@@ -911,11 +909,17 @@ class Bar(QtWidgets.QGraphicsLineItem):
         while dc_name in current_charges_dict_names:
             dc_name = fs.get_random_name(base_name)
 
+        # Create the graphical component for distributed charges and add it to the GUI
         dc = BarDistributedCharge(self, dc_name).get_widget()
         self.distributed_charges_layout.addWidget(dc)
         print(f"New charge added to bar {self.bar_logic.name}")
 
     def add_punctual_force(self):
+        """
+        Adds the graphical representation of a punctual force. Called from a button
+        :return:
+        """
+        # Give a unique name in order to be able to retrieve its values
         base_name = "pf"
         pf_name = fs.get_random_name(base_name)
         current_punctual_forces = get_widgets_in_layout(self.punctual_forces_layout)
@@ -928,6 +932,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
         while pf_name in current_forces_dict_names:
             pf_name = fs.get_random_name(base_name)
 
+        # Create the graphical component for punctual force and add it to the GUI
         pf = BarPunctualForce(self, pf_name).get_widget()
         self.punctual_forces_layout.addWidget(pf)
         print(f"New punctual force added to bar {self.bar_logic.name}")
@@ -971,6 +976,30 @@ class Bar(QtWidgets.QGraphicsLineItem):
             dc_to_modify.set_dc_type(dc_type)
             dc_to_modify.set_max_value(value)
             dc_to_modify.set_direction(direction)
+
+    def update_punctual_force(self, pf_name, value, origin_end_factor, direction):
+        """
+        Function called from update punctual force in class BarPunctualForce
+        :param origin_end_factor: distance from origin to the point in which the force is applied. Measured in per unit.
+        :param direction: Direction in which the force is applied
+        :param pf_name: name of the punctual force in the bar logic dictionary
+        :param value: magnitude of the force
+        """
+        current_punctual_forces = self.bar_logic.get_punctual_forces()
+
+        if pf_name not in current_punctual_forces.keys():
+            pf = st.PunctualForceInBar(
+                value=value,
+                origin_end_factor=origin_end_factor,
+                direction=direction
+            )
+
+            self.bar_logic.add_punctual_force(pf, pf_name)
+        else:
+            pf_to_modify = current_punctual_forces.get(pf_name)
+            pf_to_modify.set_value(value)
+            pf_to_modify.set_origin_end_factor(origin_end_factor)
+            pf_to_modify.set_direction(direction)
 
     def hoverEnterEvent(self, event: 'QGraphicsSceneHoverEvent') -> None:
         """
@@ -1106,16 +1135,25 @@ class BarPunctualForce(QtWidgets.QWidget):
         self.layout.addWidget(QtWidgets.QLabel("Fx: "), 1)
         self.x_component_text = LineEdit()
         self.layout.addWidget(self.x_component_text, 4)
+        self.x_component_text.textChanged.connect(
+            lambda : self._update_punctual_force()
+        )
 
         # Y Component
         self.layout.addWidget(QtWidgets.QLabel("Fy: "), 1)
         self.y_component_text = LineEdit()
         self.layout.addWidget(self.y_component_text, 4)
+        self.y_component_text.textChanged.connect(
+            lambda : self._update_punctual_force()
+        )
 
         # Origin to end factor
         self.layout.addWidget(QtWidgets.QLabel("m: "), 1)
         self.origin_end_factor_in_meters = LineEdit()
         self.layout.addWidget(self.origin_end_factor_in_meters, 4)
+        self.origin_end_factor_in_meters.textChanged.connect(
+            lambda : self._update_punctual_force()
+        )
 
         # REMOVE BUTTON
         self.remove_punctual_force_button = SmallButton("X")
@@ -1130,6 +1168,32 @@ class BarPunctualForce(QtWidgets.QWidget):
         :return: instance of the class widget
         """
         return self.widget
+
+    def _update_punctual_force(self):
+        """
+        This function is connected to the textboxes
+        """
+        try:
+            x_component = float(self.x_component_text.text())
+            y_component = float(self.y_component_text.text())
+            origin_end_meters = float(self.origin_end_factor_in_meters.text())
+        except:
+            return
+
+        origin_end_factor = origin_end_meters / self.widget.bar_attached_to.bar_logic.length()
+
+        if origin_end_factor < 0 or origin_end_factor > 1:
+            return
+
+        force_vector = np.array([x_component, y_component, 0])
+        value = np.linalg.norm(force_vector)
+
+        direction = tuple(force_vector / value)
+
+        self.widget.bar_attached_to.update_punctual_force(pf_name=self.widget.pf_name,
+                                                          value=value,
+                                                          origin_end_factor=origin_end_factor,
+                                                          direction=direction)
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):

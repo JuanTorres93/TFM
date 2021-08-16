@@ -2967,6 +2967,36 @@ class TestPunctualForce(unittest.TestCase):
         self.assertFalse(pf1.equals(pf3))
         self.assertFalse(pf1.equals(pf4))
 
+    def test_set_value(self):
+        pf = st.PunctualForceInBar(10, .5, (0, 1, 0))
+
+        self.assertEqual(pf.value, 10)
+        self.assertNotEqual(pf.value, 11)
+
+        pf.set_value(99)
+        self.assertEqual(pf.value, 99)
+        self.assertNotEqual(pf.value, 0)
+
+    def test_set_origin_end_factor(self):
+        pf = st.PunctualForceInBar(10, .5, (0, 1, 0))
+
+        self.assertEqual(pf.origin_end_factor, .5)
+        self.assertNotEqual(pf.origin_end_factor, .3)
+
+        pf.set_origin_end_factor(.3)
+        self.assertEqual(pf.origin_end_factor, .3)
+        self.assertNotEqual(pf.origin_end_factor, .4)
+
+    def test_set_direction(self):
+        pf = st.PunctualForceInBar(10, .5, (0, 1, 0))
+
+        self.assertEqual(pf.direction, (0, 1, 0))
+        self.assertNotEqual(pf.direction, (1, 1, 0))
+
+        pf.set_direction((1, 0, 0))
+        self.assertEqual(pf.direction, (1, 0, 0))
+        self.assertNotEqual(pf.direction, (1, 1, 0))
+
     # def test_bending_moment_law(self):
     #     structure = get_test_structure(1)
     #
