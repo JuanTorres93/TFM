@@ -1635,6 +1635,9 @@ class DistributedCharge:
 
         if self.dc_type in [DistributedChargeType.SQUARE, DistributedChargeType.PARALLEL_TO_BAR]:
             x_reaction = - forces[0] * bar_length / 2
+            if self.max_value < 0 and self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+                x_reaction = - x_reaction
+
             y_reaction = - forces[1] * bar_length / 2
 
             momentum_abs = forces[1] * pow(bar_length, 2) / 12
@@ -1681,6 +1684,9 @@ class DistributedCharge:
         q = self.max_value
         x = bar.length() * origin_to_end_factor
         n = - q * direction[0] * x
+
+        if self.max_value < 0 and self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            n = -n
 
         return n
 

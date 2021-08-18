@@ -577,7 +577,7 @@ def get_test_structure(num_test_st):
         b5 = st.Bar("B5", n4, n6, "s275j", ("IPE", 300))
 
         b2.add_distributed_charge(st.DistributedCharge(
-            st.DistributedChargeType.PARALLEL_TO_BAR, 9967.568, (0, -1, 0)
+            st.DistributedChargeType.PARALLEL_TO_BAR, -9967.568, (0, 1, 0)
         ))
         b3.add_distributed_charge(st.DistributedCharge(
             st.DistributedChargeType.PARALLEL_TO_BAR, 9967.568, (0, -1, 0)

@@ -217,6 +217,30 @@ class Window(QtWidgets.QMainWindow):
         # TODO escribir funcion
         self.scene.addRect(1000, 500, 100, 100)
 
+    def solve_structure(self):
+        """
+        This method is called from solve structure action
+        """
+        bars = []
+        for item in self.scene.items():
+            if type(item) is Bar:
+                bars.append(item.bar_logic)
+
+        # bars.reverse()
+        bar_dict = {}
+        for bar in bars:
+            bar_dict[bar.name] = bar
+
+        # print(bar_dict)
+
+        structure = st.Structure("S1", bar_dict)
+        structure.get_nodes_displacements()
+        structure.get_nodes_reactions()
+        for key, bar in structure.get_bars().items():
+            bar.get_efforts()
+
+        pass
+
     def activate_draw_node_mode(self):
         """
         Activates the application mode in which the nodes can be drawn with mouse clicks. The mode can be reverted back
@@ -276,6 +300,7 @@ class Window(QtWidgets.QMainWindow):
             bar.setZValue(Z_VALUE_BARS)
 
             # Add node to scene
+            # TODO add the bar only if there is not another occupying the same position
             self.scene.addItem(bar)
 
             # set_active_structure_element(bar)
@@ -347,6 +372,7 @@ class Window(QtWidgets.QMainWindow):
         # Structure
         edit_menu.addAction(self.enable_node_mode_action)
         edit_menu.addAction(self.enable_bar_mode_action)
+        edit_menu.addAction(self.solve_structure_action)
         edit_menu.addSeparator()
         edit_menu.addAction(self.copy_action)
         edit_menu.addAction(self.cut_action)
@@ -435,6 +461,7 @@ class Window(QtWidgets.QMainWindow):
 
         structure_toolbar.addAction(self.enable_node_mode_action)
         structure_toolbar.addAction(self.enable_bar_mode_action)
+        structure_toolbar.addAction(self.solve_structure_action)
 
         self.addToolBar(QtCore.Qt.LeftToolBarArea, structure_toolbar)
 
@@ -730,6 +757,8 @@ class Window(QtWidgets.QMainWindow):
 
         # Populate widget with action
         self.central_widget.addAction(self.enable_node_mode_action)
+        self.central_widget.addAction(self.enable_bar_mode_action)
+        self.central_widget.addAction(self.solve_structure_action)
         # TODO Borrar, este separador, solo esta para motivos de documentacion
         self.central_widget.addAction(separator)
         self.central_widget.addAction(self.enable_bar_mode_action)
@@ -743,6 +772,7 @@ class Window(QtWidgets.QMainWindow):
 
         self.enable_node_mode_action.triggered.connect(self.activate_draw_node_mode)
         self.enable_bar_mode_action.triggered.connect(self.activate_draw_bar_mode)
+        self.solve_structure_action.triggered.connect(self.solve_structure)
 
     def _create_actions(self):
         """
@@ -784,12 +814,15 @@ class Window(QtWidgets.QMainWindow):
         # Create actions
         self.enable_node_mode_action = QtWidgets.QAction("&Node mode", self)
         self.enable_bar_mode_action = QtWidgets.QAction("&Bar mode", self)
+        self.solve_structure_action = QtWidgets.QAction("&Solve", self)
         # Add shortcuts
         self.enable_node_mode_action.setShortcut("N")
         self.enable_bar_mode_action.setShortcut("B")
+        self.solve_structure_action.setShortcut("Shift+S")
         # Add help tips
         _add_tip(self.enable_node_mode_action, "Create a new node")
         _add_tip(self.enable_bar_mode_action, "Create a new bar")
+        _add_tip(self.solve_structure_action, "Solves the structure")
 
         # ========== HELP ACTIONS ==========
         # Create actions
@@ -1112,7 +1145,7 @@ class BarDistributedCharge(QtWidgets.QWidget):
             raise ValueError(f"Error: Distributed charge type {dc_type_string} has not been implemented")
 
         try:
-            value = float(self.charge_value_text_box.toPlainText())
+            value = float(self.charge_value_text_box.text())
         except:
             return
 
