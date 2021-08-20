@@ -7,6 +7,8 @@ from src.modules import databaseutils as db
 from src.modules import filesystemutils as fs
 from src.modules import structures as st
 
+import qrc_resources
+
 # CONSTANTS
 NODE_RADIUS = 10
 Z_VALUE_NODES = 2
@@ -1292,7 +1294,7 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.setPos(x_scene, y_scene)
 
         self.main_window = main_window
-        # x and y coordinates in scece reference system
+        # x and y coordinates in scene reference system
         self.x_scene, self.y_scene = x_scene, y_scene
         # x and y coordinates in centered reference system
         self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
@@ -1318,6 +1320,15 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         self.node_logic = st.Node(node_name, (x_meter, y_meter, 0))
 
         # Support
+        self.label_support_image = QtWidgets.QLabel()
+        self.label_support_image.setStyleSheet("background-color:#FFFFFF")
+        support_image = QtGui.QPixmap()
+        self.label_support_image.setPixmap(support_image)
+        self.main_window.scene.addWidget(self.label_support_image)
+        image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
+        image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+        self.label_support_image.move(image_x_coordinate, image_y_coordinate)
+
         self.update_support(
             self.main_window.support_combo_box.currentText()
         )
@@ -1377,20 +1388,41 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
             # Change node position
             self.setPos(draw_pos)
+            # Change support position
+            self.label_support_image.move(draw_pos)
             # This signal communicates with Bar to change its position
             self.signals.position_changed.emit()
 
     def update_support(self, support_name):
         if support_name == "ROLLER_X":
             support = st.Support.ROLLER_X
+            support_image = QtGui.QPixmap(":roller_x_support.svg")
+            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
+            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
         elif support_name == "ROLLER_Y":
             support = st.Support.ROLLER_Y
+            support_image = QtGui.QPixmap(":roller_y_support.svg")
+            image_x_coordinate = int(self.x_scene + NODE_RADIUS)
+            image_y_coordinate = int(self.y_scene - NODE_RADIUS)
         elif support_name == "PINNED":
             support = st.Support.PINNED
+            support_image = QtGui.QPixmap(":pinned_support.svg")
+            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
+            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
         elif support_name == "FIXED":
             support = st.Support.FIXED
+            support_image = QtGui.QPixmap(":fixed_support.svg")
+            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
+            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
         else:
             support = st.Support.NONE
+            support_image = QtGui.QPixmap()
+            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
+            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+
+        self.label_support_image.setPixmap(support_image)
+        self.label_support_image.adjustSize()
+        self.label_support_image.move(image_x_coordinate, image_y_coordinate)
 
         self.node_logic.set_support(support)
 

@@ -1,0 +1,8 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource>
+        <file alias="pinned_support.svg">resources/pinned_support.svg</file>>
+        <file alias="fixed_support.svg">resources/fixed_support.svg</file>>
+        <file alias="roller_x_support.svg">resources/roller_x_support.svg</file>>
+        <file alias="roller_y_support.svg">resources/roller_y_support.svg</file>>
+    </qresource>
+</RCC>
