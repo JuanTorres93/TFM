@@ -269,6 +269,18 @@ class TestBar(unittest.TestCase):
         self.assertRaises(TypeError, bar.set_end, 0)
         self.assertRaises(TypeError, bar.set_end, (0, 0, 0))
 
+    def test_swap(self):
+        n_ori = st.Node("N1")
+        n_end = st.Node("N2")
+
+        bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
+        self.assertEqual(bar.end, n_end)
+        self.assertEqual(bar.origin, n_ori)
+
+        bar.swap_nodes()
+        self.assertEqual(bar.end, n_ori)
+        self.assertEqual(bar.origin, n_end)
+
     def test_set_material(self):
         n1 = st.Node("N1")
         n2 = st.Node("N2", position=(1, 2, 3))

@@ -402,6 +402,10 @@ class Bar:
 
         self.origin = new_origin
 
+    def get_origin(self):
+        # TODO escribir test
+        return self.origin
+
     def set_end(self, new_end: Node):
         """
         Sets the end node of the bar to the specified one
@@ -412,6 +416,18 @@ class Bar:
             raise TypeError("new_end must be of type 'Node'")
 
         self.end = new_end
+
+    def get_end(self):
+        # TODO escribir test
+        return self.end
+
+    def swap_nodes(self):
+        """
+        Swaps origin and end nodes.
+        """
+        aux = self.origin
+        self.origin = self.end
+        self.end = aux
 
     def length(self) -> float:
         """
@@ -497,7 +513,7 @@ class Bar:
         # x axis as a reference to compute the rotated angle
         reference = np.array((1, 0, 0))
         # Vector with origin in the origin node of the bar (beam) and with end in the end node of the bar
-        beam_line = np.subtract(self.end.position, self.origin.position)
+        beam_line = np.subtract(self.get_end().position, self.get_origin().position)
 
         # Calculate the dot product of the previous vectors
         dot_product = reference @ beam_line
@@ -507,12 +523,12 @@ class Bar:
         angle = np.arccos(cosine)
 
         # Adjust the angle to the pertinent quadrant
-        if self.end.x() >= self.origin.x() and self.end.y() >= self.origin.y():
+        if self.get_end().x() >= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
             # angle = angle
             pass
-        elif self.end.x() <= self.origin.x() and self.end.y() >= self.origin.y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
             angle = angle + math.pi / 2
-        elif self.end.x() <= self.origin.x() and self.end.y() <= self.origin.y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() <= self.get_origin().y():
             angle = angle + math.pi
         else:
             angle = 2 * math.pi - angle
@@ -724,7 +740,7 @@ class Bar:
              rigidity_matrix_by_g_trans_bottom_row))
 
         # Get displacements of the origin nodes
-        displacements_i = self.origin.get_displacement()
+        displacements_i = self.get_origin().get_displacement()
         displacements_i = np.array([displacements_i.get("x"),
                                     displacements_i.get("y"),
                                     displacements_i.get("angle")])
@@ -732,7 +748,7 @@ class Bar:
         displacements_i = np.vstack(displacements_i)
 
         # Get displacements of the end nodes
-        displacements_j = self.end.get_displacement()
+        displacements_j = self.get_end().get_displacement()
         displacements_j = np.array([displacements_j.get("x"),
                                     displacements_j.get("y"),
                                     displacements_j.get("angle")])
@@ -842,7 +858,7 @@ class Bar:
         if origin_end_factor < 0 or origin_end_factor > 1:
             raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
 
-        origin = self.origin
+        origin = self.get_origin()
 
         if origin.has_support():
             origin_reactions = origin.get_reactions()
@@ -877,7 +893,7 @@ class Bar:
         if origin_end_factor < 0 or origin_end_factor > 1:
             raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
 
-        origin = self.origin
+        origin = self.get_origin()
 
         if origin.support != Support.NONE:
             origin_reactions = origin.get_reactions()
@@ -912,7 +928,7 @@ class Bar:
         if origin_end_factor < 0 or origin_end_factor > 1:
             raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
 
-        origin = self.origin
+        origin = self.get_origin()
         x = origin_end_factor * self.length()
 
         if origin.support != Support.NONE:
@@ -987,8 +1003,8 @@ class Structure:
         processed_nodes = []
 
         for key, bar in self.bars.items():
-            origin = bar.origin
-            end = bar.end
+            origin = bar.get_origin()
+            end = bar.get_end()
 
             if origin not in processed_nodes:
                 num_nodes += 1
@@ -1006,19 +1022,60 @@ class Structure:
 
         :return:  number of nodes in the structure
         """
+        # # Find all nodes in structure in no particular order
+        # nodes = []
+        # while len(nodes) < self.get_number_of_nodes():
+        #     # Get all nodes in structure
+        #     for key, bar in self.bars.items():
+        #         origin_node = bar.get_origin()
+        #         end_node = bar.get_end()
+        #
+        #         if origin_node not in nodes:
+        #             nodes.append(origin_node)
+        #
+        #         if end_node not in nodes:
+        #             nodes.append(end_node)
+        #
+        # # Order the nodes, giving priority to the lowest and placed to the left
+        # ordered_nodes_by_x = []
+        # while len(ordered_nodes_by_x) < self.get_number_of_nodes():
+        #     min_x = None
+        #     min_node = None
+        #
+        #     for node in nodes:
+        #         if min_x is None:
+        #             min_x = node.x()
+        #             min_node = node
+        #         else:
+        #             if node.x() <= min_x:
+        #                 min_x = node.x()
+        #                 min_node = node
+        #
+        #     ordered_nodes_by_x.append(min_node)
+        #     nodes.remove(min_node)
+        #
+        # node_number = 1
+        # for node in ordered_nodes_by_x:
+        #     node.solving_numeration = node_number
+        #     node_number += 1
+
+        # for key, bar in self.bars.items():
+        #     if bar.get_origin().solving_numeration > bar.get_end().solving_numeration:
+        #         bar.swap_nodes()
+
         # Initialize assignment of numbers to each bar and each node
         for key, bar in self.bars.items():
             bar.solving_numeration = -1
-            bar.origin.solving_numeration = -1
-            bar.end.solving_numeration = -1
+            bar.get_origin().solving_numeration = -1
+            bar.get_end().solving_numeration = -1
 
         # Assign numeration for each bar and each node and check which bar each node belongs to
         bar_number = 1
         node_number = 1
 
         for key, bar in self.bars.items():
-            origin_node = bar.origin
-            end_node = bar.end
+            origin_node = bar.get_origin()
+            end_node = bar.get_end()
 
             # Bar solving number assignations
             if bar.solving_numeration <= 0:
@@ -1035,6 +1092,8 @@ class Structure:
                 node_number = node_number + 1
 
         return node_number - 1
+
+        # return self.get_number_of_nodes()
 
     def find_submatrix(self, matrix, row, col):
         """
@@ -1077,8 +1136,8 @@ class Structure:
             # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
             bar.global_rigidity_matrix_2d_rigid_nodes()
 
-            origin_node = bar.origin
-            end_node = bar.end
+            origin_node = bar.get_origin()
+            end_node = bar.get_end()
 
             # This list is used in a loop in order to use the different k_ij of the bar
             nodes_combination = [(origin_node.solving_numeration, origin_node.solving_numeration),
@@ -1175,8 +1234,8 @@ class Structure:
                 proc_nodes.append(node.solving_numeration)
 
         for key, bar in self.bars.items():
-            origin_node = bar.origin
-            end_node = bar.end
+            origin_node = bar.get_origin()
+            end_node = bar.get_end()
 
             process_node(origin_node, processed_nodes, indexes_to_delete)
             process_node(end_node, processed_nodes, indexes_to_delete)
@@ -1205,7 +1264,12 @@ class Structure:
 
         :return: Inverse of decoupled matrix
         """
-        return np.linalg.inv(self.decoupled_matrix())
+        try:
+            inverse = np.linalg.inv(self.decoupled_matrix())
+        except np.linalg.LinAlgError:
+            return np.linalg.LinAlgError
+
+        return inverse
 
     def inverse_assembled_matrix(self):
         """
@@ -1290,21 +1354,21 @@ class Structure:
                 dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
 
                 for key, distributed_charge in dc_nodes.items():
-                    add_referred_force_and_momentum_to_node(bar.origin, distributed_charge, "dc", "origin")
-                    add_referred_force_and_momentum_to_node(bar.end, distributed_charge, "dc", "end")
+                    add_referred_force_and_momentum_to_node(bar.get_origin(), distributed_charge, "dc", "origin")
+                    add_referred_force_and_momentum_to_node(bar.get_end(), distributed_charge, "dc", "end")
 
             if bar.has_punctual_forces():
                 pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
 
                 for key, punctual_force in pf_nodes.items():
-                    add_referred_force_and_momentum_to_node(bar.origin, punctual_force, "pf", "origin")
-                    add_referred_force_and_momentum_to_node(bar.end, punctual_force, "pf", "end")
+                    add_referred_force_and_momentum_to_node(bar.get_origin(), punctual_force, "pf", "origin")
+                    add_referred_force_and_momentum_to_node(bar.get_end(), punctual_force, "pf", "end")
 
         # Compose the force vector
         while current_search <= self.get_number_of_nodes():
             for key, bar in self.bars.items():
-                origin = bar.origin
-                end = bar.end
+                origin = bar.get_origin()
+                end = bar.get_end()
 
                 if origin.solving_numeration == current_search or end.solving_numeration == current_search:
                     if origin.solving_numeration == current_search:
@@ -1397,8 +1461,8 @@ class Structure:
 
         while current_searched_node <= self.get_number_of_nodes():
             for key, bar in self.bars.items():
-                origin = bar.origin
-                end = bar.end
+                origin = bar.get_origin()
+                end = bar.get_end()
 
                 if origin.solving_numeration == current_searched_node or \
                         end.solving_numeration == current_searched_node:

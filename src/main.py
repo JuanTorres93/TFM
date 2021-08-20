@@ -27,6 +27,10 @@ PX_TO_METER = 1 / METER_TO_PX
 # Currently selected node or bar
 active_structure_element = None
 
+# Initialized from main window
+node_properties = None
+bar_properties = None
+
 
 def unset_active_structure_element():
     """
@@ -45,6 +49,9 @@ def unset_active_structure_element():
         # Set active_structure_element to None
         active_structure_element = None
 
+        bar_properties.show()
+        node_properties.show()
+
 
 def set_active_structure_element(item):
     """
@@ -53,6 +60,13 @@ def set_active_structure_element(item):
     """
     global active_structure_element
     active_structure_element = item
+
+    if type(active_structure_element) is Bar:
+        bar_properties.show()
+        node_properties.hide()
+    elif type(active_structure_element) is Node:
+        bar_properties.hide()
+        node_properties.show()
 
 
 def get_widgets_in_layout(layout):
@@ -234,7 +248,16 @@ class Window(QtWidgets.QMainWindow):
         # print(bar_dict)
 
         structure = st.Structure("S1", bar_dict)
-        structure.get_nodes_displacements()
+        try:
+            structure.get_nodes_displacements()
+        except:
+            message_box = QtWidgets.QMessageBox()
+            message_box.setWindowTitle("Singular matrix error")
+            message_box.setText("Consider adding more supports.")
+            message_box.setIcon(QtWidgets.QMessageBox.Critical)
+            message_box.exec_()
+
+            return
         structure.get_nodes_reactions()
         for key, bar in structure.get_bars().items():
             bar.get_efforts()
@@ -495,6 +518,8 @@ class Window(QtWidgets.QMainWindow):
         )
 
         bar_properties_layout.addWidget(QtWidgets.QLabel("Bar properties"))
+        global bar_properties
+        bar_properties = bar_properties_container
 
         # -- Material
         material_layout, mat_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
@@ -564,6 +589,9 @@ class Window(QtWidgets.QMainWindow):
             QtWidgets.QGroupBox()
         )
 
+        global node_properties
+        node_properties = node_properties_container
+
         node_properties_layout.addWidget(QtWidgets.QLabel("Node properties"))
         node_properties_layout.addSpacing(5)
         # -- Coordinates
@@ -615,7 +643,7 @@ class Window(QtWidgets.QMainWindow):
         # self.z_coordinate = create_coordinate("z:", node_coords_layout)
 
         # Initialize textboxes
-        self.update_coordinates(0, 0, 0)
+        self.update_coordinates("---", "---", "---")
 
         node_properties_layout.addWidget(QtWidgets.QLabel("Coordinates"))
         node_properties_layout.addWidget(node_coords_container)
@@ -637,6 +665,11 @@ class Window(QtWidgets.QMainWindow):
         node_properties_layout.addWidget(support_container)
 
         splitter.addWidget(node_properties_container)
+
+        # -- TextBox Info
+        self.node_info_text_box = QtWidgets.QPlainTextEdit()
+        self.node_info_text_box.setReadOnly(True)
+        node_properties_layout.addWidget(self.node_info_text_box)
 
         # Widget to act as a separator. It allows the widget in the bars to be compact
         separator = QtWidgets.QWidget()
@@ -1498,9 +1531,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Change node color
             active_structure_element.change_node_color("selected")
             # Get coordinates of the node
-            x = active_structure_element.node_logic.x()
-            y = active_structure_element.node_logic.y()
-            z = active_structure_element.node_logic.z()
+            node_logic = active_structure_element.node_logic
+            x = node_logic.x()
+            y = node_logic.y()
+            z = node_logic.z()
             # Show coordinates in the textboxes
             self.main_window.update_coordinates(x, y, z)
             # Show support
@@ -1508,6 +1542,30 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             support_name = str(support_name).split(".")
             self.main_window.support_combo_box.setCurrentText(
                 support_name[1]
+            )
+            # Show displacement
+            node_displacement = node_logic.get_displacement()
+            self.main_window.node_info_text_box.clear()
+            self.main_window.node_info_text_box.setPlainText(
+                "DISPLACEMENTS" + "\n"
+                "==============" + "\n"
+                f"x: {node_displacement.get('x')} [m]" + "\n"
+                f"y: {node_displacement.get('y')} [m]" + "\n"
+                f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
+            )
+
+            # Show reactions
+            node_reactions = node_logic.get_reactions()
+            reaction_label = "REACTIONS"
+            if not node_logic.has_support():
+                reaction_label = "FORCES"
+
+            self.main_window.node_info_text_box.appendPlainText(
+                reaction_label + "\n"
+                "==========" + "\n"
+                f"x: {node_reactions.get('x')} [m]" + "\n"
+                f"y: {node_reactions.get('y')} [m]" + "\n"
+                f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
             )
 
             self._hide_last_bar_charges_info_from_gui()
