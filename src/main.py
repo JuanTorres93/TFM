@@ -303,7 +303,7 @@ class Window(QtWidgets.QMainWindow):
         scene_position = self.central_widget.mapToScene(view_position)
 
         # Coordinates to draw the circle in its center instead of in its top-left corner
-        draw_coordinates = [scene_position.x() - radius / 2, scene_position.y() - radius / 2]
+        draw_coordinates = [scene_position.x(), scene_position.y()]
         # Create node instance
         node = Node(self, draw_coordinates[0], draw_coordinates[1], radius)
         node.setZValue(Z_VALUE_NODES)
@@ -336,6 +336,7 @@ class Window(QtWidgets.QMainWindow):
         :param node: Node to be deleted
         """
         # Delete node
+        node.label_support_image.deleteLater()
         self.scene.removeItem(node)
         # Unset active structure element in order not to have null references
         unset_active_structure_element()
@@ -872,8 +873,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         # Origin point
         self.node_origin = node_origin
-        self.x1_scene = node_origin.x_scene + NODE_RADIUS / 2
-        self.y1_scene = node_origin.y_scene + NODE_RADIUS / 2
+        self.x1_scene = node_origin.draw_x_pos + node_origin.radius / 2
+        self.y1_scene = node_origin.draw_y_pos + node_origin.radius / 2
         self.node_origin.signals.position_changed.connect(lambda: self.update_point_position(
             "origin",
             self.node_origin.x_scene,
@@ -881,8 +882,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
         ))
         # End Point
         self.node_end = node_end
-        self.x2_scene = node_end.x_scene + NODE_RADIUS / 2
-        self.y2_scene = node_end.y_scene + NODE_RADIUS / 2
+        self.x2_scene = node_end.draw_x_pos + node_end.radius / 2
+        self.y2_scene = node_end.draw_y_pos + node_end.radius / 2
         self.node_end.signals.position_changed.connect(lambda: self.update_point_position(
             "end",
             self.node_end.x_scene,
@@ -944,7 +945,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
     def update_point_position(self, point_reference, new_x_scene, new_y_scene):
         """
-        Updates the position of one of the points of the line
+        Updates the position of one of the points of the line. This function is called when origin or end points
+        change position
         :param point_reference: Point to update. "origin" for origin node, something else for end node
         :param new_x_scene: new x position in scene coordinates
         :param new_y_scene: new y position in scene coordinates
@@ -1291,15 +1293,19 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # 0, 0 are x and y coordinates in ITEM COORDINATES
         super().__init__(0, 0, radius, radius)
 
-        self.setPos(x_scene, y_scene)
-
         self.main_window = main_window
+
+        # Radius of the node
+        self.radius = radius
         # x and y coordinates in scene reference system
         self.x_scene, self.y_scene = x_scene, y_scene
         # x and y coordinates in centered reference system
         self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
-        # Radius of the node
-        self.radius = radius
+
+        # x and y coordinates in scene reference system to draw the node by its center
+        self.draw_x_pos, self.draw_y_pos = x_scene - self.radius, self.y_scene - self.radius
+
+        self.setPos(self.draw_x_pos, self.draw_y_pos)
 
         # Currently used color
         self.color = NORMAL_COLOR
@@ -1321,17 +1327,9 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
         # Support
         self.label_support_image = QtWidgets.QLabel()
-        self.label_support_image.setStyleSheet("background-color:#FFFFFF")
-        support_image = QtGui.QPixmap()
-        self.label_support_image.setPixmap(support_image)
+        self.label_support_image.setStyleSheet("background-color:#00FFFFFF")
         self.main_window.scene.addWidget(self.label_support_image)
-        image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
-        image_y_coordinate = int(self.y_scene + NODE_RADIUS)
-        self.label_support_image.move(image_x_coordinate, image_y_coordinate)
-
-        self.update_support(
-            self.main_window.support_combo_box.currentText()
-        )
+        self.update_support("NONE")
 
         # Signal
         self.signals = NodeSignals()
@@ -1376,12 +1374,12 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
 
             # Modify scene coordinates to draw the node at its center
-            draw_pos_x = int(new_x_scene - self.radius / 2)
-            draw_pos_y = int(new_y_scene - self.radius / 2)
+            self.draw_x_pos = int(new_x_scene - self.radius / 2)
+            self.draw_y_pos = int(new_y_scene - self.radius / 2)
 
             try:
                 # Pack into a point the draw coordinates
-                draw_pos = QtCore.QPoint(draw_pos_x, draw_pos_y)
+                draw_pos = QtCore.QPoint(self.draw_x_pos, self.draw_y_pos)
             except OverflowError:
                 # If the coordinates are to big, then cancel the operation
                 return
@@ -1389,7 +1387,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             # Change node position
             self.setPos(draw_pos)
             # Change support position
-            self.label_support_image.move(draw_pos)
+            current_support = str(self.node_logic.support).split(".")[1]
+            self.update_support(current_support)
             # This signal communicates with Bar to change its position
             self.signals.position_changed.emit()
 
@@ -1397,28 +1396,28 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         if support_name == "ROLLER_X":
             support = st.Support.ROLLER_X
             support_image = QtGui.QPixmap(":roller_x_support.svg")
-            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
-            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_y_coordinate = int(self.draw_y_pos + self.radius)
         elif support_name == "ROLLER_Y":
             support = st.Support.ROLLER_Y
             support_image = QtGui.QPixmap(":roller_y_support.svg")
-            image_x_coordinate = int(self.x_scene + NODE_RADIUS)
-            image_y_coordinate = int(self.y_scene - NODE_RADIUS)
+            image_x_coordinate = int(self.draw_x_pos + self.radius)
+            image_y_coordinate = int(self.draw_y_pos - self.radius)
         elif support_name == "PINNED":
             support = st.Support.PINNED
             support_image = QtGui.QPixmap(":pinned_support.svg")
-            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
-            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_y_coordinate = int(self.draw_y_pos + self.radius)
         elif support_name == "FIXED":
             support = st.Support.FIXED
             support_image = QtGui.QPixmap(":fixed_support.svg")
-            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
-            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_y_coordinate = int(self.draw_y_pos + self.radius)
         else:
             support = st.Support.NONE
             support_image = QtGui.QPixmap()
-            image_x_coordinate = int(self.x_scene - support_image.width() / 2 + NODE_RADIUS / 2)
-            image_y_coordinate = int(self.y_scene + NODE_RADIUS)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_y_coordinate = int(self.draw_y_pos + self.radius)
 
         self.label_support_image.setPixmap(support_image)
         self.label_support_image.adjustSize()
