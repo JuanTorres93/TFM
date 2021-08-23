@@ -80,6 +80,8 @@ class Node:
         self.referred_momentums = {}
         self.support = support
 
+        self.bars_belonging_to = {}
+
         # Number assigned to construct the structure matrix (handled from structure class)
         self.solving_numeration = -1
 
@@ -168,6 +170,21 @@ class Node:
         :return: dictionary representing the forces applied to the node
         """
         return self.referred_forces
+
+    def get_bars_belonging_to(self):
+        """
+        bars_belonging_to is a dictionary that contains all the bar that the node is part of
+        :return: dictionary with the bar
+        """
+        return self.bars_belonging_to
+
+    def add_bar_to_collection(self, bar):
+        """
+        This method appends the bar to the list of bars that the node is present in
+        :param bar: bar to add to the dictionary
+        """
+        # The test of this function is carried along with the one of get_bars_belonging_to
+        self.bars_belonging_to[bar.name] = bar
 
     def clear_referred_forces(self):
         """
@@ -352,7 +369,11 @@ class Bar:
 
         self.name = name
         self.origin = origin
+        # Store bar in origin node
+        self.origin.add_bar_to_collection(self)
         self.end = end
+        # Store bar in end node
+        self.end.add_bar_to_collection(self)
         self.material = Material(material)
         self.profile = Profile(profile[0], profile[1])
 
@@ -403,7 +424,11 @@ class Bar:
         self.origin = new_origin
 
     def get_origin(self):
-        # TODO escribir test
+        """
+
+        :return: origin node of the bar
+        """
+        # The test of this function is carried along with the one of get_bars_belonging_to
         return self.origin
 
     def set_end(self, new_end: Node):
@@ -418,8 +443,20 @@ class Bar:
         self.end = new_end
 
     def get_end(self):
-        # TODO escribir test
+        """
+
+        :return: end node of the bar
+        """
+        # The test of this function is carried along with the one of get_bars_belonging_to
         return self.end
+
+    def get_nodes(self):
+        """
+
+        :return: List with origin and end nodes of the bar
+        """
+        # The test of this function is carried along with the one of get_bars_belonging_to
+        return [self.origin, self.end]
 
     def swap_nodes(self):
         """
@@ -707,6 +744,16 @@ class Bar:
         else:
             return False
 
+    def has_support(self):
+        """
+
+        :return: True if, at least, one node of the bar has a support
+        """
+        if self.origin.has_support() or self.end.has_support():
+            return True
+        else:
+            return False
+
     def calculate_efforts(self):
         """
         Computes the efforts to which the bar is subjected to and store them in instance variables
@@ -987,12 +1034,17 @@ class Structure:
         self.name = name
         self.bars = bars
 
-    def get_bars(self):
+    def get_bars(self, return_as_list=False):
         """
 
+        :param return_as_list:
         :return: bars of the structure
         """
-        return self.bars
+        if not return_as_list:
+            return self.bars
+        else:
+            return list(map(lambda x: x[1],
+                            self.get_bars().items()))
 
     def get_number_of_nodes(self):
         """
@@ -1022,46 +1074,9 @@ class Structure:
 
         :return:  number of nodes in the structure
         """
-        # # Find all nodes in structure in no particular order
-        # nodes = []
-        # while len(nodes) < self.get_number_of_nodes():
-        #     # Get all nodes in structure
-        #     for key, bar in self.bars.items():
-        #         origin_node = bar.get_origin()
-        #         end_node = bar.get_end()
-        #
-        #         if origin_node not in nodes:
-        #             nodes.append(origin_node)
-        #
-        #         if end_node not in nodes:
-        #             nodes.append(end_node)
-        #
-        # # Order the nodes, giving priority to the lowest and placed to the left
-        # ordered_nodes_by_x = []
-        # while len(ordered_nodes_by_x) < self.get_number_of_nodes():
-        #     min_x = None
-        #     min_node = None
-        #
-        #     for node in nodes:
-        #         if min_x is None:
-        #             min_x = node.x()
-        #             min_node = node
-        #         else:
-        #             if node.x() <= min_x:
-        #                 min_x = node.x()
-        #                 min_node = node
-        #
-        #     ordered_nodes_by_x.append(min_node)
-        #     nodes.remove(min_node)
-        #
-        # node_number = 1
-        # for node in ordered_nodes_by_x:
-        #     node.solving_numeration = node_number
-        #     node_number += 1
-
-        # for key, bar in self.bars.items():
-        #     if bar.get_origin().solving_numeration > bar.get_end().solving_numeration:
-        #         bar.swap_nodes()
+        nodes = self.get_nodes(ordered_by_solving_number=False)
+        nodes_with_support = list(filter(lambda x: x.has_support() == True,
+                                         nodes))
 
         # Initialize assignment of numbers to each bar and each node
         for key, bar in self.bars.items():
@@ -1069,31 +1084,89 @@ class Structure:
             bar.get_origin().solving_numeration = -1
             bar.get_end().solving_numeration = -1
 
-        # Assign numeration for each bar and each node and check which bar each node belongs to
-        bar_number = 1
-        node_number = 1
+        left_node = None
+        for node in nodes_with_support:
+            if left_node is None:
+                left_node = node
+            else:
+                if node.x() < left_node.x():
+                    left_node = node
+                elif node.x() == left_node.x():
+                    if node.y() < left_node.y():
+                        left_node = node
 
-        for key, bar in self.bars.items():
-            origin_node = bar.get_origin()
-            end_node = bar.get_end()
+        next_number = 1
+        numbered_nodes = []
 
-            # Bar solving number assignations
-            if bar.solving_numeration <= 0:
-                bar.solving_numeration = bar_number
-                bar_number = bar_number + 1
+        def get_nodes_recursively(node):
+            """
+            This function finds recursively all nodes in structure, according bars.
+            :param node: node to find other nodes
+            """
+            nonlocal next_number
+            nonlocal numbered_nodes
 
-            # Nodes solving number assignations
-            if origin_node.solving_numeration <= 0:
-                origin_node.solving_numeration = node_number
-                node_number = node_number + 1
+            # Assign numeration if it not has already been done
+            if node.solving_numeration == -1:
+                node.solving_numeration = next_number
+                next_number += 1
+                # Mark the node as numbered
+                if node not in numbered_nodes:
+                    numbered_nodes.append(node)
 
-            if end_node.solving_numeration <= 0:
-                end_node.solving_numeration = node_number
-                node_number = node_number + 1
+            # Stop when al nodes have been numbered
+            if len(numbered_nodes) == self.get_number_of_nodes():
+                return
 
-        return node_number - 1
+            # Get bars attached to the node
+            bars = list(
+                map(lambda x: x[1],
+                    list(node.get_bars_belonging_to().items())
+                    )
+            )
 
-        # return self.get_number_of_nodes()
+            for bar in bars:
+                # Get nodes in bar
+                nodes_in_bar = bar.get_nodes()
+                # Assign numeration to node
+                for n in nodes_in_bar:
+                    if n.solving_numeration < 1:
+                        get_nodes_recursively(n)
+
+        # Assign nodes numeration starting from the first one
+        get_nodes_recursively(left_node)
+
+        # # Initialize assignment of numbers to each bar and each node
+        # for key, bar in self.bars.items():
+        #     bar.solving_numeration = -1
+        #     bar.get_origin().solving_numeration = -1
+        #     bar.get_end().solving_numeration = -1
+        #
+        # # Assign numeration for each bar and each node and check which bar each node belongs to
+        # bar_number = 1
+        # node_number = 1
+        #
+        # for key, bar in self.bars.items():
+        #     origin_node = bar.get_origin()
+        #     end_node = bar.get_end()
+        #
+        #     # Bar solving number assignations
+        #     if bar.solving_numeration <= 0:
+        #         bar.solving_numeration = bar_number
+        #         bar_number = bar_number + 1
+        #
+        #     # Nodes solving number assignations
+        #     if origin_node.solving_numeration <= 0:
+        #         origin_node.solving_numeration = node_number
+        #         node_number = node_number + 1
+        #
+        #     if end_node.solving_numeration <= 0:
+        #         end_node.solving_numeration = node_number
+        #         node_number = node_number + 1
+        #
+        # return node_number - 1
+
+        return self.get_number_of_nodes()
 
     def find_submatrix(self, matrix, row, col):
         """
@@ -1133,11 +1206,14 @@ class Structure:
         matrix = np.array(matrix)
 
         for key, bar in self.bars.items():
-            # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
-            bar.global_rigidity_matrix_2d_rigid_nodes()
-
             origin_node = bar.get_origin()
             end_node = bar.get_end()
+
+            if origin_node.solving_numeration >= end_node.solving_numeration:
+                bar.swap_nodes()
+
+            # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
+            bar.global_rigidity_matrix_2d_rigid_nodes()
 
             # This list is used in a loop in order to use the different k_ij of the bar
             nodes_combination = [(origin_node.solving_numeration, origin_node.solving_numeration),
@@ -1449,30 +1525,43 @@ class Structure:
 
         return np.array(nodes_displacements)
 
-    def get_nodes(self):
+    def get_nodes(self, ordered_by_solving_number=True):
         """
 
+        :param ordered_by_solving_number:
         :return: list containing all nodes in the structure, order by solving numeration
         """
-        self.set_bars_and_nodes_numeration()
-
         got_nodes = []
-        current_searched_node = 1
 
-        while current_searched_node <= self.get_number_of_nodes():
+        if ordered_by_solving_number:
+            self.set_bars_and_nodes_numeration()
+
+            current_searched_node = 1
+
+            while current_searched_node <= self.get_number_of_nodes():
+                for key, bar in self.bars.items():
+                    origin = bar.get_origin()
+                    end = bar.get_end()
+
+                    if origin.solving_numeration == current_searched_node or \
+                            end.solving_numeration == current_searched_node:
+                        if origin.solving_numeration == current_searched_node:
+                            valid_node = origin
+                        else:
+                            valid_node = end
+
+                        got_nodes.append(valid_node)
+                        current_searched_node += 1
+        else:
             for key, bar in self.bars.items():
                 origin = bar.get_origin()
                 end = bar.get_end()
 
-                if origin.solving_numeration == current_searched_node or \
-                        end.solving_numeration == current_searched_node:
-                    if origin.solving_numeration == current_searched_node:
-                        valid_node = origin
-                    else:
-                        valid_node = end
+                if origin not in got_nodes:
+                    got_nodes.append(origin)
 
-                    got_nodes.append(valid_node)
-                    current_searched_node += 1
+                if end not in got_nodes:
+                    got_nodes.append(end)
 
         return got_nodes
 
@@ -1623,11 +1712,17 @@ class DistributedCharge:
         if type(dc_type) not in [DistributedChargeType]:
             raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
 
-        # TODO normalizar el vector direction
-
         self.dc_type = dc_type
         self.max_value = max_value
-        self.direction = direction
+        # self.direction = direction
+        # Normalize given direction
+        self.direction = tuple(map(
+            lambda x: x / math.sqrt(direction[0] ** 2 +
+                                    direction[1] ** 2 +
+                                    direction[2] ** 2),
+            direction
+        ))
+
         # If new parameters are included, they must be added to the equals function and to the test
 
     def set_dc_type(self, new_type):

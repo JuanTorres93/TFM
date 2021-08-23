@@ -45,7 +45,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -55,13 +55,13 @@
      id="layer1"
      transform="translate(0,-288.53332)">
     <path
-       style="fill:none;stroke:#000000;stroke-width:0.12599775px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:#ffffff;stroke:#000000;stroke-width:0.12599775px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 0.12973839,292.79161 5.54390001,4.03193 v -8.06386 z"
        id="path3713"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccc" />
     <circle
-       style="fill:none;stroke:#000000;stroke-width:0.126;stroke-miterlimit:4;stroke-dasharray:none"
+       style="fill:#ffffff;stroke:#000000;stroke-width:0.126;stroke-miterlimit:4;stroke-dasharray:none"
        id="path4166"
        cx="-295.3233"
        cy="6.9906392"
@@ -72,7 +72,7 @@
        cy="6.9906392"
        cx="-290.56082"
        id="circle4973"
-       style="fill:none;stroke:#000000;stroke-width:0.126;stroke-miterlimit:4;stroke-dasharray:none"
+       style="fill:#ffffff;stroke:#000000;stroke-width:0.126;stroke-miterlimit:4;stroke-dasharray:none"
        transform="rotate(-90)" />
   </g>
 </svg>

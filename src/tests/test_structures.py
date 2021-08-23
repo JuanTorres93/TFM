@@ -204,6 +204,91 @@ class TestNode(unittest.TestCase):
         self.assertEqual(node.get_reactions(), new_reactions)
         self.assertRaises(TypeError, node.set_reactions, 0)
 
+    def test_get_bars_belonging_to(self):
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.NONE)
+        n2 = st.Node("N2", position=(-1, 1, 0), support=st.Support.NONE)
+        n3 = st.Node("N3", position=(0, 1, 0), support=st.Support.NONE)
+        n4 = st.Node("N4", position=(1, 1, 0), support=st.Support.NONE)
+        n5 = st.Node("N5", position=(0, 2, 0), support=st.Support.NONE)
+
+        ba = st.Bar("BA", n1, n2, "s275j", ("IPE", 300))
+        bb = st.Bar("BB", n1, n3, "s275j", ("IPE", 300))
+        bc = st.Bar("BC", n1, n4, "s275j", ("IPE", 300))
+        bd = st.Bar("BD", n3, n4, "s275j", ("IPE", 300))
+        be = st.Bar("BE", n2, n5, "s275j", ("IPE", 300))
+        bf = st.Bar("BF", n4, n5, "s275j", ("IPE", 300))
+        bg = st.Bar("BG", n3, n5, "s275j", ("IPE", 300))
+
+        self.assertTrue(ba.get_origin().equals(n1))
+        self.assertTrue(ba.get_end().equals(n2))
+        self.assertTrue(bb.get_nodes()[0].equals(n1))
+        self.assertTrue(bb.get_nodes()[1].equals(n3))
+
+        # Node 1
+        n1_bars = list(
+            map(lambda x: x[1],
+                n1.get_bars_belonging_to().items())
+        )
+        self.assertTrue(ba in n1_bars)
+        self.assertTrue(bb in n1_bars)
+        self.assertTrue(bc in n1_bars)
+        self.assertFalse(bd in n1_bars)
+        self.assertFalse(be in n1_bars)
+        self.assertFalse(bf in n1_bars)
+        self.assertFalse(bg in n1_bars)
+
+        # Node 2
+        n2_bars = list(
+            map(lambda x: x[1],
+                n2.get_bars_belonging_to().items())
+        )
+        self.assertTrue(ba in n2_bars)
+        self.assertFalse(bb in n2_bars)
+        self.assertFalse(bc in n2_bars)
+        self.assertFalse(bd in n2_bars)
+        self.assertTrue(be in n2_bars)
+        self.assertFalse(bf in n2_bars)
+        self.assertFalse(bg in n2_bars)
+
+        # Node 3
+        n3_bars = list(
+            map(lambda x: x[1],
+                n3.get_bars_belonging_to().items())
+        )
+        self.assertFalse(ba in n3_bars)
+        self.assertTrue(bb in n3_bars)
+        self.assertFalse(bc in n3_bars)
+        self.assertTrue(bd in n3_bars)
+        self.assertFalse(be in n3_bars)
+        self.assertFalse(bf in n3_bars)
+        self.assertTrue(bg in n3_bars)
+
+        # Node 4
+        n4_bars = list(
+            map(lambda x: x[1],
+                n4.get_bars_belonging_to().items())
+        )
+        self.assertFalse(ba in n4_bars)
+        self.assertFalse(bb in n4_bars)
+        self.assertTrue(bc in n4_bars)
+        self.assertTrue(bd in n4_bars)
+        self.assertFalse(be in n4_bars)
+        self.assertTrue(bf in n4_bars)
+        self.assertFalse(bg in n4_bars)
+
+        # Node 5
+        n5_bars = list(
+            map(lambda x: x[1],
+                n5.get_bars_belonging_to().items())
+        )
+        self.assertFalse(ba in n5_bars)
+        self.assertFalse(bb in n5_bars)
+        self.assertFalse(bc in n5_bars)
+        self.assertFalse(bd in n5_bars)
+        self.assertTrue(be in n5_bars)
+        self.assertTrue(bf in n5_bars)
+        self.assertTrue(bg in n5_bars)
+
     def test_has_support(self):
         n1 = st.Node("N1")
 
@@ -310,6 +395,29 @@ class TestBar(unittest.TestCase):
         bar = st.Bar("B1", n_ori, n_end, "s275j", ("IPE", 300))
 
         self.assertAlmostEqual(bar.length(), 3.741657387)
+
+    def test_has_support(self):
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.PINNED)
+        n2 = st.Node("N2", position=(-1, 1, 0), support=st.Support.ROLLER_Y)
+        n3 = st.Node("N3", position=(0, 1, 0), support=st.Support.NONE)
+        n4 = st.Node("N4", position=(1, 1, 0), support=st.Support.NONE)
+        n5 = st.Node("N5", position=(0, 2, 0), support=st.Support.NONE)
+
+        ba = st.Bar("BA", n1, n2, "s275j", ("IPE", 300))
+        bb = st.Bar("BB", n1, n3, "s275j", ("IPE", 300))
+        bc = st.Bar("BC", n1, n4, "s275j", ("IPE", 300))
+        bd = st.Bar("BD", n3, n4, "s275j", ("IPE", 300))
+        be = st.Bar("BE", n2, n5, "s275j", ("IPE", 300))
+        bf = st.Bar("BF", n4, n5, "s275j", ("IPE", 300))
+        bg = st.Bar("BG", n3, n5, "s275j", ("IPE", 300))
+
+        self.assertTrue(ba.has_support())
+        self.assertTrue(bb.has_support())
+        self.assertTrue(bc.has_support())
+        self.assertTrue(not bd.has_support())
+        self.assertTrue(be.has_support())
+        self.assertTrue(not bf.has_support())
+        self.assertTrue(not bg.has_support())
 
     def test_local_rigidity_matrix_2d_rigid_nodes(self):
         n_ori = st.Node("N1")
@@ -1168,6 +1276,14 @@ class TestStructure(unittest.TestCase):
         self.assertTrue(structure.get_nodes()[3].equals(n4))
         self.assertTrue(structure.get_nodes()[4].equals(n5))
         self.assertTrue(structure.get_nodes()[5].equals(n6))
+
+        nodes_unordered = structure.get_nodes(ordered_by_solving_number=False)
+        self.assertTrue(n1 in nodes_unordered)
+        self.assertTrue(n2 in nodes_unordered)
+        self.assertTrue(n3 in nodes_unordered)
+        self.assertTrue(n4 in nodes_unordered)
+        self.assertTrue(n5 in nodes_unordered)
+        self.assertTrue(n6 in nodes_unordered)
 
     def test_get_nodes_reactions(self):
         # Test structure 1
