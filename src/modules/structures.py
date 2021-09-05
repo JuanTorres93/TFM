@@ -1105,6 +1105,7 @@ class Structure:
             """
             nonlocal next_number
             nonlocal numbered_nodes
+            nonlocal self
 
             # Assign numeration if it not has already been done
             if node.solving_numeration == -1:
@@ -1114,7 +1115,7 @@ class Structure:
                 if node not in numbered_nodes:
                     numbered_nodes.append(node)
 
-            # Stop when al nodes have been numbered
+            # Stop when all nodes have been numbered
             if len(numbered_nodes) == self.get_number_of_nodes():
                 return
 

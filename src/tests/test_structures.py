@@ -944,6 +944,22 @@ def get_test_structure(num_test_st):
 
         structure = st.Structure("S1", bars)
 
+    elif num_test_st == 11:
+        # Two bars with force applied in one node
+        n1 = st.Node("N1", position=(0, 0, 0), support=st.Support.ROLLER_X)
+        n2 = st.Node("N2", position=(2, 2, 0), forces_in_node={"F1": (-5000, -10000, 0)})
+        n3 = st.Node("N3", position=(4, 0, 0), support=st.Support.FIXED)
+
+        b1 = st.Bar("B1", n1, n2, "s275j", ("IPE", 300))
+        b2 = st.Bar("B2", n2, n3, "s275j", ("IPE", 300))
+
+        bars = {
+            b1.name: b1,
+            b2.name: b2
+        }
+
+        structure = st.Structure("S1", bars)
+
     return structure
 
 
@@ -1257,6 +1273,21 @@ class TestStructure(unittest.TestCase):
                              ])
 
         np.testing.assert_allclose(calculated, expected, rtol=0.02)
+
+        # Test structure 11
+        # TODO gestionar bien las cargas en los nodos
+        # structure = get_test_structure(11)
+        #
+        # calculated = structure.get_nodes_displacements()
+        # expected = np.array([0,
+        #                      0,
+        #                      0,
+        #                      0,
+        #                      0,
+        #                      0.0028373
+        #                      ])
+        #
+        # np.testing.assert_allclose(calculated, expected, rtol=0.02)
 
     def test_get_nodes(self):
         structure = get_test_structure(1)

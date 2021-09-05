@@ -1,4 +1,12 @@
 import enum
+import matplotlib.pyplot
+
+matplotlib.use('Qt5Agg')
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from matplotlib import pyplot as plt
+
 import numpy as np
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -237,20 +245,17 @@ class Window(QtWidgets.QMainWindow):
         """
         This method is called from solve structure action
         """
-        bars = []
-        for item in self.scene.items():
-            if type(item) is Bar:
-                bars.append(item.bar_logic)
+        bars = self.scene.get_bars()
 
-        # bars.reverse()
         bar_dict = {}
         for bar in bars:
-            bar_dict[bar.name] = bar
+            bar_logic = bar.bar_logic
+            bar_dict[bar_logic.name] = bar_logic
 
-        # print(bar_dict)
-
+        # Generate structure
         structure = st.Structure("S1", bar_dict)
         try:
+            # First step in structure resolution
             structure.get_nodes_displacements()
         except:
             message_box = QtWidgets.QMessageBox()
@@ -260,11 +265,42 @@ class Window(QtWidgets.QMainWindow):
             message_box.exec_()
 
             return
-        structure.get_nodes_reactions()
-        for key, bar in structure.get_bars().items():
-            bar.get_efforts()
 
-        pass
+        # Calculate nodes reactions
+        structure.get_nodes_reactions()
+
+        def create_effort_laws_plots(bar):
+            number_of_points = 1000
+            bar_logic = bar.bar_logic
+            # Calculate efforts in bars
+            bar_logic.calculate_efforts()
+            bar_logic.get_efforts()
+            x_axis_normalized = list(map(lambda x: x / number_of_points,
+                                         range(number_of_points))
+                                     )
+
+            x_axis_represented = list(map(lambda x: x * bar_logic.length(),
+                                          x_axis_normalized)
+                                      )
+
+            y_axis_axial_force = []
+            y_axis_shear_strength = []
+            y_axis_bending_moment = []
+
+            for x in x_axis_normalized:
+                y_axis_axial_force.append(bar_logic.axial_force_law(x))
+                y_axis_shear_strength.append(bar_logic.shear_strength_law(x))
+                y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
+
+            sc = MplCanvas(self, width=7, height=6, dpi=100)
+            sc.axes_axile.plot(x_axis_represented, y_axis_axial_force)
+            sc.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
+            sc.axes_bending.plot(x_axis_represented, y_axis_bending_moment)
+            sc.show()
+
+        # Calculate effort laws in each bar
+        for bar in bars:
+            create_effort_laws_plots(bar)
 
     def activate_draw_node_mode(self):
         """
@@ -512,7 +548,13 @@ class Window(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter()
         splitter.setOrientation(QtCore.Qt.Vertical)
         splitter.setChildrenCollapsible(False)
-        properties_dock.setWidget(splitter)
+
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setWidget(splitter)
+        properties_dock.setWidget(scroll_area)
+        # properties_dock.setWidget(splitter)
 
         # Bar properties
         bar_properties_layout, bar_properties_container = create_layout_and_container(
@@ -580,7 +622,7 @@ class Window(QtWidgets.QMainWindow):
         self.bar_punctual_forces_layout.addWidget(QtWidgets.QLabel("Punctual Forces:"))
         add_punctual_force_button = QtWidgets.QPushButton("New punctual force")
         add_punctual_force_button.pressed.connect(
-            lambda : self._add_punctual_force_to_selected_bar()
+            lambda: self._add_punctual_force_to_selected_bar()
         )
 
         self.bar_punctual_forces_layout.addWidget(add_punctual_force_button)
@@ -1206,7 +1248,7 @@ class BarPunctualForce(QtWidgets.QWidget):
         self.x_component_text = LineEdit()
         self.layout.addWidget(self.x_component_text, 4)
         self.x_component_text.textChanged.connect(
-            lambda : self._update_punctual_force()
+            lambda: self._update_punctual_force()
         )
 
         # Y Component
@@ -1214,7 +1256,7 @@ class BarPunctualForce(QtWidgets.QWidget):
         self.y_component_text = LineEdit()
         self.layout.addWidget(self.y_component_text, 4)
         self.y_component_text.textChanged.connect(
-            lambda : self._update_punctual_force()
+            lambda: self._update_punctual_force()
         )
 
         # Origin to end factor
@@ -1222,7 +1264,7 @@ class BarPunctualForce(QtWidgets.QWidget):
         self.origin_end_factor_in_meters = LineEdit()
         self.layout.addWidget(self.origin_end_factor_in_meters, 4)
         self.origin_end_factor_in_meters.textChanged.connect(
-            lambda : self._update_punctual_force()
+            lambda: self._update_punctual_force()
         )
 
         # REMOVE BUTTON
@@ -1579,10 +1621,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.node_info_text_box.clear()
             self.main_window.node_info_text_box.setPlainText(
                 "DISPLACEMENTS" + "\n"
-                "==============" + "\n"
-                f"x: {node_displacement.get('x')} [m]" + "\n"
-                f"y: {node_displacement.get('y')} [m]" + "\n"
-                f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
+                                  "==============" + "\n"
+                                                     f"x: {node_displacement.get('x')} [m]" + "\n"
+                                                                                              f"y: {node_displacement.get('y')} [m]" + "\n"
+                                                                                                                                       f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
             )
 
             # Show reactions
@@ -1593,10 +1635,10 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
             self.main_window.node_info_text_box.appendPlainText(
                 reaction_label + "\n"
-                "==========" + "\n"
-                f"x: {node_reactions.get('x')} [m]" + "\n"
-                f"y: {node_reactions.get('y')} [m]" + "\n"
-                f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
+                                 "==========" + "\n"
+                                                f"x: {node_reactions.get('x')} [m]" + "\n"
+                                                                                      f"y: {node_reactions.get('y')} [m]" + "\n"
+                                                                                                                            f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
             )
 
             self._hide_last_bar_charges_info_from_gui()
@@ -1630,9 +1672,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Add active element
             if active_structure_element.punctual_forces_container not in get_widgets_in_layout(
                     self.main_window.bar_punctual_forces_layout):
-                self.main_window.bar_punctual_forces_layout.addWidget(active_structure_element.punctual_forces_container)
+                self.main_window.bar_punctual_forces_layout.addWidget(
+                    active_structure_element.punctual_forces_container)
             else:
                 active_structure_element.punctual_forces_container.show()
+
         # No item
         elif active_structure_element is None:
             self.main_window.update_coordinates("---", "---", "---")
@@ -1697,6 +1741,14 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
         return item
 
+    def get_bars(self):
+        bars = []
+        for item in self.items():
+            if type(item) is Bar:
+                bars.append(item)
+
+        return bars
+
 
 class LineEdit(QtWidgets.QLineEdit):
     """
@@ -1726,6 +1778,19 @@ class SmallButton(QtWidgets.QPushButton):
 
     def minimumSizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(25, 25)
+
+
+class MplCanvas(FigureCanvasQTAgg):
+    """
+    Source: https://www.pythonguis.com/tutorials/plotting-matplotlib/
+    """
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes_axile = self.fig.add_subplot(311, title="Axile force")
+        self.axes_shear = self.fig.add_subplot(312, title="Shear strength")
+        self.axes_bending = self.fig.add_subplot(313, title="Bending moment")
+        super(MplCanvas, self).__init__(self.fig)
 
 
 if __name__ == "__main__":
