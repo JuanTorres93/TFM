@@ -1,20 +1,19 @@
 import enum
 import matplotlib.pyplot
-
 matplotlib.use('Qt5Agg')
-
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from matplotlib import pyplot as plt
 
 import numpy as np
-import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
+import sys
 
 from src.modules import databaseutils as db
 from src.modules import filesystemutils as fs
 from src.modules import structures as st
 
+# In spite of the fact that pycharm marks this import as not used, it really is used.
+# Its function is to provide icons
 import qrc_resources
 
 # CONSTANTS
@@ -152,6 +151,9 @@ class Window(QtWidgets.QMainWindow):
         # Draw axis in canvas
         self._draw_axis_lines()
 
+        # List containing the effort laws windows
+        self.effort_laws_windows = []
+
         # Main window definition
         self.setObjectName("MainWindow")
         self.setWindowTitle("TFM")
@@ -269,38 +271,73 @@ class Window(QtWidgets.QMainWindow):
         # Calculate nodes reactions
         structure.get_nodes_reactions()
 
-        def create_effort_laws_plots(bar):
-            number_of_points = 1000
+        def create_effort_laws_plots(main_window, bar):
             bar_logic = bar.bar_logic
             # Calculate efforts in bars
             bar_logic.calculate_efforts()
             bar_logic.get_efforts()
+
+            # Points to represent
+            number_of_points = 1000
+            # Points to calculate efforts laws (per one)
             x_axis_normalized = list(map(lambda x: x / number_of_points,
                                          range(number_of_points))
                                      )
 
+            # Points to show in graph
             x_axis_represented = list(map(lambda x: x * bar_logic.length(),
                                           x_axis_normalized)
                                       )
 
+            # List to store the points of each effort law
             y_axis_axial_force = []
             y_axis_shear_strength = []
             y_axis_bending_moment = []
 
+
+            # Calculate effort laws
             for x in x_axis_normalized:
                 y_axis_axial_force.append(bar_logic.axial_force_law(x))
                 y_axis_shear_strength.append(bar_logic.shear_strength_law(x))
                 y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
 
-            sc = MplCanvas(self, width=7, height=6, dpi=100)
-            sc.axes_axile.plot(x_axis_represented, y_axis_axial_force)
-            sc.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
-            sc.axes_bending.plot(x_axis_represented, y_axis_bending_moment)
-            sc.show()
+            mplCanvas = MplCanvas(main_window, width=7, height=6, dpi=100)
+            mplCanvas.fig.suptitle(f"Bar {bar_logic.name}")
+            mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force)
+            mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
+            mplCanvas.axes_bending.plot(x_axis_represented, y_axis_bending_moment)
+
+            main_window.effort_laws_windows.append(mplCanvas)
+
+        # Delete all previously stored effort laws
+        for w in self.effort_laws_windows:
+            w.deleteLater()
+
+        self.effort_laws_windows.clear()
 
         # Calculate effort laws in each bar
         for bar in bars:
-            create_effort_laws_plots(bar)
+            create_effort_laws_plots(self, bar)
+
+        self.show_effort_laws()
+
+    def show_effort_laws(self):
+        """
+        Once the structure has been solved, all plots are stored in a list. If it is attempted to show them at the
+        the time of creation, some of them won't appear.
+        :return:
+        """
+        for w in self.effort_laws_windows:
+            w.show()
+
+    def hide_effort_laws(self):
+        """
+        Once the structure has been solved, all plots are stored in a list. If it is attempted to show them at the
+        the time of creation, some of them won't appear.
+        :return:
+        """
+        for w in self.effort_laws_windows:
+            w.hide()
 
     def activate_draw_node_mode(self):
         """
@@ -363,8 +400,6 @@ class Window(QtWidgets.QMainWindow):
             # Add node to scene
             # TODO add the bar only if there is not another occupying the same position
             self.scene.addItem(bar)
-
-            # set_active_structure_element(bar)
 
     def delete_node(self, node):
         """
@@ -1636,9 +1671,9 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.node_info_text_box.appendPlainText(
                 reaction_label + "\n"
                                  "==========" + "\n"
-                                                f"x: {node_reactions.get('x')} [m]" + "\n"
-                                                                                      f"y: {node_reactions.get('y')} [m]" + "\n"
-                                                                                                                            f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
+                                 f"x: {node_reactions.get('x')} [m]" + "\n"
+                                 f"y: {node_reactions.get('y')} [m]" + "\n"
+                                 f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
             )
 
             self._hide_last_bar_charges_info_from_gui()
@@ -1787,9 +1822,13 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes_axile = self.fig.add_subplot(311, title="Axile force")
-        self.axes_shear = self.fig.add_subplot(312, title="Shear strength")
-        self.axes_bending = self.fig.add_subplot(313, title="Bending moment")
+        self.axes_axile = self.fig.add_subplot(311)
+        self.axes_axile.set_ylabel("Axile force (N)")
+        self.axes_shear = self.fig.add_subplot(312)
+        self.axes_shear.set_ylabel("Shear strength (N)")
+        self.axes_bending = self.fig.add_subplot(313)
+        self.axes_bending.set_ylabel("Bending moment (N/m)")
+        self.axes_bending.set_xlabel("Length (m)")
         super(MplCanvas, self).__init__(self.fig)
 
 
