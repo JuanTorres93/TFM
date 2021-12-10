@@ -243,6 +243,13 @@ class Window(QtWidgets.QMainWindow):
         # TODO escribir funcion
         self.scene.addRect(1000, 500, 100, 100)
 
+    def show_error_pop_up(self, title, msg):
+        message_box = QtWidgets.QMessageBox()
+        message_box.setWindowTitle(title)
+        message_box.setText(msg)
+        message_box.setIcon(QtWidgets.QMessageBox.Critical)
+        message_box.exec_()
+
     def solve_structure(self):
         """
         This method is called from solve structure action
@@ -259,13 +266,12 @@ class Window(QtWidgets.QMainWindow):
         try:
             # First step in structure resolution
             structure.get_nodes_displacements()
-        except:
-            message_box = QtWidgets.QMessageBox()
-            message_box.setWindowTitle("Singular matrix error")
-            message_box.setText("Consider adding more supports.")
-            message_box.setIcon(QtWidgets.QMessageBox.Critical)
-            message_box.exec_()
-
+        except AttributeError:
+            self.show_error_pop_up("ERROR", "Singular matrix. Consider adding more supports.")
+            return
+        except TypeError:
+            self.show_error_pop_up("ERROR", "Some value is not correctly entered. Check them and ensure that are"
+                                            " valid numbers.")
             return
 
         # Calculate nodes reactions
@@ -394,6 +400,8 @@ class Window(QtWidgets.QMainWindow):
         """
         if node_origin is not node_end:
             bar = Bar(self, node_origin, node_end)
+            bar.signals.error_convert_value_to_string.connect(lambda: self.show_error_pop_up("ERROR", "Must be introduced"
+                                                                                                      " a valid number."))
 
             bar.setZValue(Z_VALUE_BARS)
 
@@ -945,6 +953,8 @@ class Window(QtWidgets.QMainWindow):
 
 
 class Bar(QtWidgets.QGraphicsLineItem):
+    error_convert_value_to_string = QtCore.pyqtSignal()
+
     def __init__(self, main_window, node_origin, node_end):
         self.main_window = main_window
 
@@ -999,6 +1009,9 @@ class Bar(QtWidgets.QGraphicsLineItem):
         profile = self.main_window.get_currently_selected_profile()
         self.bar_logic = st.Bar(bar_name, origin_node_logic, end_node_logic,
                                 material, profile)
+
+        # Signals
+        self.signals = BarSignals()
 
     def change_bar_color(self, color="normal"):
         """
@@ -1108,21 +1121,36 @@ class Bar(QtWidgets.QGraphicsLineItem):
         :param dc_type: distributed charge type to update
         :param value: value to update with
         """
-        current_distributed_charges = self.bar_logic.get_distributed_charges()
 
-        if dc_name not in current_distributed_charges.keys():
-            dc = st.DistributedCharge(
-                dc_type=dc_type,
-                max_value=value,
-                direction=direction
+        def update(dc_type, value, direction):
+            current_distributed_charges = self.bar_logic.get_distributed_charges()
+
+            none_values = len(
+                [x for x in [dc_type, value, direction] if x is None]
             )
 
-            self.bar_logic.add_distributed_charge(dc, dc_name)
-        else:
-            dc_to_modify = current_distributed_charges.get(dc_name)
-            dc_to_modify.set_dc_type(dc_type)
-            dc_to_modify.set_max_value(value)
-            dc_to_modify.set_direction(direction)
+            if dc_name not in current_distributed_charges.keys():
+                dc = st.DistributedCharge(
+                    dc_type=dc_type,
+                    max_value=value,
+                    direction=direction
+                )
+
+                self.bar_logic.add_distributed_charge(dc, dc_name)
+            else:
+                dc_to_modify = current_distributed_charges.get(dc_name)
+                dc_to_modify.set_dc_type(dc_type)
+                dc_to_modify.set_max_value(value)
+                dc_to_modify.set_direction(direction)
+
+        try:
+            value = float(value)
+        except ValueError:
+            update(None, None, None)
+            self.signals.error_convert_value_to_string.emit()
+            return
+
+        update(dc_type, value, direction)
 
     def update_punctual_force(self, pf_name, value, origin_end_factor, direction):
         """
@@ -1258,10 +1286,11 @@ class BarDistributedCharge(QtWidgets.QWidget):
         else:
             raise ValueError(f"Error: Distributed charge type {dc_type_string} has not been implemented")
 
-        try:
-            value = float(self.charge_value_text_box.text())
-        except:
-            return
+        value = self.charge_value_text_box.text()
+
+        if self.charge_value_text_box.text().strip() == "":
+            self.charge_value_text_box.setText("0")
+            value = "0"
 
         self.widget.bar_attached_to.update_distributed_charge(self.widget.dc_name,
                                                               dc_type,
@@ -1349,6 +1378,17 @@ class NodeSignals(QtWidgets.QGraphicsObject):
     of the Node class and emit them when necessary
     """
     position_changed = QtCore.pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+
+
+class BarSignals(QtWidgets.QGraphicsObject):
+    """
+    The class from which inherits Bar cannot emit signals. This class is aimed to hold the needed custom signals
+    of the Bar class and emit them when necessary
+    """
+    error_convert_value_to_string = QtCore.pyqtSignal()
 
     def __init__(self):
         super().__init__()
