@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
 import numpy as np
+import re
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 
@@ -91,6 +92,11 @@ def get_widgets_in_layout(layout):
         items.append(layout.itemAt(i).widget())
 
     return items
+
+
+def make_qline_edit_value_zero(qlineEdit: QtWidgets.QLineEdit):
+    qlineEdit.setText("0")
+    return 0
 
 
 @enum.unique
@@ -498,18 +504,26 @@ class Window(QtWidgets.QMainWindow):
 
         menu_bar.addMenu(help_menu)
 
-    def _update_selected_node_position(self, text, axis):
+    def _update_selected_node_position(self, line_edit, text, axis):
         """
         This function is connected to the textboxes that represent the coordinates of the nodes
         :param text: current text of the textbox
         :param axis: axis in which the coordinate is going to change
         """
         try:
-            # Parse the text to float
+            # Parse text to float
             new_pos = float(text)
         except ValueError:
-            # If it cannot be parsed, then do not continue
-            return
+            valid_number_pattern = re.compile("-?[0-9]*\.?[0-9]*")
+            matches = valid_number_pattern.match(text).group()
+            if len(matches) != len(text):
+                line_edit.setText(matches)
+
+            try:
+                new_pos = float(matches)
+            except ValueError:
+                new_pos = 0
+                line_edit.setText(str(new_pos))
 
         global active_structure_element
         if type(active_structure_element) is Node:
@@ -517,7 +531,6 @@ class Window(QtWidgets.QMainWindow):
                 active_structure_element.update_position(new_pos, None)
             elif axis == "y":
                 active_structure_element.update_position(None, new_pos)
-            # TODO implement Z if 3D structures
 
     def _update_selected_node_support(self, text):
         """
@@ -714,7 +727,7 @@ class Window(QtWidgets.QMainWindow):
 
             # Update node position when text chages
             text_item.textChanged.connect(lambda:
-                                          self._update_selected_node_position(text_item.text(),
+                                          self._update_selected_node_position(text_item, text_item.text(),
                                                                               associated_axis))
 
             # Resize ratio
@@ -1143,13 +1156,6 @@ class Bar(QtWidgets.QGraphicsLineItem):
                 dc_to_modify.set_max_value(value)
                 dc_to_modify.set_direction(direction)
 
-        try:
-            value = float(value)
-        except ValueError:
-            update(None, None, None)
-            self.signals.error_convert_value_to_string.emit()
-            return
-
         update(dc_type, value, direction)
 
     def update_punctual_force(self, pf_name, value, origin_end_factor, direction):
@@ -1289,8 +1295,12 @@ class BarDistributedCharge(QtWidgets.QWidget):
         value = self.charge_value_text_box.text()
 
         if self.charge_value_text_box.text().strip() == "":
-            self.charge_value_text_box.setText("0")
-            value = "0"
+            value = make_qline_edit_value_zero(self.charge_value_text_box)
+
+        try:
+            float(value)
+        except ValueError:
+            value = make_qline_edit_value_zero(self.charge_value_text_box)
 
         self.widget.bar_attached_to.update_distributed_charge(self.widget.dc_name,
                                                               dc_type,
@@ -1349,12 +1359,31 @@ class BarPunctualForce(QtWidgets.QWidget):
         """
         This function is connected to the textboxes
         """
-        try:
-            x_component = float(self.x_component_text.text())
-            y_component = float(self.y_component_text.text())
-            origin_end_meters = float(self.origin_end_factor_in_meters.text())
-        except:
-            return
+
+        def _parse_float_qlineedit(qLineEdit: QtWidgets.QLineEdit):
+            txt = qLineEdit.text()
+            if txt.strip() == "":
+                parsed_value = make_qline_edit_value_zero(qLineEdit)
+
+            try:
+                parsed_value = float(txt)
+            except ValueError:
+                parsed_value = make_qline_edit_value_zero(qLineEdit)
+
+            return parsed_value
+
+        x_component = _parse_float_qlineedit(self.x_component_text)
+        y_component = _parse_float_qlineedit(self.y_component_text)
+        origin_end_meters = _parse_float_qlineedit(self.origin_end_factor_in_meters)
+
+        bar_length = self.widget.bar_attached_to.bar_logic.length()
+
+        if origin_end_meters > bar_length:
+            origin_end_meters = bar_length
+            self.origin_end_factor_in_meters.setText(str(origin_end_meters))
+        elif origin_end_meters < 0:
+            origin_end_meters = 0
+            self.origin_end_factor_in_meters.setText(str(origin_end_meters))
 
         origin_end_factor = origin_end_meters / self.widget.bar_attached_to.bar_logic.length()
 
