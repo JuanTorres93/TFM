@@ -507,7 +507,6 @@ class Bar:
         x axis (default) or the y axis (f equals False)
         :return: local rigidity matrix for a 2D structure with rigid nodes
         """
-        # TODO Check when it must be used inertia momentum x or y in the case that bar orientation is implemented
 
         l = self.length()  # l -> beam length
         e = self.material.young_mod  # e -> Young's modulus
@@ -1137,36 +1136,6 @@ class Structure:
         # Assign nodes numeration starting from the first one
         get_nodes_recursively(left_node)
 
-        # # Initialize assignment of numbers to each bar and each node
-        # for key, bar in self.bars.items():
-        #     bar.solving_numeration = -1
-        #     bar.get_origin().solving_numeration = -1
-        #     bar.get_end().solving_numeration = -1
-        #
-        # # Assign numeration for each bar and each node and check which bar each node belongs to
-        # bar_number = 1
-        # node_number = 1
-        #
-        # for key, bar in self.bars.items():
-        #     origin_node = bar.get_origin()
-        #     end_node = bar.get_end()
-        #
-        #     # Bar solving number assignations
-        #     if bar.solving_numeration <= 0:
-        #         bar.solving_numeration = bar_number
-        #         bar_number = bar_number + 1
-        #
-        #     # Nodes solving number assignations
-        #     if origin_node.solving_numeration <= 0:
-        #         origin_node.solving_numeration = node_number
-        #         node_number = node_number + 1
-        #
-        #     if end_node.solving_numeration <= 0:
-        #         end_node.solving_numeration = node_number
-        #         node_number = node_number + 1
-        #
-        # return node_number - 1
-
         return self.get_number_of_nodes()
 
     def find_submatrix(self, matrix, row, col):
@@ -1714,7 +1683,7 @@ class DistributedCharge:
             raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
 
         self.dc_type = dc_type
-        self.max_value = max_value
+        self.max_value = float(max_value)
         # self.direction = direction
         # Normalize given direction
         self.direction = tuple(map(
@@ -1729,7 +1698,7 @@ class DistributedCharge:
     def set_dc_type(self, new_type):
         """
         Modifies the distributed charge type to the specified one
-        :param new_type: desired type to be channged to
+        :param new_type: desired type to be changed to
         """
         if type(new_type) not in [DistributedChargeType]:
             raise TypeError("Error: new_type must be of type DistributedChargeType")
@@ -1741,7 +1710,7 @@ class DistributedCharge:
         Modifies the distributed charge maximum value to the specified one
         :param new_max_value: desired maximum value to be channged to
         """
-        self.max_value = new_max_value
+        self.max_value = float(new_max_value)
 
     def set_direction(self, new_direction):
         """

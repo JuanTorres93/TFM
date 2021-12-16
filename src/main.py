@@ -25,6 +25,7 @@ Z_VALUE_AXIS = -1
 # -- Colors
 # ---- Normal color of the node
 NORMAL_COLOR = QtGui.QColor(0, 0, 0)
+ORIGIN_NODE_COLOR = QtGui.QColor(20, 40, 255) # Color used for punctual force distance to origin
 # ---- Color of the node when hovering mouse over it
 HOVER_COLOR_NORMAL_MODE = QtGui.QColor(49, 204, 55)
 HOVER_COLOR_BAR_MODE = QtGui.QColor(203, 39, 23)
@@ -55,6 +56,7 @@ def unset_active_structure_element():
             active_structure_element.change_node_color()
         elif type(active_structure_element) is Bar:
             active_structure_element.change_bar_color()
+            active_structure_element.change_origin_node_color()
 
         # Set active_structure_element to None
         active_structure_element = None
@@ -511,7 +513,6 @@ class Window(QtWidgets.QMainWindow):
         :param axis: axis in which the coordinate is going to change
         """
         try:
-            # Parse text to float
             new_pos = float(text)
         except ValueError:
             valid_number_pattern = re.compile("-?[0-9]*\.?[0-9]*")
@@ -523,7 +524,10 @@ class Window(QtWidgets.QMainWindow):
                 new_pos = float(matches)
             except ValueError:
                 new_pos = 0
-                line_edit.setText(str(new_pos))
+                new_text = str(new_pos)
+                if text.strip() == "-":
+                    new_text = "-"
+                line_edit.setText(new_text)
 
         global active_structure_element
         if type(active_structure_element) is Node:
@@ -1028,7 +1032,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
     def change_bar_color(self, color="normal"):
         """
-        Changes the color of the node in a standarized way
+        Changes the color of the node in a standardized way
         :param color: string representing the color to set
         """
         if color == "hover":
@@ -1045,6 +1049,17 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.setPen(new_pen)
         # Store logically the currently used color
         self.color = new_color
+
+    def change_origin_node_color(self, color="normal"):
+        if color == "origin_node":
+            new_color = ORIGIN_NODE_COLOR
+        else:
+            new_color = NORMAL_COLOR
+
+        # Actually change the node color
+        self.node_origin.setBrush(new_color)
+        # Store logically the currently used color
+        self.node_origin.color = new_color
 
     def update_point_position(self, point_reference, new_x_scene, new_y_scene):
         """
@@ -1751,6 +1766,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         elif type(active_structure_element) is Bar:
             # Change bar color
             active_structure_element.change_bar_color("selected")
+            active_structure_element.change_origin_node_color("origin_node")
             material_name = active_structure_element.bar_logic.get_material().name
             profile_name = " ".join([active_structure_element.bar_logic.get_profile().name,
                                      str(active_structure_element.bar_logic.get_profile().name_number)])
