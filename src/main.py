@@ -1,6 +1,7 @@
 import enum
-import matplotlib.pyplot
-matplotlib.use('Qt5Agg')
+import matplotlib as mpl
+mpl.use('Qt5Agg')
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
@@ -315,7 +316,7 @@ class Window(QtWidgets.QMainWindow):
                 y_axis_shear_strength.append(bar_logic.shear_strength_law(x))
                 y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
 
-            mplCanvas = MplCanvas(main_window, width=7, height=6, dpi=100)
+            mplCanvas = MplCanvas(width=7, height=6, dpi=100)
             mplCanvas.fig.suptitle(f"Bar {bar_logic.name}")
             mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force)
             mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
@@ -1905,16 +1906,44 @@ class MplCanvas(FigureCanvasQTAgg):
     Source: https://www.pythonguis.com/tutorials/plotting-matplotlib/
     """
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes_axile = self.fig.add_subplot(311)
+        self.axes_axile, self.axes_shear, self.axes_bending = self.fig.subplots(3, 1, sharex=True)
+
         self.axes_axile.set_ylabel("Axile force (N)")
-        self.axes_shear = self.fig.add_subplot(312)
         self.axes_shear.set_ylabel("Shear strength (N)")
-        self.axes_bending = self.fig.add_subplot(313)
         self.axes_bending.set_ylabel("Bending moment (N/m)")
+
         self.axes_bending.set_xlabel("Length (m)")
         super(MplCanvas, self).__init__(self.fig)
+
+        self.axile_marker, = self.axes_axile.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+        self.shear_marker, = self.axes_shear.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+        self.bending_marker, = self.axes_bending.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+
+        self.fig.canvas.mpl_connect('motion_notify_event', self.mouse_movement)
+
+    def mouse_movement(self, event):
+        if isinstance(event, mpl.backend_bases.MouseEvent):
+            if event.inaxes:
+                x_value, y_value = event.xdata, event.ydata
+                ax = event.inaxes.axes
+                x_axis = ax.lines[1].get_xdata()    # The effort information is the second line since the marker is the first one
+                y_axis = ax.lines[1].get_ydata()    # The effort information is the second line since the marker is the first one
+
+                if x_axis[0] <= x_value <= x_axis[-1]:
+                    index = np.searchsorted(x_axis, [x_value])[0]
+                    new_x_value_marker = x_axis[index]
+                    new_y_value_marker = y_axis[index]
+                    marker = ax.lines[0] # self.axile_marker
+                    marker.set_data([new_x_value_marker], [new_y_value_marker])
+                    self._make_marker_visible(marker)
+                    ax.figure.canvas.draw_idle()
+                    print(f"x: {x_value}, y: {y_value}")
+
+    def _make_marker_visible(self, marker):
+        marker.set_color("#FF0000")
+
 
 
 if __name__ == "__main__":
