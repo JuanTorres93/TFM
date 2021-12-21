@@ -1908,42 +1908,69 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
+        # Create axes for each effort law
         self.axes_axile, self.axes_shear, self.axes_bending = self.fig.subplots(3, 1, sharex=True)
 
+        # Label y axis
         self.axes_axile.set_ylabel("Axile force (N)")
         self.axes_shear.set_ylabel("Shear strength (N)")
         self.axes_bending.set_ylabel("Bending moment (N/m)")
 
+        # Label x axis
         self.axes_bending.set_xlabel("Length (m)")
         super(MplCanvas, self).__init__(self.fig)
 
+        # Create markers for each effort law. They are transparent on startup
         self.axile_marker, = self.axes_axile.plot([0], [0], marker="o", color="#FF000000", zorder=3)
         self.shear_marker, = self.axes_shear.plot([0], [0], marker="o", color="#FF000000", zorder=3)
         self.bending_marker, = self.axes_bending.plot([0], [0], marker="o", color="#FF000000", zorder=3)
 
+        # Create value text for each effort law. They are empty on startup
+        self.axile_text = self.axes_axile.text(0, 0, "")
+        self.shear_text = self.axes_shear.text(0, 0, "")
+        self.bending_text = self.axes_bending.text(0, 0, "")
+
+        # Connect self.mouse_movement function to mouse hover event
         self.fig.canvas.mpl_connect('motion_notify_event', self.mouse_movement)
 
     def mouse_movement(self, event):
+        """
+        Original from https://stackoverflow.com/questions/44679473/add-cursor-to-matplotlib
+        Snaps the marker to the plotted lines and shows its value when hovering the mouse
+        """
+        # For MouseEvent event
         if isinstance(event, mpl.backend_bases.MouseEvent):
+            # If the mouse is hovering over and axes
             if event.inaxes:
+                # Get mouse point in data coordinates
                 x_value, y_value = event.xdata, event.ydata
+                # Get the axes over which the mouse is hovering
                 ax = event.inaxes.axes
+                # Get x and y plotted values
                 x_axis = ax.lines[1].get_xdata()    # The effort information is the second line since the marker is the first one
                 y_axis = ax.lines[1].get_ydata()    # The effort information is the second line since the marker is the first one
 
+                # The x_value of the mouse must be in the plotted range in order for the data to be display correctly
                 if x_axis[0] <= x_value <= x_axis[-1]:
+                    # Get the index value for the closest x point in axis to the x cursor value
                     index = np.searchsorted(x_axis, [x_value])[0]
+                    # Get x and y data coordinates
                     new_x_value_marker = x_axis[index]
                     new_y_value_marker = y_axis[index]
-                    marker = ax.lines[0] # self.axile_marker
+                    # Get marker and update its position
+                    marker = ax.lines[0]
                     marker.set_data([new_x_value_marker], [new_y_value_marker])
+                    # Stop marker being transparent
                     self._make_marker_visible(marker)
+                    # Get text and update it
+                    text = ax.texts[0]
+                    text.set_text(f"x: {new_x_value_marker:.4f}, y: {new_y_value_marker:.4f}")
+                    text.set_position((new_x_value_marker, new_y_value_marker))
+                    # Redraw the plot with the new marker position
                     ax.figure.canvas.draw_idle()
-                    print(f"x: {x_value}, y: {y_value}")
 
     def _make_marker_visible(self, marker):
         marker.set_color("#FF0000")
-
 
 
 if __name__ == "__main__":
