@@ -318,9 +318,9 @@ class Window(QtWidgets.QMainWindow):
 
             mplCanvas = MplCanvas(width=7, height=6)
             mplCanvas.fig.suptitle(f"Bar {bar_logic.name}")
-            mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force)
-            mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
-            mplCanvas.axes_bending.plot(x_axis_represented, y_axis_bending_moment)
+            mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force, color="#FF000099")
+            mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength, color="#00FF0099")
+            mplCanvas.axes_bending.plot(x_axis_represented, y_axis_bending_moment, color="#0000FF99")
 
             main_window.effort_laws_windows.append(mplCanvas)
 
@@ -1921,17 +1921,17 @@ class MplCanvas(FigureCanvasQTAgg):
         super(MplCanvas, self).__init__(self.fig)
 
         # Create markers for each effort law. They are transparent on startup
-        self.axile_marker, = self.axes_axile.plot([0], [0], marker="x", color="#FF000000", zorder=3)
-        self.shear_marker, = self.axes_shear.plot([0], [0], marker="x", color="#FF000000", zorder=3)
-        self.bending_marker, = self.axes_bending.plot([0], [0], marker="x", color="#FF000000", zorder=3)
+        self.axile_marker, = self.axes_axile.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+        self.shear_marker, = self.axes_shear.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+        self.bending_marker, = self.axes_bending.plot([0], [0], marker="o", color="#FF000000", zorder=3)
 
         # Flag to signal whether the marker can be moved or not
         self.marker_can_be_moved = False
 
         # Create value text for each effort law. They are empty on startup
-        self.axile_text = self.axes_axile.text(0, 0, "")
-        self.shear_text = self.axes_shear.text(0, 0, "")
-        self.bending_text = self.axes_bending.text(0, 0, "")
+        self.axile_text = self.axes_axile.text(0, 0, "", weight="bold")
+        self.shear_text = self.axes_shear.text(0, 0, "", weight="bold")
+        self.bending_text = self.axes_bending.text(0, 0, "", weight="bold")
 
         # Connect self.mouse_movement function to mouse hover event
         self.fig.canvas.mpl_connect('motion_notify_event', self._mouse_movement)
@@ -2016,13 +2016,13 @@ class MplCanvas(FigureCanvasQTAgg):
         self._make_marker_visible(marker)
         # Get text and update it
         text = ax.texts[0]
-        text.set_text(f"x: {x_val:.4f}\ny: {y_val:.4f}")
+        text.set_text(f"x: {x_val:.4f}\ny: {y_val:.2f}")
         text.set_position((x_val, y_val))
         # Redraw the plot with the new marker position
         ax.figure.canvas.draw_idle()
 
     def _make_marker_visible(self, marker):
-        marker.set_color("#FF0000AA")
+        marker.set_color("#B107DC88")
 
 
 if __name__ == "__main__":
