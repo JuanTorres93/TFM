@@ -316,7 +316,7 @@ class Window(QtWidgets.QMainWindow):
                 y_axis_shear_strength.append(bar_logic.shear_strength_law(x))
                 y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
 
-            mplCanvas = MplCanvas(width=7, height=6, dpi=100)
+            mplCanvas = MplCanvas(width=7, height=6)
             mplCanvas.fig.suptitle(f"Bar {bar_logic.name}")
             mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force)
             mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength)
@@ -1906,8 +1906,8 @@ class MplCanvas(FigureCanvasQTAgg):
     Source: https://www.pythonguis.com/tutorials/plotting-matplotlib/
     """
 
-    def __init__(self, width=5, height=4, dpi=100):
-        self.fig = Figure(figsize=(width, height), dpi=dpi)
+    def __init__(self, width=5, height=4):
+        self.fig = Figure(figsize=(width, height))
         # Create axes for each effort law
         self.axes_axile, self.axes_shear, self.axes_bending = self.fig.subplots(3, 1, sharex=True)
 
@@ -1921,9 +1921,12 @@ class MplCanvas(FigureCanvasQTAgg):
         super(MplCanvas, self).__init__(self.fig)
 
         # Create markers for each effort law. They are transparent on startup
-        self.axile_marker, = self.axes_axile.plot([0], [0], marker="o", color="#FF000000", zorder=3)
-        self.shear_marker, = self.axes_shear.plot([0], [0], marker="o", color="#FF000000", zorder=3)
-        self.bending_marker, = self.axes_bending.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+        self.axile_marker, = self.axes_axile.plot([0], [0], marker="x", color="#FF000000", zorder=3)
+        self.shear_marker, = self.axes_shear.plot([0], [0], marker="x", color="#FF000000", zorder=3)
+        self.bending_marker, = self.axes_bending.plot([0], [0], marker="x", color="#FF000000", zorder=3)
+
+        # Flag to signal whether the marker can be moved or not
+        self.marker_can_be_moved = False
 
         # Create value text for each effort law. They are empty on startup
         self.axile_text = self.axes_axile.text(0, 0, "")
@@ -1931,19 +1934,53 @@ class MplCanvas(FigureCanvasQTAgg):
         self.bending_text = self.axes_bending.text(0, 0, "")
 
         # Connect self.mouse_movement function to mouse hover event
-        self.fig.canvas.mpl_connect('motion_notify_event', self.mouse_movement)
+        self.fig.canvas.mpl_connect('motion_notify_event', self._mouse_movement)
+        # Allow marker movement when clicking the mouse
+        self.fig.canvas.mpl_connect('button_press_event', self._allow_marker_movement)
+        # Deny marker movement when not clicking the mouse
+        self.fig.canvas.mpl_connect('button_release_event', self._deny_marker_movement)
 
-    def mouse_movement(self, event):
+    def _allow_marker_movement(self, event):
+        """
+        Turns to True the flag that allows the marker movement and moves it to the cursor position
+        """
+        self.marker_can_be_moved = True
+        self._move_marker(event)
+
+    def _deny_marker_movement(self, event):
+        """
+        Turns to False the flag that allows the marker movement
+        """
+        self.marker_can_be_moved = False
+
+    def _mouse_movement(self, event):
+        """
+        Snaps the marker to the plotted lines and shows its value when hovering the mouse
+        """
+        self._move_marker(event)
+
+    def _move_marker(self, event):
+        """
+        Moves the marker and updates the text using the given mouse event
+        """
+        event_info = self._get_info_from_mouse_event(event)
+        if event_info is not None:
+            ax = event_info['ax']
+            x_data = event_info['x_data']
+            y_data = event_info['y_data']
+            self._update_marker_and_text(ax, x_data, y_data)
+
+    def _get_info_from_mouse_event(self, event):
         """
         Original from https://stackoverflow.com/questions/44679473/add-cursor-to-matplotlib
-        Snaps the marker to the plotted lines and shows its value when hovering the mouse
+        Extracts the useful information from the given MouseEvent
         """
         # For MouseEvent event
         if isinstance(event, mpl.backend_bases.MouseEvent):
             # If the mouse is hovering over and axes
             if event.inaxes:
                 # Get mouse point in data coordinates
-                x_value, y_value = event.xdata, event.ydata
+                x_mouse_value, y_mouse_value = event.xdata, event.ydata
                 # Get the axes over which the mouse is hovering
                 ax = event.inaxes.axes
                 # Get x and y plotted values
@@ -1951,26 +1988,41 @@ class MplCanvas(FigureCanvasQTAgg):
                 y_axis = ax.lines[1].get_ydata()    # The effort information is the second line since the marker is the first one
 
                 # The x_value of the mouse must be in the plotted range in order for the data to be display correctly
-                if x_axis[0] <= x_value <= x_axis[-1]:
+                if x_axis[0] <= x_mouse_value <= x_axis[-1] and self.marker_can_be_moved:
                     # Get the index value for the closest x point in axis to the x cursor value
-                    index = np.searchsorted(x_axis, [x_value])[0]
+                    index = np.searchsorted(x_axis, [x_mouse_value])[0]
                     # Get x and y data coordinates
-                    new_x_value_marker = x_axis[index]
-                    new_y_value_marker = y_axis[index]
-                    # Get marker and update its position
-                    marker = ax.lines[0]
-                    marker.set_data([new_x_value_marker], [new_y_value_marker])
-                    # Stop marker being transparent
-                    self._make_marker_visible(marker)
-                    # Get text and update it
-                    text = ax.texts[0]
-                    text.set_text(f"x: {new_x_value_marker:.4f}, y: {new_y_value_marker:.4f}")
-                    text.set_position((new_x_value_marker, new_y_value_marker))
-                    # Redraw the plot with the new marker position
-                    ax.figure.canvas.draw_idle()
+                    x_data_value = x_axis[index]
+                    y_data_value = y_axis[index]
+
+                    return {
+                        "ax": ax,
+                        "x_mouse": x_mouse_value,
+                        "y_mouse": y_mouse_value,
+                        "x_data": x_data_value,
+                        "y_data": y_data_value,
+                    }
+
+        return None
+
+    def _update_marker_and_text(self, ax, x_val, y_val):
+        """
+        Lower level function to update marker and text
+        """
+        # Get marker and update its position
+        marker = ax.lines[0]
+        marker.set_data([x_val], [y_val])
+        # Stop marker being transparent
+        self._make_marker_visible(marker)
+        # Get text and update it
+        text = ax.texts[0]
+        text.set_text(f"x: {x_val:.4f}\ny: {y_val:.4f}")
+        text.set_position((x_val, y_val))
+        # Redraw the plot with the new marker position
+        ax.figure.canvas.draw_idle()
 
     def _make_marker_visible(self, marker):
-        marker.set_color("#FF0000")
+        marker.set_color("#FF0000AA")
 
 
 if __name__ == "__main__":
