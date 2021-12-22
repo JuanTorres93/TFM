@@ -266,9 +266,12 @@ class Window(QtWidgets.QMainWindow):
         bars = self.scene.get_bars()
 
         bar_dict = {}
+        bar_number = 1
         for bar in bars:
             bar_logic = bar.bar_logic
             bar_dict[bar_logic.name] = bar_logic
+            bar.bar_number = bar_number
+            bar_number += 1
 
         # Generate structure
         structure = st.Structure("S1", bar_dict)
@@ -317,7 +320,7 @@ class Window(QtWidgets.QMainWindow):
                 y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
 
             mplCanvas = MplCanvas(width=7, height=6)
-            mplCanvas.fig.suptitle(f"Bar {bar_logic.name}")
+            mplCanvas.fig.suptitle(f"Bar {bar.bar_number}")
             mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force, color="#FF000099")
             mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength, color="#00FF0099")
             mplCanvas.axes_bending.plot(x_axis_represented, y_axis_bending_moment, color="#0000FF99")
@@ -333,6 +336,7 @@ class Window(QtWidgets.QMainWindow):
         # Calculate effort laws in each bar
         for bar in bars:
             create_effort_laws_plots(self, bar)
+            bar.bar_label.setText(str(bar.bar_number))
 
         self.show_effort_laws()
 
@@ -444,9 +448,12 @@ class Window(QtWidgets.QMainWindow):
         Draws the x and y axis on the scene
         :return:
         """
+        canvas_width = self.scene.sceneRect().width()
+        canvas_height = self.scene.sceneRect().height()
+
         # X Axis
-        point_x1 = [0, self.scene.sceneRect().height() / 2]
-        point_x2 = [self.scene.sceneRect().width(), self.scene.sceneRect().height() / 2]
+        point_x1 = [-canvas_width, canvas_height / 2]
+        point_x2 = [canvas_width * 2, canvas_height / 2]
         color = QtGui.QColor(200, 0, 0)
         # Draw axis
         x_axis = self.scene.addLine(point_x1[0], point_x1[1], point_x2[0], point_x2[1], pen=color)
@@ -454,8 +461,8 @@ class Window(QtWidgets.QMainWindow):
         x_axis.setZValue(Z_VALUE_AXIS)
 
         # Y Axis
-        point_y1 = [self.scene.sceneRect().width() / 2, 0]
-        point_y2 = [self.scene.sceneRect().width() / 2, self.scene.sceneRect().height()]
+        point_y1 = [canvas_width / 2, 0]
+        point_y2 = [canvas_width / 2, canvas_height]
         color = QtGui.QColor(0, 200, 0)
         # Draw axis
         y_axis = self.scene.addLine(point_y1[0], point_y1[1], point_y2[0], point_y2[1], pen=color)
@@ -1005,6 +1012,27 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         self.setAcceptHoverEvents(True)
 
+        # Label to identify bar and be able to check its effort laws
+        self.bar_number = -1
+        self.bar_label = QtWidgets.QGraphicsSimpleTextItem("", self)
+        ### Text color
+        self.bar_label.setBrush(
+            QtGui.QColor(147, 53, 253)
+        )
+        ### Outline color
+        self.bar_label.setPen(
+            QtGui.QPen(QtGui.QColor(255, 255, 255))
+        )
+        ### Text font
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setPointSize(12)
+        self.bar_label.setFont(
+            font
+        )
+
+        self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
         # Distributed charges
         self.distributed_charges_container = QtWidgets.QGroupBox()
         self.distributed_charges_layout = QtWidgets.QVBoxLayout()
@@ -1079,6 +1107,12 @@ class Bar(QtWidgets.QGraphicsLineItem):
             self.y2_scene = new_y_scene
 
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+        self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
+    def update_label_position(self, x1_scene, y1_scene, x2_scene, y2_scene):
+        x_label = abs(x1_scene - x2_scene) / 2 + min(x1_scene, x2_scene)
+        y_label = abs(y1_scene - y2_scene) / 2 + min(y1_scene, y2_scene)
+        self.bar_label.setPos(x_label, y_label)
 
     def add_distributed_charge(self):
         """

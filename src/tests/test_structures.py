@@ -2133,12 +2133,6 @@ class TestStructure(unittest.TestCase):
 
         # Bar 2
         bar = b2
-        # x = 1.7 / bar.length()
-        # np.testing.assert_allclose(bar.shear_strength_law(x), -43366, rtol=0.02)
-        # x = 3.4 / bar.length()
-        # np.testing.assert_allclose(bar.shear_strength_law(x), -26526, rtol=0.02)
-        # x = 5.8 / bar.length()
-        # np.testing.assert_allclose(bar.shear_strength_law(x), -2950, rtol=0.02, atol=205)
         x = 1.2 / bar.length()
         np.testing.assert_allclose(bar.shear_strength_law(x), -48400, rtol=0.02)
         x = 2.88 / bar.length()
