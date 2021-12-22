@@ -467,6 +467,11 @@ class Bar:
         self.origin = self.end
         self.end = aux
 
+        # Update distance to origin in punctual forces
+        for key, pf in self.punctual_forces.items():
+            updated_origin_end_factor = 1 - pf.origin_end_factor
+            pf.set_origin_end_factor(updated_origin_end_factor)
+
     def length(self) -> float:
         """
 
@@ -1178,9 +1183,6 @@ class Structure:
             origin_node = bar.get_origin()
             end_node = bar.get_end()
 
-            if origin_node.solving_numeration >= end_node.solving_numeration:
-                bar.swap_nodes()
-
             # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
             bar.global_rigidity_matrix_2d_rigid_nodes()
 
@@ -1281,6 +1283,11 @@ class Structure:
         for key, bar in self.bars.items():
             origin_node = bar.get_origin()
             end_node = bar.get_end()
+
+            if origin_node.solving_numeration > end_node.solving_numeration:
+                bar.swap_nodes()
+                origin_node = bar.get_origin()
+                end_node = bar.get_end()
 
             process_node(origin_node, processed_nodes, indexes_to_delete)
             process_node(end_node, processed_nodes, indexes_to_delete)
