@@ -467,10 +467,16 @@ class Bar:
         self.origin = self.end
         self.end = aux
 
-        # Update distance to origin in punctual forces
-        for key, pf in self.punctual_forces.items():
+        for key, pf in self.get_punctual_forces().items():
+            # Update distance to origin in punctual forces
             updated_origin_end_factor = 1 - pf.origin_end_factor
             pf.set_origin_end_factor(updated_origin_end_factor)
+            # Update value
+            pf.set_value(-pf.value)
+
+        for key, dc in self.get_distributed_charges().items():
+            # Update value
+            dc.set_max_value(-dc.max_value)
 
     def length(self) -> float:
         """
