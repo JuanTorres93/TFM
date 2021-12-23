@@ -1,4 +1,6 @@
 import enum
+import math
+
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -25,7 +27,7 @@ Z_VALUE_BARS = 1
 Z_VALUE_AXIS = -1
 # -- Colors
 # ---- Normal color of the node
-NORMAL_COLOR = QtGui.QColor(0, 0, 0)
+NORMAL_COLOR = QtGui.QColor(0, 0, 0, 100)
 ORIGIN_NODE_COLOR = QtGui.QColor(20, 40, 255) # Color used for punctual force distance to origin
 # ---- Color of the node when hovering mouse over it
 HOVER_COLOR_NORMAL_MODE = QtGui.QColor(49, 204, 55)
@@ -1006,7 +1008,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         # Appearance
         self.color = NORMAL_COLOR
-        self.drawn_thickness = 4
+        self.drawn_thickness = 6
         pen = QtGui.QPen(NORMAL_COLOR, self.drawn_thickness)
         self.setPen(pen)
 
@@ -1056,8 +1058,42 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.bar_logic = st.Bar(bar_name, origin_node_logic, end_node_logic,
                                 material, profile)
 
+        # Local axis
+        axis_thickness = 2
+        self.local_x_axis_widget = QtWidgets.QGraphicsLineItem(self)
+        self.local_x_axis_widget.setPen(
+            QtGui.QPen(
+                QtGui.QColor(255, 0, 0),
+                axis_thickness
+            )
+        )
+
+        self.local_y_axis_widget = QtWidgets.QGraphicsLineItem(self)
+        self.local_y_axis_widget.setPen(
+            QtGui.QPen(
+                QtGui.QColor(0, 255, 0),
+                axis_thickness
+            )
+        )
+
+        self.update_local_axis_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+
         # Signals
         self.signals = BarSignals()
+
+    def rotate_line(self, origin, point1, roll):
+        """
+        Original: https://stackoverflow.com/questions/50872392/how-rotate-a-line-about-the-origin
+        Used to rotated y axis to be perpendicular to the x one
+        """
+        ox, oy = origin
+        px, py = point1
+        angle = math.radians(roll)
+
+        #counterclockwise
+        qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py-oy)
+        qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py-oy)
+        return qx, qy
 
     def change_bar_color(self, color="normal"):
         """
@@ -1108,11 +1144,30 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
         self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+        self.update_local_axis_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
 
     def update_label_position(self, x1_scene, y1_scene, x2_scene, y2_scene):
+        """
+        Given origin and end node coordinates, it places the bar label at the middle of them
+        """
         x_label = abs(x1_scene - x2_scene) / 2 + min(x1_scene, x2_scene)
         y_label = abs(y1_scene - y2_scene) / 2 + min(y1_scene, y2_scene)
         self.bar_label.setPos(x_label, y_label)
+
+    def update_local_axis_position(self, x1_scene, y1_scene, x2_scene, y2_scene):
+        """
+        Moves local axis and rotate them to match the bar orientation
+        """
+        x2 = abs(x1_scene - x2_scene) / 2 + min(x1_scene, x2_scene)
+        y2 = abs(y1_scene - y2_scene) / 2 + min(y1_scene, y2_scene)
+        # X Axis
+        self.local_x_axis_widget.setLine(x1_scene, y1_scene, x2, y2)
+
+        y_p1 = (self.x1_scene, self.y1_scene)
+        y_p2 = (x2, y2)
+
+        y_p2 = self.rotate_line(y_p1, y_p2, -90)
+        self.local_y_axis_widget.setLine(y_p1[0], y_p1[1], y_p2[0], y_p2[1])
 
     def add_distributed_charge(self):
         """
@@ -1776,9 +1831,9 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.node_info_text_box.setPlainText(
                 "DISPLACEMENTS" + "\n"
                                   "==============" + "\n"
-                                                     f"x: {node_displacement.get('x')} [m]" + "\n"
-                                                                                              f"y: {node_displacement.get('y')} [m]" + "\n"
-                                                                                                                                       f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
+                                  f"x: {node_displacement.get('x')} [m]" + "\n"
+                                  f"y: {node_displacement.get('y')} [m]" + "\n"
+                                  f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
             )
 
             # Show reactions
