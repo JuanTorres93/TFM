@@ -1845,8 +1845,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             self.main_window.node_info_text_box.appendPlainText(
                 reaction_label + "\n"
                                  "==========" + "\n"
-                                 f"x: {node_reactions.get('x')} [m]" + "\n"
-                                 f"y: {node_reactions.get('y')} [m]" + "\n"
+                                 f"x: {node_reactions.get('x')} [N]" + "\n"
+                                 f"y: {node_reactions.get('y')} [N]" + "\n"
                                  f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
             )
 
@@ -2000,6 +2000,17 @@ class MplCanvas(FigureCanvasQTAgg):
         # Create axes for each effort law
         self.axes_axile, self.axes_shear, self.axes_bending = self.fig.subplots(3, 1, sharex=True)
 
+        # Axes general configuration
+        self.axes = [self.axes_axile, self.axes_shear, self.axes_bending]
+
+        for ax in self.axes:
+            # Create markers for each effort law. They are transparent on startup
+            ax.plot([0], [0], marker="o", color="#FF000000", zorder=3)
+            # Create value text for each effort law. They are empty on startup
+            ax.text(0, 0, "", weight="bold")
+            # Enable grid
+            ax.grid(True)
+
         # Label y axis
         self.axes_axile.set_ylabel("Axile force (N)")
         self.axes_shear.set_ylabel("Shear strength (N)")
@@ -2009,18 +2020,8 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes_bending.set_xlabel("Length (m)")
         super(MplCanvas, self).__init__(self.fig)
 
-        # Create markers for each effort law. They are transparent on startup
-        self.axile_marker, = self.axes_axile.plot([0], [0], marker="o", color="#FF000000", zorder=3)
-        self.shear_marker, = self.axes_shear.plot([0], [0], marker="o", color="#FF000000", zorder=3)
-        self.bending_marker, = self.axes_bending.plot([0], [0], marker="o", color="#FF000000", zorder=3)
-
         # Flag to signal whether the marker can be moved or not
         self.marker_can_be_moved = False
-
-        # Create value text for each effort law. They are empty on startup
-        self.axile_text = self.axes_axile.text(0, 0, "", weight="bold")
-        self.shear_text = self.axes_shear.text(0, 0, "", weight="bold")
-        self.bending_text = self.axes_bending.text(0, 0, "", weight="bold")
 
         # Connect self.mouse_movement function to mouse hover event
         self.fig.canvas.mpl_connect('motion_notify_event', self._mouse_movement)
