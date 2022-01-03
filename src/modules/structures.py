@@ -1381,7 +1381,7 @@ class Structure:
                 # If it is an end node
                 else:
                     global_y_force = values.get("y_end")
-                    global_x_force = values.get("x_origin")
+                    global_x_force = values.get("x_end")
                     force = np.array((global_x_force, global_y_force, 0))
                     momentum = np.array([0, 0, values.get("m_end")])
             else:
