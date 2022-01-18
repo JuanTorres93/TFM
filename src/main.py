@@ -1847,7 +1847,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                                  "==========" + "\n"
                                  f"x: {node_reactions.get('x')} [N]" + "\n"
                                  f"y: {node_reactions.get('y')} [N]" + "\n"
-                                 f"M.: {node_reactions.get('momentum')} [N/m]" + "\n"
+                                 f"M.: {node_reactions.get('momentum')} [Nm]" + "\n"
             )
 
             self._hide_last_bar_charges_info_from_gui()
