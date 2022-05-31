@@ -38,19 +38,25 @@ class Node:
     Class that represents a node in a structure.
     """
 
-    def __init__(self, name: str, position=(0, 0, 0), forces_in_node=None, momentums_in_node=None,
+    def __init__(self, name: str, position=(0, 0, 0), forces_in_node=None, \
+                 momentums_in_node=None,
                  support=Support.NONE):
         """
         Constructor for Node class
         :param name: Name of the node
         :param position: Cartesian coordinates of the nodes (x, y, z)
-        :param forces_in_node: Dictionary representing forces applied directly to the node (Fx, Fy, Fz). Forces
-        that appear as a result of refering charges to nodes are handled differently
-        :param momentums_in_node: Dictionary representing momentums applied to the node (Mx, My, Mz). Momentums
-        that appear as a result of refering charges to nodes are handled differently
+        :param forces_in_node: Dictionary representing forces applied
+         directly to the node (Fx, Fy, Fz). Forces
+        that appear as a result of refering charges to nodes are handled
+         differently
+        :param momentums_in_node: Dictionary representing momentums applied
+         to the node (Mx, My, Mz). Momentums
+        that appear as a result of refering charges to nodes are handled
+         differently
         :param support: Support attached to the node
         """
-        # forces and momentums are not directly assigned an empty dictionary because it does not work as expected
+        # forces and momentums are not directly assigned an empty dictionary
+        # because it does not work as expected
         if forces_in_node is None:
             forces_in_node = {}
 
@@ -82,7 +88,8 @@ class Node:
 
         self.bars_belonging_to = {}
 
-        # Number assigned to construct the structure matrix (handled from structure class)
+        # Number assigned to construct the structure matrix (handled from
+        # structure class)
         self.solving_numeration = -1
 
         # Displacement of the node (handled from structure class)
@@ -173,22 +180,26 @@ class Node:
 
     def get_bars_belonging_to(self):
         """
-        bars_belonging_to is a dictionary that contains all the bar that the node is part of
+        bars_belonging_to is a dictionary that contains all the bar that the
+         node is part of
         :return: dictionary with the bar
         """
         return self.bars_belonging_to
 
     def add_bar_to_collection(self, bar):
         """
-        This method appends the bar to the list of bars that the node is present in
+        This method appends the bar to the list of bars that the node is
+         present in
         :param bar: bar to add to the dictionary
         """
-        # The test of this function is carried along with the one of get_bars_belonging_to
+        # The test of this function is carried along with the one of
+        # get_bars_belonging_to
         self.bars_belonging_to[bar.name] = bar
 
     def clear_referred_forces(self):
         """
-        Deletes all referred forces stored in the node instance. This method is useful to not stack the same forces
+        Deletes all referred forces stored in the node instance. This method
+         is useful to not stack the same forces
         every time that they are calculated
         :return:
         """
@@ -199,7 +210,8 @@ class Node:
         Adds a force to the node
         :param key: key to store the force in the dictionary
         :param force: tuple representing the applied force (Fx, Fy, Fz)
-        :param belongs_to_node: if true the force is applied directly to the node. If false, the force is a consequence
+        :param belongs_to_node: if true the force is applied directly to the
+         node. If false, the force is a consequence
         of a charge applied to the bar
         :return:
         """
@@ -233,7 +245,8 @@ class Node:
 
     def clear_referred_momentums(self):
         """
-        Deletes all referred momentums stored in the node instance. This method is useful to not stack the same momentums
+        Deletes all referred momentums stored in the node instance. This method
+         is useful to not stack the same momentums
         every time that they are calculated
         :return:
         """
@@ -244,7 +257,8 @@ class Node:
         Adds a momentum to the node
         :param key: key to store the momentum in the dictionary
         :param momentum: tuple representing the applied momentum (Mx, My, Mz)
-        :param belongs_to_node: if true the momentum is applied directly to the node. If false, the momentum is a
+        :param belongs_to_node: if true the momentum is applied directly to
+         the node. If false, the momentum is a
         consequence
         of a charge applied to the bar
         :return:
@@ -356,8 +370,10 @@ class Bar:
         :param name: Name of the bar
         :param origin: Node that acts as the origin of the bar
         :param end: Node that acts as the end of the bar
-        :param material: string that represents a material stored in the database
-        :param profile: tuple that represents a beam profile stored in the database
+        :param material: string that represents a material stored in the
+         database
+        :param profile: tuple that represents a beam profile stored in the
+         database
         """
         if type(origin) not in [Node] or type(end) not in [Node]:
             raise TypeError("Nodes must be of type 'Node'")
@@ -378,10 +394,12 @@ class Bar:
         self.material = Material(material)
         self.profile = Profile(profile[0], profile[1])
 
-        # Number assigned to build the structure (assembled) matrix (handle from structure class)
+        # Number assigned to build the structure (assembled) matrix (handle
+        # from structure class)
         self.solving_numeration = -1
 
-        # This submatrixes are here exposed for an easier way to assemble the assembled matrix from the structure class
+        # This submatrixes are here exposed for an easier way to assemble the
+        # assembled matrix from the structure class
         # Do not change their initialization
         self.k_ii_global = None
         self.k_ij_global = None
@@ -429,7 +447,8 @@ class Bar:
 
         :return: origin node of the bar
         """
-        # The test of this function is carried along with the one of get_bars_belonging_to
+        # The test of this function is carried along with the one of
+        # get_bars_belonging_to
         return self.origin
 
     def set_end(self, new_end: Node):
@@ -448,7 +467,8 @@ class Bar:
 
         :return: end node of the bar
         """
-        # The test of this function is carried along with the one of get_bars_belonging_to
+        # The test of this function is carried along with the one of
+        # get_bars_belonging_to
         return self.end
 
     def get_nodes(self):
@@ -456,7 +476,8 @@ class Bar:
 
         :return: List with origin and end nodes of the bar
         """
-        # The test of this function is carried along with the one of get_bars_belonging_to
+        # The test of this function is carried along with the one of
+        # get_bars_belonging_to
         return [self.origin, self.end]
 
     def swap_nodes(self):
@@ -483,11 +504,13 @@ class Bar:
 
         :return: Length of the bar
         """
-        return np.linalg.norm(np.subtract(self.end.position, self.origin.position))
+        return np.linalg.norm(np.subtract(self.end.position, \
+                                          self.origin.position))
 
     def set_material(self, mat_name: str):
         """
-        :param mat_name: str corresponds with a unique name in materials table of the database
+        :param mat_name: str corresponds with a unique name in materials table
+         of the database
         :return:
         """
         self.material = Material(mat_name)
@@ -500,8 +523,10 @@ class Bar:
 
     def set_profile(self, profile_name: str, profile_number: int):
         """
-        :param profile_name: str corresponds with a name in profiles table of the database. e.g. IPE
-        :param profile_number: str corresponds with a name_number in the profile table of the database
+        :param profile_name: str corresponds with a name in profiles table of
+         the database. e.g. IPE
+        :param profile_number: str corresponds with a name_number in the
+         profile table of the database
         :return:
         """
         self.profile = Profile(profile_name, profile_number)
@@ -515,7 +540,8 @@ class Bar:
     def local_rigidity_matrix_2d_rigid_nodes(self, use_inertia_x=True):
         """
 
-        :param use_inertia_x: Specifies whether the inertia moment must be selected with respect to the
+        :param use_inertia_x: Specifies whether the inertia moment must be
+         selected with respect to the
         x-axis (default) or the y-axis (f equals False)
         :return: local rigidity matrix for a 2D structure with rigid nodes
         """
@@ -529,15 +555,20 @@ class Bar:
         else:
             i = self.profile.inertia_moment_y
 
-        local_rigidity_matrix = np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
-                                          [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3,
-                                           6 * e * i / l ** 2],
-                                          [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
-                                          [-e * a / l, 0, 0, e * a / l, 0, 0],
-                                          [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3,
-                                           -6 * e * i / l ** 2],
-                                          [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2,
-                                           4 * e * i / l]])
+        local_rigidity_matrix = \
+            np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
+                      [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e \
+                       * i / l ** 3,
+                       6 * e * i / l ** 2],
+                      [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / \
+                       l ** 2, 2 * e * i / l],
+                      [-e * a / l, 0, 0, e * a / l, 0, 0],
+                      [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * \
+                       e * i / l ** 3,
+                       -6 * e * i / l ** 2],
+                      [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / \
+                       l ** 2,
+                       4 * e * i / l]])
 
         m_aux = local_rigidity_matrix[0:3, 0:3]
         self.k_ii_local = m_aux
@@ -556,27 +587,35 @@ class Bar:
     def angle_from_global_to_local(self):
         """
 
-        :return: Needed angle (in radians) for converting the local matrix to global one
+        :return: Needed angle (in radians) for converting the local matrix
+         to global one
         """
         # x-axis as a reference to compute the rotated angle
         reference = np.array((1, 0, 0))
-        # Vector with origin in the origin node of the bar (beam) and with end in the end node of the bar
-        beam_line = np.subtract(self.get_end().position, self.get_origin().position)
+        # Vector with origin in the origin node of the bar (beam) and with
+        # end in the end node of the bar
+        beam_line = np.subtract(self.get_end().position, \
+                                self.get_origin().position)
 
         # Calculate the dot product of the previous vectors
         dot_product = reference @ beam_line
 
-        # Compute the angle between the vector using the definition of the dot product
-        cosine = dot_product / np.linalg.norm(reference) / np.linalg.norm(beam_line)
+        # Compute the angle between the vector using the definition of the
+        # dot product
+        cosine = dot_product / np.linalg.norm(reference) / \
+                 np.linalg.norm(beam_line)
         angle = np.arccos(cosine)
 
         # Adjust the angle to the pertinent quadrant
-        if self.get_end().x() >= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
+        if self.get_end().x() >= self.get_origin().x() and self.get_end().y()\
+                >= self.get_origin().y():
             # angle = angle
             pass
-        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y()\
+                >= self.get_origin().y():
             angle = angle + math.pi / 2
-        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() <= self.get_origin().y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y()\
+                <= self.get_origin().y():
             angle = angle + math.pi
         else:
             angle = 2 * math.pi - angle
@@ -600,7 +639,8 @@ class Bar:
     def global_rigidity_matrix_2d_rigid_nodes(self):
         """
 
-        :return: Global rigidity matrix of the bar for a 2d structure with rigid nodes
+        :return: Global rigidity matrix of the bar for a 2d structure with
+         rigid nodes
         """
         system_change_matrix = self.system_change_matrix_2d_rigid_nodes()
         local_matrix = self.local_rigidity_matrix_2d_rigid_nodes()
@@ -622,7 +662,8 @@ class Bar:
 
         return np.vstack((top, bottom))
 
-    def _add_object_to_instance_dictionary(self, dictionary, obj, obj_name, obj_type=None):
+    def _add_object_to_instance_dictionary(self, dictionary, obj, obj_name,
+                                           obj_type=None):
         """
         Function to include an object to an instance dictionary
         :param dictionary: dictionary to include the new object into
@@ -634,7 +675,8 @@ class Bar:
 
         if obj_type is not None:
             if type(obj) not in [obj_type]:
-                raise TypeError("new_distributed_charge must be of type " + str(obj_type))
+                raise TypeError("new_distributed_charge must be of type " + \
+                                str(obj_type))
 
         if obj_name is None:
             obj_name = fs.get_random_name("dc")
@@ -649,27 +691,33 @@ class Bar:
 
     def add_distributed_charge(self, new_distributed_charge, dc_name=None):
         """
-        Adds the specified distributed charge to the collection of distributed charges applied to the bar
+        Adds the specified distributed charge to the collection of distributed
+         charges applied to the bar
         :param new_distributed_charge: DistributedCharge to be added
         :param dc_name: name to assign in dictionary
         :return:
         """
 
-        self._add_object_to_instance_dictionary(self.distributed_charges, new_distributed_charge, dc_name,
+        self._add_object_to_instance_dictionary(self.distributed_charges,
+                                                new_distributed_charge, dc_name,
                                                 DistributedCharge)
 
     def get_distributed_charges(self):
         """
 
-        :return: instance dictionary that contains all applied distributed charges in the bar
+        :return: instance dictionary that contains all applied distributed
+         charges in the bar
         """
         return self.distributed_charges
 
-    def get_referred_distributed_charge_to_nodes(self, return_global_values=True):
+    def get_referred_distributed_charge_to_nodes(self,
+                                                 return_global_values=True):
         """
 
-        :param return_global_values: Specifies whether the return value is in global or local coordinates.
-        :return: reactions produced by charges that are applied directly to the Bar and not in a node.
+        :param return_global_values: Specifies whether the return value is in
+         global or local coordinates.
+        :return: reactions produced by charges that are applied directly to the
+         Bar and not in a node.
         """
         # Dictionary of reactions for every found distributed charge
         referred_charges = {}
@@ -687,16 +735,19 @@ class Bar:
             return referred_charges
 
         elif len(self.distributed_charges) == 0:
-            print("There are no distributed charges applied to bar " + self.name)
+            print("There are no distributed charges applied to bar " +
+                  self.name)
 
     def add_punctual_force(self, new_punctual_force, force_name=None):
         """
-        Adds the specified punctual force to the collection of punctual forces applied to the bar
+        Adds the specified punctual force to the collection of punctual forces
+         applied to the bar
         :param new_punctual_force: PunctualForceInBar to be added
         :param force_name: name to assign in dictionary
         :return:
         """
-        self._add_object_to_instance_dictionary(self.punctual_forces, new_punctual_force, force_name,
+        self._add_object_to_instance_dictionary(self.punctual_forces,
+                                                new_punctual_force, force_name,
                                                 PunctualForceInBar)
 
     def get_punctual_forces(self):
@@ -706,12 +757,15 @@ class Bar:
         """
         return self.punctual_forces
 
-    def get_referred_punctual_forces_in_bar_to_nodes(self, return_global_values=True):
+    def get_referred_punctual_forces_in_bar_to_nodes(self,
+                                                     return_global_values=True):
         """
 
-        :param return_global_values: boolean that specifies the return values must be in global coordinates. If it is
+        :param return_global_values: boolean that specifies the return values
+         must be in global coordinates. If it is
         not true, then the returned values are in local coordinates
-        :return: Dictionary of forces and momentums of nodes in local coordinates
+        :return: Dictionary of forces and momentums of nodes in local
+         coordinates
         """
         # Dictionary of reactions for every found punctual force
         referred_punctual_forces = {}
@@ -767,23 +821,29 @@ class Bar:
 
     def calculate_efforts(self):
         """
-        Computes the efforts to which the bar is subjected to and store them in instance variables
+        Computes the efforts to which the bar is subjected to and store them in
+         instance variables
         :return:
         """
         # TEST IS WRITTEN IN STRUCTURE TESTS
 
-        # Determine the local matrixes of the origin and end nodes if they aren't available
+        # Determine the local matrixes of the origin and end nodes if they
+        # aren't available
         if (self.k_ii_local is None) or (self.k_ij_local is None) or \
                 (self.k_ji_local is None) or (self.k_jj_local is None):
             self.local_rigidity_matrix_2d_rigid_nodes()
 
         # FREE STATE CONTRIBUTION
-        # Equations say that, in order to compute the efforts, it is needed to multiply each submatrix of the local
-        # rigidity matrix of the bar by the transpose of the system change matrix (G). Then this resultant matrix must
+        # Equations say that, in order to compute the efforts, it is needed
+        # to multiply each submatrix of the local
+        # rigidity matrix of the bar by the transpose of the system change
+        # matrix (G). Then this resultant matrix must
         # be multiplied by the displacements of the nodes.
-        # Here, it is calculated the multiplication of the local rigidity matrix by the transpose of G
+        # Here, it is calculated the multiplication of the local rigidity
+        # matrix by the transpose of G
         # Top row of the final matrix
-        transpose_system_change_matrix = np.transpose(self.system_change_matrix_2d_rigid_nodes())
+        transpose_system_change_matrix = np.transpose(
+            self.system_change_matrix_2d_rigid_nodes())
 
         rigidity_matrix_by_g_trans_top_row = np.hstack(
             (np.dot(self.k_ii_local, transpose_system_change_matrix),
@@ -822,12 +882,16 @@ class Bar:
         # Calculate the efforts in the bar
         efforts = np.dot(rigidity_matrix_by_g_trans, displacements)
 
-        # In order to get the correct results, it is needed to sum to the efforts the reactions obtained in the locked
+        # In order to get the correct results, it is needed to sum to the
+        # efforts the reactions obtained in the locked
         # state
         # LOCKED STATE CONTRIBUTION
         # Distributed charges
-        # Dictionary of dictionaries containing all distributed charges in the bar
-        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(return_global_values=False)
+        # Dictionary of dictionaries containing all distributed charges in
+        # the bar
+        distributed_charges_contribution =\
+            self.get_referred_distributed_charge_to_nodes(
+                return_global_values=False)
         if distributed_charges_contribution is not None:
             # Iterate over every found distributed charge
             for key, dcc in distributed_charges_contribution.items():
@@ -836,11 +900,13 @@ class Bar:
                 dc_momentum_i = dcc.get("m_origin")
                 dc_momentum_j = dcc.get("m_end")
 
-                # Get contribution of the distributed charge in origin and end nodes
+                # Get contribution of the distributed charge in origin and
+                # end nodes
                 ri = np.array([dc_x, dc_y, dc_momentum_i])
                 rj = np.array([dc_x, dc_y, dc_momentum_j])
 
-                # Transpose the vectors in order to be able to multiply its values
+                # Transpose the vectors in order to be able to multiply
+                # its values
                 ri = np.vstack(ri)
                 rj = np.vstack(rj)
 
@@ -855,7 +921,9 @@ class Bar:
 
         # Punctual forces
         # Dictionary of dictionaries containing all punctual forces in the bar
-        punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
+        punctual_forces_contribution =\
+            self.get_referred_punctual_forces_in_bar_to_nodes(
+                return_global_values=True)
         if punctual_forces_contribution is not None:
             # Iterate over every found punctual forces
             for key, pfc in punctual_forces_contribution.items():
@@ -871,12 +939,15 @@ class Bar:
                 rj = np.array([dc_x_j, dc_y_j, dc_momentum_j])
 
                 # Change reference system
-                ri = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                ri = np.dot(np.transpose(
+                    self.system_change_matrix_2d_rigid_nodes()),
                             ri)
-                rj = np.dot(np.transpose(self.system_change_matrix_2d_rigid_nodes()),
+                rj = np.dot(np.transpose(
+                    self.system_change_matrix_2d_rigid_nodes()),
                             rj)
 
-                # Transpose the vectors in order to be able to multiply its values
+                # Transpose the vectors in order to be able to multiply
+                # its values
                 ri = np.vstack(ri)
                 rj = np.vstack(rj)
 
@@ -892,28 +963,39 @@ class Bar:
         # Clear all previously stored efforts
         self.efforts.clear()
         # And store the new calculated ones
-        self._add_object_to_instance_dictionary(self.efforts, np.array([efforts[0], efforts[1], efforts[2]]),
+        self._add_object_to_instance_dictionary(self.efforts,
+                                                np.array([efforts[0],
+                                                          efforts[1],
+                                                          efforts[2]]),
                                                 "p_ij", np.ndarray)
-        self._add_object_to_instance_dictionary(self.efforts, np.array([efforts[3], efforts[4], efforts[5]]),
+        self._add_object_to_instance_dictionary(self.efforts,
+                                                np.array([efforts[3],
+                                                          efforts[4],
+                                                          efforts[5]]),
                                                 "p_ji", np.ndarray)
 
-        print("Efforts for bar " + self.name + " are determined. Available using method get_efforts")
+        print("Efforts for bar " + self.name +
+              " are determined. Available using method get_efforts")
 
     def get_efforts(self):
         """
-        In order to be able to get the efforts it is first needed to calculate them using calculate_efforts
+        In order to be able to get the efforts it is first needed to calculate
+         them using calculate_efforts
         :return: efforts of the bar as a dictionary {N, Q, M}
         """
         return self.efforts
 
     def axial_force_law(self, origin_end_factor):
         """
-        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        :param origin_end_factor: point in percentage of length from origin to
+         end in which the value
         of the axial force is desired to be known
-        :return: Value of the axial force point corresponding to the point origin_end_factor
+        :return: Value of the axial force point corresponding to the point
+         origin_end_factor
         """
         if origin_end_factor < 0 or origin_end_factor > 1:
-            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+            raise ValueError("Error. origin_end_factor must be between 0 and 1,"
+                             " both included.")
 
         origin = self.get_origin()
 
@@ -925,7 +1007,8 @@ class Bar:
 
             bar_angle = self.angle_from_global_to_local()
 
-            n = - (y_reaction * math.sin(bar_angle) + x_reaction * math.cos(bar_angle))
+            n = - (y_reaction * math.sin(bar_angle) + x_reaction *
+                   math.cos(bar_angle))
         else:
             bar_efforts = self.get_efforts()
             n = - bar_efforts.get("p_ij")[0]
@@ -943,12 +1026,15 @@ class Bar:
     def shear_strength_law(self, origin_end_factor):
         """
 
-        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        :param origin_end_factor: point in percentage of length from origin to
+         end in which the value
         of the shear strength is desired to be known
-        :return: Value of the shear strength corresponding to the point origin_end_factor
+        :return: Value of the shear strength corresponding to the point
+         origin_end_factor
         """
         if origin_end_factor < 0 or origin_end_factor > 1:
-            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+            raise ValueError("Error. origin_end_factor must be between 0 and 1,"
+                             " both included.")
 
         origin = self.get_origin()
 
@@ -960,7 +1046,8 @@ class Bar:
 
             bar_angle = self.angle_from_global_to_local()
 
-            v = - y_reaction * math.cos(bar_angle) + x_reaction * math.sin(bar_angle)
+            v = - y_reaction * math.cos(bar_angle) + x_reaction *\
+                math.sin(bar_angle)
         else:
             bar_efforts = self.get_efforts()
             v = - bar_efforts.get("p_ij")[1]
@@ -978,12 +1065,15 @@ class Bar:
     def bending_moment_law(self, origin_end_factor):
         """
 
-        :param origin_end_factor: point in percentage of length from origin to end in which the value
+        :param origin_end_factor: point in percentage of length from origin
+         to end in which the value
         of the bending moment is desired to be known
-        :return: Value of the bending moment corresponding to the point origin_end_factor
+        :return: Value of the bending moment corresponding to the point
+         origin_end_factor
         """
         if origin_end_factor < 0 or origin_end_factor > 1:
-            raise ValueError("Error. origin_end_factor must be between 0 and 1, both included.")
+            raise ValueError("Error. origin_end_factor must be between 0 and 1,"
+                             " both included.")
 
         origin = self.get_origin()
         x = origin_end_factor * self.length()
@@ -995,7 +1085,8 @@ class Bar:
             x_reaction = origin_reactions.get("x")
             y_reaction = origin_reactions.get("y")
 
-            shear_force_contribution = - x_reaction * math.sin(bar_angle) * x + y_reaction * math.cos(bar_angle) * x
+            shear_force_contribution = - x_reaction * math.sin(bar_angle) * x\
+                                       + y_reaction * math.cos(bar_angle) * x
 
             m_contribution = - origin_reactions.get("momentum")
 
@@ -1036,7 +1127,8 @@ class Structure:
             if bar.name not in bar_names:
                 bar_names.append(bar.name)
             else:
-                raise ValueError("More than one bar with name '" + bar.name + "'")
+                raise ValueError("More than one bar with name '" + bar.name +
+                                 "'")
 
         del bar_names
 
@@ -1109,7 +1201,8 @@ class Structure:
 
         def get_nodes_recursively(node):
             """
-            This function finds recursively all nodes in structure, according bars.
+            This function finds recursively all nodes in structure, according
+             bars.
             :param node: node to find other nodes
             """
             nonlocal next_number
@@ -1146,15 +1239,38 @@ class Structure:
         # Assign nodes numeration starting from the first one
         get_nodes_recursively(left_node)
 
+        # Assign bar numeration
+        bar_number = 1
+        for index in range(0, len(numbered_nodes) - 1):
+            bars_in_node_n = set(numbered_nodes[index].bars_belonging_to.values())
+            bars_in_next_node = set(numbered_nodes[index + 1].bars_belonging_to.values())
+            try:
+                common_bar = list(
+                    bars_in_node_n & bars_in_next_node
+                )[0]
+            except IndexError:
+                continue
+
+            common_bar.solving_numeration = bar_number
+            bar_number += 1
+
+        for bar in self.get_bars(return_as_list=True):
+            if bar.solving_numeration < 0:
+                bar.solving_numeration = bar_number
+                bar_number += 1
+
         return self.get_number_of_nodes()
 
     def find_submatrix(self, matrix, row, col):
         """
 
         :param matrix: matrix from which the submatrix is going to be extracted
-        :param row: row index of the assembled matrix in the form of matrix of matrixes
-        :param col: row index of the assembled matrix in the form of matrix of matrixes
-        :return: returns submatrixes of the global matrix as global rigidity submatrixes
+        :param row: row index of the assembled matrix in the form of matrix of
+         matrixes
+        :param col: row index of the assembled matrix in the form of matrix of
+         matrixes
+        :return: returns submatrixes of the global matrix as global rigidity
+         submatrixes
         """
         row = row - 1
         col = col - 1
@@ -1165,7 +1281,8 @@ class Structure:
         submatrix_col_end = int(col * submatrix_size + submatrix_size)
 
         return {
-            "matrix": matrix[submatrix_row_start:submatrix_row_end, submatrix_col_start:submatrix_col_end],
+            "matrix": matrix[submatrix_row_start:submatrix_row_end,
+                      submatrix_col_start:submatrix_col_end],
             "row_start": submatrix_row_start,
             "row_end": submatrix_row_end,
             "col_start": submatrix_col_start,
@@ -1189,18 +1306,26 @@ class Structure:
             origin_node = bar.get_origin()
             end_node = bar.get_end()
 
-            # Compute global rigidity matrix in order to get values for kii, kij, kji and kjj
+            # Compute global rigidity matrix in order to get values for kii,
+            # kij, kji and kjj
             bar.global_rigidity_matrix_2d_rigid_nodes()
 
-            # This list is used in a loop in order to use the different k_ij of the bar
-            nodes_combination = [(origin_node.solving_numeration, origin_node.solving_numeration),
-                                 (origin_node.solving_numeration, end_node.solving_numeration),
-                                 (end_node.solving_numeration, origin_node.solving_numeration),
-                                 (end_node.solving_numeration, end_node.solving_numeration)
+            # This list is used in a loop in order to use the different k_ij
+            # of the bar
+            nodes_combination = [(origin_node.solving_numeration,
+                                  origin_node.solving_numeration),
+                                 (origin_node.solving_numeration,
+                                  end_node.solving_numeration),
+                                 (end_node.solving_numeration,
+                                  origin_node.solving_numeration),
+                                 (end_node.solving_numeration,
+                                  end_node.solving_numeration)
                                  ]
 
             for i in range(4):
-                submatrix_info = self.find_submatrix(matrix, nodes_combination[i][0], nodes_combination[i][1])
+                submatrix_info = self.find_submatrix(matrix,
+                                                     nodes_combination[i][0],
+                                                     nodes_combination[i][1])
                 submatrix = submatrix_info.get("matrix")
                 row_start = submatrix_info.get("row_start")
                 row_end = submatrix_info.get("row_end")
@@ -1223,10 +1348,12 @@ class Structure:
     def _get_zero_displacement_indexes(self):
         """
 
-        :return: list of the indexes of rows and columns that must be deleted for the decoupled matrix
+        :return: list of the indexes of rows and columns that must be deleted
+         for the decoupled matrix
         """
 
-        # Set numeration. Do not delete this line, other functions depend on numeration given here.
+        # Set numeration. Do not delete this line, other functions depend
+        # on numeration given here.
         self.set_bars_and_nodes_numeration()
 
         # List to be returned
@@ -1237,7 +1364,8 @@ class Structure:
 
         def process_node(node, proc_nodes, index_to_delete):
             """
-            Checks if a node has any kind of support and constrains the assembled matrix accordingly.
+            Checks if a node has any kind of support and constrains the
+             assembled matrix accordingly.
 
             :param node: Node to look for supports
             :param proc_nodes: list of already processed nodes
@@ -1249,11 +1377,14 @@ class Structure:
                 if node.support is not Support.NONE:
                     # If the support provides restrictions
 
-                    # offset_index is used to cancel rows and columns in a more human-friendly way (using 0, 1 and 2)
+                    # offset_index is used to cancel rows and columns in a more
+                    # human-friendly way (using 0, 1 and 2)
                     # to cancel out the pertinent rows and columns
-                    offset_index = (node.solving_numeration - 1) * submatrix_size
+                    offset_index = (node.solving_numeration - 1) *\
+                                   submatrix_size
 
-                    # range_start is used to restrain cancellations on rollers supports
+                    # range_start is used to restrain cancellations on rollers
+                    # supports
                     range_start = 0
 
                     if node.support is Support.ROLLER_Y:
@@ -1266,22 +1397,23 @@ class Structure:
                     elif node.support is Support.PINNED:
                         # Remove x and y components
                         target_cancellations = 2
-
-                    # TODO Agregar más elifs si se introducen más tipos de apoyos
                     else:
                         # FIXED
                         # Remove x, y and angle components
                         target_cancellations = 3
 
-                    # TODO cambiar el range si se implementan otros tipos de estructuras
-                    for offset_component in range(range_start, target_cancellations):
+                    for offset_component in range(range_start,
+                                                  target_cancellations):
                         # offset_component = 0, cancels out x component
                         # offset_component = 1, cancels out y component
                         # offset_component = 2, cancels out angle component
 
-                        if (offset_index + offset_component) not in index_to_delete:
-                            # Add index to the list in order to delete all rows and columns at once
-                            indexes_to_delete.append(offset_index + offset_component)
+                        if (offset_index + offset_component) not in\
+                                index_to_delete:
+                            # Add index to the list in order to delete all
+                            # rows and columns at once
+                            indexes_to_delete.append(offset_index +
+                                                     offset_component)
 
                 # Mark the current node as processed
                 proc_nodes.append(node.solving_numeration)
@@ -1306,7 +1438,8 @@ class Structure:
         :return: Decoupled matrix of the structure
         """
 
-        # The assembled matrix must be edited in order to obtain the decoupled one
+        # The assembled matrix must be edited in order to obtain the decoupled
+        # one
         matrix = self.assembled_matrix()
 
         indexes_to_delete = self._get_zero_displacement_indexes()
@@ -1350,12 +1483,15 @@ class Structure:
         # Index to find the nodes in order
         current_search = 1
 
-        def add_referred_force_and_momentum_to_node(node, values, original_charge, node_position):
+        def add_referred_force_and_momentum_to_node(node, values,
+                                                    original_charge,
+                                                    node_position):
             """
             Adds the referenced charges to a node
             :param node: Node to add the charges to
             :param values: Dictionary of force and momentum to add to node
-            :param original_charge: dc if the charge is a distributed one or pf if it is a punctual force
+            :param original_charge: dc if the charge is a distributed one or pf
+             if it is a punctual force
             :param node_position: "origin" if is an origin node, "end" otherwise
             :return:
             """
@@ -1385,7 +1521,8 @@ class Structure:
                     force = np.array((global_x_force, global_y_force, 0))
                     momentum = np.array([0, 0, values.get("m_end")])
             else:
-                raise ValueError("The value " + str(original_charge) + " is not valid for parameter original_charge")
+                raise ValueError("The value " + str(original_charge) +
+                                 " is not valid for parameter original_charge")
 
             real_key = key_base
 
@@ -1406,21 +1543,32 @@ class Structure:
             node.clear_referred_forces()
             node.clear_referred_momentums()
 
-        # Determine and assign node-referred forces and momentums for each node in each bar
+        # Determine and assign node-referred forces and momentums for each
+        # node in each bar
         for key, bar in self.bars.items():
             if bar.has_distributed_charges():
-                dc_nodes = bar.get_referred_distributed_charge_to_nodes(return_global_values=True)
+                dc_nodes = bar.get_referred_distributed_charge_to_nodes(
+                    return_global_values=True)
 
                 for key_dc, distributed_charge in dc_nodes.items():
-                    add_referred_force_and_momentum_to_node(bar.get_origin(), distributed_charge, "dc", "origin")
-                    add_referred_force_and_momentum_to_node(bar.get_end(), distributed_charge, "dc", "end")
+                    add_referred_force_and_momentum_to_node(bar.get_origin(),
+                                                            distributed_charge,
+                                                            "dc", "origin")
+                    add_referred_force_and_momentum_to_node(bar.get_end(),
+                                                            distributed_charge,
+                                                            "dc", "end")
 
             if bar.has_punctual_forces():
-                pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(return_global_values=True)
+                pf_nodes = bar.get_referred_punctual_forces_in_bar_to_nodes(
+                    return_global_values=True)
 
                 for key_pf, punctual_force in pf_nodes.items():
-                    add_referred_force_and_momentum_to_node(bar.get_origin(), punctual_force, "pf", "origin")
-                    add_referred_force_and_momentum_to_node(bar.get_end(), punctual_force, "pf", "end")
+                    add_referred_force_and_momentum_to_node(bar.get_origin(),
+                                                            punctual_force,
+                                                            "pf", "origin")
+                    add_referred_force_and_momentum_to_node(bar.get_end(),
+                                                            punctual_force,
+                                                            "pf", "end")
 
         # Compose the force vector
         while current_search <= self.get_number_of_nodes():
@@ -1428,7 +1576,8 @@ class Structure:
                 origin = bar.get_origin()
                 end = bar.get_end()
 
-                if origin.solving_numeration == current_search or end.solving_numeration == current_search:
+                if origin.solving_numeration == current_search or\
+                        end.solving_numeration == current_search:
                     if origin.solving_numeration == current_search:
                         valid_node = origin
                     else:
@@ -1444,13 +1593,15 @@ class Structure:
                     # Look for the next node
                     current_search += 1
 
-        # Return the opposite of the found forces because the needed values are the reactions, not the forces themselves
+        # Return the opposite of the found forces because the needed values
+        # are the reactions, not the forces themselves
         return -1 * np.array(forces)
 
     def decoupled_forces_and_momentums_in_structure(self):
         """
 
-        :return: array of not supported forces and momentums (array to muliply by the inverse of the deoupled matrix)
+        :return: array of not supported forces and momentums (array to muliply
+         by the inverse of the deoupled matrix)
         """
         force_array = self.forces_and_momentums_in_structure()
         indexes_to_delete = self._get_zero_displacement_indexes()
@@ -1460,7 +1611,8 @@ class Structure:
 
     def get_nodes_displacements(self):
         """
-        Determines the displacement of each node, assigns its value to the node instances and returns the displacement
+        Determines the displacement of each node, assigns its value to the node
+         instances and returns the displacement
         vector
 
         :return: Array with the displacement of the nodes
@@ -1472,7 +1624,7 @@ class Structure:
         zero_displacement_indexes.sort()
         # Calculate the displacement of the non-constricted nodes
         calculated_nodes_displacements = np.dot(self.inverse_decoupled_matrix(),
-                                                self.decoupled_forces_and_momentums_in_structure())
+                            self.decoupled_forces_and_momentums_in_structure())
 
         # List to store the displacement of ALL nodes
         nodes_displacements = []
@@ -1481,11 +1633,18 @@ class Structure:
         # Variable to travel trough calculated_node_displacements list
         included_non_zero_displacement_index = 0
 
-        # Build the final displacement vector using the calculated and the known (zero value) ones
-        for i in range(len(zero_displacement_indexes) + len(calculated_nodes_displacements)):
-            if included_zero_displacement_index >= len(zero_displacement_indexes) or \
-                    i != zero_displacement_indexes[included_zero_displacement_index]:
-                nodes_displacements.append(calculated_nodes_displacements[included_non_zero_displacement_index])
+        # Build the final displacement vector using the calculated and the
+        # known (zero value) ones
+        for i in range(len(
+                zero_displacement_indexes) + len(calculated_nodes_displacements)
+                       ):
+            if included_zero_displacement_index >=\
+                    len(zero_displacement_indexes) or \
+                    i !=\
+                    zero_displacement_indexes[included_zero_displacement_index]:
+                nodes_displacements.append(
+                    calculated_nodes_displacements[
+                        included_non_zero_displacement_index])
                 included_non_zero_displacement_index += 1
             else:
                 nodes_displacements.append(0)
@@ -1511,7 +1670,8 @@ class Structure:
         """
 
         :param ordered_by_solving_number:
-        :return: list containing all nodes in the structure, order by solving numeration
+        :return: list containing all nodes in the structure, order by solving
+         numeration
         """
         got_nodes = []
 
@@ -1549,7 +1709,8 @@ class Structure:
 
     def get_nodes_reactions(self):
         """
-        Once known the applied forces. determines the reactions of each node, assigns its value to the node instances
+        Once known the applied forces. determines the reactions of each node,
+         assigns its value to the node instances
         and returns the reactions vector
 
         :return: Array with the reactions of the nodes
@@ -1558,7 +1719,8 @@ class Structure:
         self.forces_and_momentums_in_structure()
 
         # Compute node reactions according the equation
-        nodes_reactions = np.dot(self.assembled_matrix(), self.get_nodes_displacements())
+        nodes_reactions = np.dot(self.assembled_matrix(),
+                                 self.get_nodes_displacements())
 
         # Get all nodes in the structure in solving_nueeeeeeen order
         nodes_in_structure = self.get_nodes()
@@ -1602,7 +1764,8 @@ class Structure:
 class Material:
     def __init__(self, name: str):
         """
-        :param name: must be the same than those of the table in the material database
+        :param name: must be the same than those of the table in the material
+         database
         """
         if type(name) not in [str]:
             raise TypeError("name must be of type str")
@@ -1612,15 +1775,18 @@ class Material:
         thermal_dil_coef, density
         FROM materials WHERE name = '""" + name + "';"
 
-        # All parameters must be the same than those of the table in the material database
+        # All parameters must be the same than those of the table in the
+        # material database
         result = db.execute_read_query(conn, query)
 
         if result:
-            self.generic_name, self.name, self.young_mod, self.rig_mod, self.poisson_coef, \
+            self.generic_name, self.name, self.young_mod, self.rig_mod,\
+            self.poisson_coef, \
             self.thermal_dil_coef, self.density = result[0]
         else:
             raise LookupError(
-                f"Error in the query: ''{query}''. Or maybe the material {name} is not defined in the database."
+                f"Error in the query: ''{query}''. Or maybe the material {name}"
+                f" is not defined in the database."
             )
 
     def equals(self, other_material):
@@ -1639,7 +1805,8 @@ class Material:
 class Profile:
     def __init__(self, name: str, name_number):
         """
-        :param name: must be the same than those of the table in the profiles database
+        :param name: must be the same than those of the table in the profiles
+         database
         """
         if type(name) not in [str]:
             raise TypeError("name must be of type str")
@@ -1656,14 +1823,16 @@ class Profile:
         FROM profiles WHERE name = '""" + name + "' AND name_number = " + \
                 name_number + ";"
 
-        # All parameters must be the same than those of the table in the profile database
+        # All parameters must be the same than those of the table in the
+        # profile database
         result = db.execute_read_query(conn, query)
 
         if result:
             self.name, self.name_number, self.area, self.inertia_moment_x, self.res_mod_x, \
             self.inertia_moment_y, self.res_mod_y = result[0]
         else:
-            raise LookupError("Error in the query: ''" + query + "''. Or maybe the profile " + name + " " +
+            raise LookupError("Error in the query: ''" + query +
+                              "''. Or maybe the profile " + name + " " +
                               name_number + " is not defined in the database.")
 
     def equals(self, other_profile):
@@ -1687,13 +1856,17 @@ class DistributedCharge:
     def __init__(self, dc_type, max_value, direction):
         """
 
-        :param dc_type: type of distributed charge. Must be of type DistributedChargeType
+        :param dc_type: type of distributed charge.
+         Must be of type DistributedChargeType
         :param max_value: the maximum value of the distributed charge
-        :param direction: unitary vector representing the direction of the force in local axis. If dc_type is
+        :param direction: unitary vector representing the direction of the
+         force in local axis. If dc_type is
         PARALLEL_TO_BAR, the direction must be (0, 1, 0) or (0, -1, 0)
         """
         if type(dc_type) not in [DistributedChargeType]:
-            raise TypeError("Error. dc_type must be of type structures.DistributedChargeType")
+            raise TypeError(
+                "Error. dc_type must be of type"
+                " structures.DistributedChargeType")
 
         self.dc_type = dc_type
         self.max_value = float(max_value)
@@ -1706,7 +1879,8 @@ class DistributedCharge:
             direction
         ))
 
-        # If new parameters are included, they must be added to the equals function and to the test
+        # If new parameters are included, they must be added to the equals
+        # function and to the test
 
     def set_dc_type(self, new_type):
         """
@@ -1714,7 +1888,9 @@ class DistributedCharge:
         :param new_type: desired type to be changed to
         """
         if type(new_type) not in [DistributedChargeType]:
-            raise TypeError("Error: new_type must be of type DistributedChargeType")
+            raise TypeError(
+                "Error: new_type must be of"
+                " type DistributedChargeType")
 
         self.dc_type = new_type
 
@@ -1754,7 +1930,9 @@ class DistributedCharge:
 
     def equals(self, other_distributed_charge):
         if type(other_distributed_charge) not in [DistributedCharge]:
-            raise TypeError("Error. The type of other_distributed_charge must be DistributedCharge")
+            raise TypeError(
+                "Error. The type of other_distributed_charge must be"
+                " DistributedCharge")
 
         if self.dc_type == other_distributed_charge.dc_type and \
                 self.max_value == other_distributed_charge.max_value and \
@@ -1767,7 +1945,8 @@ class DistributedCharge:
         """
         Refer the distributed charge to the nodes of the bar provided
         :param bar: Bar over which the charge is applied to
-        :param return_global_values: True if global values are wanted to be returned, False if local values are wanted
+        :param return_global_values: True if global values are wanted to be
+         returned, False if local values are wanted
         :return: dictionary containing the referred values
         """
         bar_length = bar.length()
@@ -1775,9 +1954,11 @@ class DistributedCharge:
 
         forces = self.max_value * np.array(direction)
 
-        if self.dc_type in [DistributedChargeType.SQUARE, DistributedChargeType.PARALLEL_TO_BAR]:
+        if self.dc_type in [DistributedChargeType.SQUARE,
+                            DistributedChargeType.PARALLEL_TO_BAR]:
             x_reaction = - forces[0] * bar_length / 2
-            if self.max_value < 0 and self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+            if self.max_value < 0 and self.dc_type ==\
+                    DistributedChargeType.PARALLEL_TO_BAR:
                 x_reaction = - x_reaction
 
             y_reaction = - forces[1] * bar_length / 2
@@ -1789,8 +1970,6 @@ class DistributedCharge:
         else:
             raise Exception(f"Charge {self.dc_type} not implemented.")
 
-        # TODO Si se incluyen mas tipos de cargas distribuidas, agregarlos aqui con elifs y escribir sus tests
-
         if not return_global_values:
             referred_charge = {
                 "x": x_reaction,
@@ -1801,8 +1980,10 @@ class DistributedCharge:
         else:
             # Convert reactions to global coordinates
             reaction_forces = np.array([x_reaction, y_reaction, 0])
-            matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
-            reaction_forces_global = np.dot(matrix_conversion_to_global, reaction_forces)
+            matrix_conversion_to_global =\
+                bar.system_change_matrix_2d_rigid_nodes()
+            reaction_forces_global =\
+                np.dot(matrix_conversion_to_global, reaction_forces)
 
             referred_charge = {
                 "x": reaction_forces_global[0],
@@ -1817,11 +1998,13 @@ class DistributedCharge:
         """
         Determines the point x in the axial force law
         :param bar: bar in which the distributed charge is applied to
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
-            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+            raise ValueError(\
+                "Error. x must be between 0 and 1, both inclusive.")
 
         direction = self._redefine_direction(bar)
 
@@ -1829,7 +2012,8 @@ class DistributedCharge:
         x = bar.length() * origin_to_end_factor
         n = - q * direction[0] * x
 
-        if self.max_value < 0 and self.dc_type == DistributedChargeType.PARALLEL_TO_BAR:
+        if self.max_value < 0 and self.dc_type ==\
+                DistributedChargeType.PARALLEL_TO_BAR:
             n = -n
 
         return n
@@ -1838,11 +2022,13 @@ class DistributedCharge:
         """
         Determines the point x in the flector law
         :param bar: Bar in which the distributed charge is applied to
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
-            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+            raise ValueError(\
+                "Error. x must be between 0 and 1, both inclusive.")
 
         direction = self._redefine_direction(bar)
 
@@ -1857,11 +2043,13 @@ class DistributedCharge:
         """
         Determines the point x in the shear strength
         :param bar: Bar in which the distributed charge is applied to
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
-            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+            raise ValueError(\
+                "Error. x must be between 0 and 1, both inclusive.")
 
         direction = self._redefine_direction(bar)
 
@@ -1885,26 +2073,35 @@ class PunctualForceInBar:
         """
 
         :param value: the magnitud of the force
-        :param origin_end_factor: value from 0 to 1 where 0 means origin node and 1 means end node
-        :param direction: unitary vector representing the direction of the force in local axis
+        :param origin_end_factor: value from 0 to 1 where 0 means origin node\
+         and 1 means end node
+        :param direction: unitary vector representing the direction of the\
+         force in local axis
         """
         if origin_end_factor < 0 or origin_end_factor > 1:
-            raise ValueError("Error. origin_end_factor must be between 0 and 1.")
+            raise ValueError(\
+                "Error. origin_end_factor must be between 0 and 1.")
 
         if type(direction) not in [tuple]:
-            raise TypeError("Error. direction must be a tuple of representing the direction of the force")
+            raise TypeError(\
+                "Error. direction must be a tuple of representing the\
+                 direction of the force")
 
         self.value = value
         self.origin_end_factor = origin_end_factor
         self.direction = direction
-        # If new parameters are included, they must be added to the equals function and to the test
+        # If new parameters are included, they must be added to the equals\
+        # function and to the test
 
     def equals(self, other_punctual_force_in_bar):
         if type(other_punctual_force_in_bar) not in [PunctualForceInBar]:
-            raise TypeError("Error. The type of other_punctual_force_in_bar must be PunctualForceInBar")
+            raise TypeError(\
+                "Error. The type of other_punctual_force_in_bar must\
+                 be PunctualForceInBar")
 
         if self.value == other_punctual_force_in_bar.value and \
-                self.origin_end_factor == other_punctual_force_in_bar.origin_end_factor and \
+                self.origin_end_factor ==\
+                other_punctual_force_in_bar.origin_end_factor and \
                 self.direction == other_punctual_force_in_bar.direction:
             return True
         else:
@@ -1935,7 +2132,8 @@ class PunctualForceInBar:
         """
         Refer the punctual force to the nodes of the bar provided
         :param bar: Bar over which the charge is applied to
-        :param return_global_values: True if global values are wanted to be returned, False if local values are wanted
+        :param return_global_values: True if global values are wanted to be\
+         returned, False if local values are wanted
         :return: dictionary containing the referred values
         """
         bar_length = bar.length()
@@ -1956,14 +2154,15 @@ class PunctualForceInBar:
         reaction_end = np.array([x_reaction, y_reaction_end, 0])
 
         # Bending moments
-        flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(
+        flector_origin = - forces_in_axis[1] * distance_origin_force *\
+                         pow(distance_end_force, 2) / pow(
             bar_length, 2)
-        flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length,
-                                                                                                   2)
-        # TODO Repasar el signo en flector_force_point
-        flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force,
-                                                                                          2) / pow(bar_length,
-                                                                                                   3)
+        flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) *\
+                      distance_end_force / pow(bar_length,2)
+
+        flector_force_point = 2 * forces_in_axis[1] *\
+                              pow(distance_origin_force, 2) *\
+                              pow(distance_end_force, 2) / pow(bar_length, 3)
 
         if not return_global_values:
             referred_punctual_force = {
@@ -1977,9 +2176,12 @@ class PunctualForceInBar:
             }
         else:
             # Convert reactions to global coordinates
-            matrix_conversion_to_global = bar.system_change_matrix_2d_rigid_nodes()
-            reaction_origin_global = np.dot(matrix_conversion_to_global, reaction_origin)
-            reaction_end_global = np.dot(matrix_conversion_to_global, reaction_end)
+            matrix_conversion_to_global =\
+                bar.system_change_matrix_2d_rigid_nodes()
+            reaction_origin_global =\
+                np.dot(matrix_conversion_to_global, reaction_origin)
+            reaction_end_global =\
+                np.dot(matrix_conversion_to_global, reaction_end)
 
             referred_punctual_force = {
                 "x_origin": reaction_origin_global[0],
@@ -1997,12 +2199,14 @@ class PunctualForceInBar:
         """
         Determines the point x in the flector law
         :param bar: Bar in which the punctual force is applied to.
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
 
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
-            raise ValueError("Error. x must be between 0 and 1, both inclusive.")
+            raise ValueError(\
+                "Error. x must be between 0 and 1, both inclusive.")
 
         p = self.value
         bar_length = bar.length()
@@ -2013,14 +2217,16 @@ class PunctualForceInBar:
             m_origin_to_force_point = 0
             return m_origin_to_force_point
         else:
-            m_force_point_to_end = p * self.direction[1] * (x - distance_origin_to_force)
+            m_force_point_to_end = p * self.direction[1] *\
+                                   (x - distance_origin_to_force)
             return m_force_point_to_end
 
     def shear_strength_law(self, bar, origin_to_end_factor):
         """
         Determines the point x in the shear strength law
         :param bar: Bar in which the punctual force is applied to.
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
@@ -2028,7 +2234,8 @@ class PunctualForceInBar:
 
         p = self.value * self.direction[1]
 
-        # If the point is situated before the one in which the force is applied...
+        # If the point is situated before the one in which the force\
+        # is applied...
         if origin_to_end_factor <= self.origin_end_factor:
             return 0
         else:
@@ -2038,7 +2245,8 @@ class PunctualForceInBar:
         """
         Determines the point x in the axial force law
         :param bar: Bar in which the punctual force is applied to.
-        :param origin_to_end_factor: Point to calculate. Can't be lesser than zero nor greater than 1
+        :param origin_to_end_factor: Point to calculate. Can't be lesser than\
+         zero nor greater than 1
         :return:
         """
         if origin_to_end_factor < 0 or origin_to_end_factor > 1:
@@ -2046,7 +2254,8 @@ class PunctualForceInBar:
 
         p = self.value * self.direction[0]
 
-        # If the point is situated before the one in which the force is applied...
+        # If the point is situated before the one in which the force\
+        # is applied...
         if origin_to_end_factor <= self.origin_end_factor:
             return 0
         else:

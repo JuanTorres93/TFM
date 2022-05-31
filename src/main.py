@@ -16,7 +16,8 @@ from src.modules import databaseutils as db
 from src.modules import filesystemutils as fs
 from src.modules import structures as st
 
-# In spite of the fact that pycharm marks this import as not used, it really is used.
+# In spite of the fact that pycharm marks this import as not used, it really
+# is used.
 # Its function is to provide icons
 import qrc_resources
 
@@ -28,7 +29,8 @@ Z_VALUE_AXIS = -1
 # -- Colors
 # ---- Normal color of the node
 NORMAL_COLOR = QtGui.QColor(0, 0, 0, 100)
-ORIGIN_NODE_COLOR = QtGui.QColor(20, 40, 255) # Color used for punctual force distance to origin
+ORIGIN_NODE_COLOR = QtGui.QColor(20, 40, 255) # Color used for punctual force
+# distance to origin
 # ---- Color of the node when hovering mouse over it
 HOVER_COLOR_NORMAL_MODE = QtGui.QColor(49, 204, 55)
 HOVER_COLOR_BAR_MODE = QtGui.QColor(203, 39, 23)
@@ -86,7 +88,8 @@ def set_active_structure_element(item):
 
 def get_widgets_in_layout(layout):
     """
-    This function can be used to retrieve all widgets that have been added to a layout.
+    This function can be used to retrieve all widgets that have been added to a
+    # layout.
     :param layout: Layout to get the widgets from
     :return: list with the widgets contained in the layout
     """
@@ -127,7 +130,8 @@ class Window(QtWidgets.QMainWindow):
         super().__init__(parent)
 
         # Central Widget
-        # This widget is used to display the drawing scene where the user inputs the structure
+        # This widget is used to display the drawing scene where the user
+        # inputs the structure
         self.central_widget = QtWidgets.QGraphicsView()
 
         # Create actions
@@ -174,7 +178,8 @@ class Window(QtWidgets.QMainWindow):
 
     def set_current_mode(self, mode):
         """
-        Establish the mode in which the user utilizes the application in a given moment
+        Establish the mode in which the user utilizes the application in a
+        # given moment
         :param mode: Mode to which the application is going to change
         :return:
         """
@@ -194,11 +199,13 @@ class Window(QtWidgets.QMainWindow):
 
     def centered_coordinates(self, x, y):
         """
-        Origin point for coordinates systems in image processing is located at the top left corner, this function
+        Origin point for coordinates systems in image processing is located
+        # at the top left corner, this function
         provides a way to work with the origin centered in the scene
         :param x: desired centered x coordinate
         :param y: desired centered y coordinate
-        :return: List with x and y values of the point in the new coordinate system
+        :return: List with x and y values of the point in the new coordinate
+        # system
         """
         scene_width = self.scene.sceneRect().width()
         scene_height = self.scene.sceneRect().height()
@@ -219,11 +226,13 @@ class Window(QtWidgets.QMainWindow):
 
     def scene_coordinates(self, x_centered, y_centered):
         """
-        Origin point for coordinates systems in image processing is located at the top left corner, this function
+        Origin point for coordinates systems in image processing is located
+        # at the top left corner, this function
         provides a way to convert from center coordinates to scene coordinates
         :param x_centered: desired scene x coordinate
         :param y_centered: desired scene y coordinate
-        :return: List with x and y values of the point in the new coordinate system (scene)
+        :return: List with x and y values of the point in the new coordinate
+        # system (scene)
         """
         scene_width = self.scene.sceneRect().width()
         scene_height = self.scene.sceneRect().height()
@@ -251,7 +260,7 @@ class Window(QtWidgets.QMainWindow):
         self.scene.setSceneRect(0, 0, width, height)
 
     def new_file(self):
-        # TODO escribir funcion
+        # TODO To be implemented
         self.scene.addRect(1000, 500, 100, 100)
 
     def show_error_pop_up(self, title, msg):
@@ -268,12 +277,12 @@ class Window(QtWidgets.QMainWindow):
         bars = self.scene.get_bars()
 
         bar_dict = {}
-        bar_number = 1
+        # bar_number = 1
         for bar in bars:
             bar_logic = bar.bar_logic
             bar_dict[bar_logic.name] = bar_logic
-            bar.bar_number = bar_number
-            bar_number += 1
+            # bar.bar_number = bar_number
+            # bar_number += 1
 
         # Generate structure
         structure = st.Structure("S1", bar_dict)
@@ -281,10 +290,13 @@ class Window(QtWidgets.QMainWindow):
             # First step in structure resolution
             structure.get_nodes_displacements()
         except AttributeError:
-            self.show_error_pop_up("ERROR", "Singular matrix. Consider adding more supports.")
+            self.show_error_pop_up("ERROR", "Singular matrix. Consider adding"
+                                            "# more supports.")
             return
         except TypeError:
-            self.show_error_pop_up("ERROR", "Some value is not correctly entered. Check them and ensure that are"
+            self.show_error_pop_up("ERROR", "Some value is not correctly"
+                                            "# entered. Check them and ensure"
+                                            "# that are"
                                             " valid numbers.")
             return
 
@@ -322,10 +334,14 @@ class Window(QtWidgets.QMainWindow):
                 y_axis_bending_moment.append(bar_logic.bending_moment_law(x))
 
             mplCanvas = MplCanvas(width=7, height=6)
-            mplCanvas.fig.suptitle(f"Bar {bar.bar_number}")
-            mplCanvas.axes_axile.plot(x_axis_represented, y_axis_axial_force, color="#FF000099")
-            mplCanvas.axes_shear.plot(x_axis_represented, y_axis_shear_strength, color="#00FF0099")
-            mplCanvas.axes_bending.plot(x_axis_represented, y_axis_bending_moment, color="#0000FF99")
+            mplCanvas.fig.suptitle(f"Bar {bar.bar_logic.solving_numeration}")
+            mplCanvas.axes_axile.plot(x_axis_represented,
+                                      y_axis_axial_force, color="#FF000099")
+            mplCanvas.axes_shear.plot(x_axis_represented,
+                                      y_axis_shear_strength, color="#00FF0099")
+            mplCanvas.axes_bending.plot(x_axis_represented,
+                                        y_axis_bending_moment,
+                                        color="#0000FF99")
 
             main_window.effort_laws_windows.append(mplCanvas)
 
@@ -338,13 +354,14 @@ class Window(QtWidgets.QMainWindow):
         # Calculate effort laws in each bar
         for bar in bars:
             create_effort_laws_plots(self, bar)
-            bar.bar_label.setText(str(bar.bar_number))
+            bar.bar_label.setText(str(bar.bar_logic.solving_numeration))
 
         self.show_effort_laws()
 
     def show_effort_laws(self):
         """
-        Once the structure has been solved, all plots are stored in a list. If it is attempted to show them at the
+        Once the structure has been solved, all plots are stored in a list.
+         If it is attempted to show them at the
         the time of creation, some of them won't appear.
         :return:
         """
@@ -353,7 +370,8 @@ class Window(QtWidgets.QMainWindow):
 
     def hide_effort_laws(self):
         """
-        Once the structure has been solved, all plots are stored in a list. If it is attempted to show them at the
+        Once the structure has been solved, all plots are stored in a list.
+         If it is attempted to show them at the
         the time of creation, some of them won't appear.
         :return:
         """
@@ -362,7 +380,8 @@ class Window(QtWidgets.QMainWindow):
 
     def activate_draw_node_mode(self):
         """
-        Activates the application mode in which the nodes can be drawn with mouse clicks. The mode can be reverted back
+        Activates the application mode in which the nodes can be drawn with
+         mouse clicks. The mode can be reverted back
         to normal if this function is called again
         :return:
         """
@@ -375,7 +394,8 @@ class Window(QtWidgets.QMainWindow):
 
     def activate_draw_bar_mode(self):
         """
-        Activates the application mode in which the bars can be drawn with mouse clicks. The mode can be reverted back
+        Activates the application mode in which the bars can be drawn with
+         mouse clicks. The mode can be reverted back
         to normal if this function is called again
         :return:
         """
@@ -396,7 +416,8 @@ class Window(QtWidgets.QMainWindow):
         # Translate it to scene coordinates
         scene_position = self.central_widget.mapToScene(view_position)
 
-        # Coordinates to draw the circle in its center instead of in its top-left corner
+        # Coordinates to draw the circle in its center instead of in its
+        # top-left corner
         draw_coordinates = [scene_position.x(), scene_position.y()]
         # Create node instance
         node = Node(self, draw_coordinates[0], draw_coordinates[1], radius)
@@ -415,13 +436,13 @@ class Window(QtWidgets.QMainWindow):
         """
         if node_origin is not node_end:
             bar = Bar(self, node_origin, node_end)
-            bar.signals.error_convert_value_to_string.connect(lambda: self.show_error_pop_up("ERROR", "Must be introduced"
-                                                                                                      " a valid number."))
+            bar.signals.error_convert_value_to_string.connect(
+                lambda: self.show_error_pop_up("ERROR", "Must be introduced"
+                                                        " a valid number."))
 
             bar.setZValue(Z_VALUE_BARS)
 
             # Add node to scene
-            # TODO add the bar only if there is not another occupying the same position
             self.scene.addItem(bar)
 
     def delete_node(self, node):
@@ -458,7 +479,8 @@ class Window(QtWidgets.QMainWindow):
         point_x2 = [canvas_width * 2, canvas_height / 2]
         color = QtGui.QColor(200, 0, 0)
         # Draw axis
-        x_axis = self.scene.addLine(point_x1[0], point_x1[1], point_x2[0], point_x2[1], pen=color)
+        x_axis = self.scene.addLine(point_x1[0], point_x1[1], point_x2[0],
+                                    point_x2[1], pen=color)
         # Draw it at the bottom in order not to superpose user drawings
         x_axis.setZValue(Z_VALUE_AXIS)
 
@@ -467,7 +489,8 @@ class Window(QtWidgets.QMainWindow):
         point_y2 = [canvas_width / 2, canvas_height]
         color = QtGui.QColor(0, 200, 0)
         # Draw axis
-        y_axis = self.scene.addLine(point_y1[0], point_y1[1], point_y2[0], point_y2[1], pen=color)
+        y_axis = self.scene.addLine(point_y1[0], point_y1[1], point_y2[0],
+                                    point_y2[1], pen=color)
         # Draw it at the bottom in order not to superpose user drawings
         y_axis.setZValue(Z_VALUE_AXIS)
 
@@ -477,7 +500,8 @@ class Window(QtWidgets.QMainWindow):
         """
         menu_bar = self.menuBar()
         # ========== FILE MENU ==========
-        # The parent is self (the main window) because, according documentation, the parent typically is the window
+        # The parent is self (the main window) because, according
+        # documentation, the parent typically is the window
         # in which the menu is going to be used
         file_menu = QtWidgets.QMenu("&File", self)
 
@@ -518,7 +542,8 @@ class Window(QtWidgets.QMainWindow):
 
     def _update_selected_node_position(self, line_edit, text, axis):
         """
-        This function is connected to the textboxes that represent the coordinates of the nodes
+        This function is connected to the textboxes that represent the
+         coordinates of the nodes
         :param text: current text of the textbox
         :param axis: axis in which the coordinate is going to change
         """
@@ -556,7 +581,8 @@ class Window(QtWidgets.QMainWindow):
 
     def _update_selected_bar_material(self, material):
         """
-        This function is connected to the material combobox that represent the material of the bar
+        This function is connected to the material combobox that represent
+         the material of the bar
         :param material: material name to update to
         """
         if type(active_structure_element) is Bar:
@@ -564,7 +590,8 @@ class Window(QtWidgets.QMainWindow):
 
     def _update_selected_bar_profile(self, profile):
         """
-        This function is connected to the profile combobox that represent the profile of the bar
+        This function is connected to the profile combobox that represent
+         the profile of the bar
         :param profile: tuple with profile name and number
         """
         if type(active_structure_element) is Bar:
@@ -600,8 +627,10 @@ class Window(QtWidgets.QMainWindow):
         # ========== PROPERTIES DOCK ==========
         def create_layout_and_container(layout_type, widget_type):
             """
-            QSplitter class doesn't allow to add layouts directly, so a workaround is needed.
-            This function returns a layout to which widgets can be added and a single widget that
+            QSplitter class doesn't allow to add layouts directly, so a
+             workaround is needed.
+            This function returns a layout to which widgets can be added and a
+             single widget that
             holds that layout.
             :param widget_type: layout to  be used inside widget
             :param layout_type: tyoe of widget to be returned
@@ -627,7 +656,8 @@ class Window(QtWidgets.QMainWindow):
         # properties_dock.setWidget(splitter)
 
         # Bar properties
-        bar_properties_layout, bar_properties_container = create_layout_and_container(
+        bar_properties_layout, bar_properties_container =\
+            create_layout_and_container(
             QtWidgets.QVBoxLayout(),
             QtWidgets.QGroupBox()
         )
@@ -637,7 +667,8 @@ class Window(QtWidgets.QMainWindow):
         bar_properties = bar_properties_container
 
         # -- Material
-        material_layout, mat_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
+        material_layout, mat_container = create_layout_and_container(\
+            QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
 
         # ---- Label material
         label_material = QtWidgets.QLabel("Material:")
@@ -647,7 +678,8 @@ class Window(QtWidgets.QMainWindow):
         self.material_combo_box = QtWidgets.QComboBox()
         self.material_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         self._populate_material_combobox()
-        self.material_combo_box.currentTextChanged.connect(lambda: self._update_selected_bar_material(
+        self.material_combo_box.currentTextChanged.connect(lambda:\
+                                            self._update_selected_bar_material(
             self.get_currently_selected_material()
         ))
 
@@ -656,7 +688,8 @@ class Window(QtWidgets.QMainWindow):
         bar_properties_layout.addWidget(mat_container)
 
         # -- Profile
-        profile_layout, profile_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
+        profile_layout, profile_container = create_layout_and_container(
+            QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
         # ---- Label profile
         label_profile = QtWidgets.QLabel("Profile:")
         profile_layout.addWidget(label_profile)
@@ -666,7 +699,8 @@ class Window(QtWidgets.QMainWindow):
         self.profile_combo_box.setFocusPolicy(QtCore.Qt.NoFocus)
         profile_layout.addWidget(self.profile_combo_box)
         self._populate_profile_combobox()
-        self.profile_combo_box.currentTextChanged.connect(lambda: self._update_selected_bar_profile(
+        self.profile_combo_box.currentTextChanged.connect(lambda:
+                                            self._update_selected_bar_profile(
             self.get_currently_selected_profile()
         ))
 
@@ -674,22 +708,26 @@ class Window(QtWidgets.QMainWindow):
         splitter.addWidget(bar_properties_container)
 
         # -- Charges
-        self.bar_charges_layout, bar_charges_container = create_layout_and_container(QtWidgets.QVBoxLayout(),
-                                                                                     QtWidgets.QWidget())
+        self.bar_charges_layout, bar_charges_container =\
+            create_layout_and_container(QtWidgets.QVBoxLayout(),
+                                        QtWidgets.QWidget())
 
         self.bar_charges_layout.addWidget(QtWidgets.QLabel("Charges:"))
         add_bar_charge_button = QtWidgets.QPushButton("New charge")
-        add_bar_charge_button.pressed.connect(lambda: self._add_distributed_charge_to_selected_bar())
+        add_bar_charge_button.pressed.connect(lambda:
+                        self._add_distributed_charge_to_selected_bar())
 
         self.bar_charges_layout.addWidget(add_bar_charge_button)
         bar_properties_layout.addWidget(bar_charges_container)
 
         # -- Punctual Force
-        self.bar_punctual_forces_layout, bar_punctual_forces_container = create_layout_and_container(
+        self.bar_punctual_forces_layout, bar_punctual_forces_container =\
+            create_layout_and_container(
             QtWidgets.QVBoxLayout(),
             QtWidgets.QWidget())
 
-        self.bar_punctual_forces_layout.addWidget(QtWidgets.QLabel("Punctual Forces:"))
+        self.bar_punctual_forces_layout.addWidget(\
+            QtWidgets.QLabel("Punctual Forces:"))
         add_punctual_force_button = QtWidgets.QPushButton("New punctual force")
         add_punctual_force_button.pressed.connect(
             lambda: self._add_punctual_force_to_selected_bar()
@@ -699,7 +737,8 @@ class Window(QtWidgets.QMainWindow):
         bar_properties_layout.addWidget(bar_punctual_forces_container)
 
         # Node properties
-        node_properties_layout, node_properties_container = create_layout_and_container(
+        node_properties_layout, node_properties_container =\
+            create_layout_and_container(
             QtWidgets.QVBoxLayout(),
             QtWidgets.QGroupBox()
         )
@@ -710,8 +749,9 @@ class Window(QtWidgets.QMainWindow):
         node_properties_layout.addWidget(QtWidgets.QLabel("Node properties"))
         node_properties_layout.addSpacing(5)
         # -- Coordinates
-        node_coords_layout, node_coords_container = create_layout_and_container(QtWidgets.QHBoxLayout(),
-                                                                                QtWidgets.QWidget())
+        node_coords_layout, node_coords_container =\
+            create_layout_and_container(QtWidgets.QHBoxLayout(),
+                                        QtWidgets.QWidget())
 
         def create_coordinate(self, label_text, node_coords_layout):
             """
@@ -729,7 +769,8 @@ class Window(QtWidgets.QMainWindow):
             text_item.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                     QtWidgets.QSizePolicy.Maximum)
 
-            # associated axis to update the node coordinates qhen text_item text changes
+            # associated axis to update the node coordinates qhen text_item
+            # text changes
             associated_axis = None
             if label_text.startswith("x"):
                 associated_axis = "x"
@@ -737,12 +778,13 @@ class Window(QtWidgets.QMainWindow):
                 associated_axis = "y"
             else:
                 raise ValueError(
-                    f"Error: label_text must begin with the letter of an axis. Current value is {label_text}")
+                    f"Error: label_text must begin with the letter of an axis."
+                    f" Current value is {label_text}")
 
             # Update node position when text chages
             text_item.textChanged.connect(lambda:
-                                          self._update_selected_node_position(text_item, text_item.text(),
-                                                                              associated_axis))
+                self._update_selected_node_position(text_item, text_item.text(),
+                                                    associated_axis))
 
             # Resize ratio
             node_coords_layout.addWidget(label, 1)
@@ -764,13 +806,16 @@ class Window(QtWidgets.QMainWindow):
         node_properties_layout.addWidget(node_coords_container)
 
         # -- Support
-        support_layout, support_container = create_layout_and_container(QtWidgets.QHBoxLayout(), QtWidgets.QWidget())
+        support_layout, support_container =\
+            create_layout_and_container(QtWidgets.QHBoxLayout(),\
+                                        QtWidgets.QWidget())
 
         self.support_combo_box = QtWidgets.QComboBox()
         self.support_combo_box.addItems([
             "NONE", "ROLLER_X", "ROLLER_Y", "PINNED", "FIXED"
         ])
-        self.support_combo_box.currentTextChanged.connect(lambda: self._update_selected_node_support(
+        self.support_combo_box.currentTextChanged.connect(\
+            lambda: self._update_selected_node_support(
             self.support_combo_box.currentText()
         ))
 
@@ -786,7 +831,8 @@ class Window(QtWidgets.QMainWindow):
         self.node_info_text_box.setReadOnly(True)
         node_properties_layout.addWidget(self.node_info_text_box)
 
-        # Widget to act as a separator. It allows the widget in the bars to be compact
+        # Widget to act as a separator. It allows the widget in the bars\
+        # to be compact
         separator = QtWidgets.QWidget()
         separator.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                 QtWidgets.QSizePolicy.Minimum)
@@ -830,7 +876,8 @@ class Window(QtWidgets.QMainWindow):
 
     def _populate_material_combobox(self):
         """
-        Provides the items to populate the material combobox with the information in the database
+        Provides the items to populate the material combobox with the\
+         information in the database
         """
         # Clear items in the combobox
         self.material_combo_box.clear()
@@ -855,7 +902,8 @@ class Window(QtWidgets.QMainWindow):
 
     def _populate_profile_combobox(self):
         """
-        Provides the items to populate the profile combobox with the information in the database
+        Provides the items to populate the profile combobox with the\
+         information in the database
         """
         # Clear items in the combobox
         self.profile_combo_box.clear()
@@ -899,7 +947,8 @@ class Window(QtWidgets.QMainWindow):
         # Set contextMenuPolicy
         self.central_widget.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 
-        # Widget to act as a separator in context menus, since the method .addSeparator can't be used
+        # Widget to act as a separator in context menus, since the method\
+        # .addSeparator can't be used
         separator = QtWidgets.QAction(self)
         separator.setSeparator(True)
 
@@ -907,7 +956,6 @@ class Window(QtWidgets.QMainWindow):
         self.central_widget.addAction(self.enable_node_mode_action)
         self.central_widget.addAction(self.enable_bar_mode_action)
         self.central_widget.addAction(self.solve_structure_action)
-        # TODO Borrar, este separador, solo esta para motivos de documentacion
         self.central_widget.addAction(separator)
         self.central_widget.addAction(self.enable_bar_mode_action)
 
@@ -918,9 +966,12 @@ class Window(QtWidgets.QMainWindow):
         self.new_file_action.triggered.connect(self.new_file)
         self.exit_action.triggered.connect(self.close)
 
-        self.enable_node_mode_action.triggered.connect(self.activate_draw_node_mode)
-        self.enable_bar_mode_action.triggered.connect(self.activate_draw_bar_mode)
-        self.solve_structure_action.triggered.connect(self.solve_structure)
+        self.enable_node_mode_action.triggered.connect(
+            self.activate_draw_node_mode)
+        self.enable_bar_mode_action.triggered.connect(
+            self.activate_draw_bar_mode)
+        self.solve_structure_action.triggered.connect(
+            self.solve_structure)
 
     def _create_actions(self):
         """
@@ -936,7 +987,8 @@ class Window(QtWidgets.QMainWindow):
             """
             # Status tip shows the tip in the status bar
             item.setStatusTip(tip)
-            # Tool tip shows the tip when hovering mouse over widget in a toolbar
+            # Tool tip shows the tip when hovering mouse over widget
+            # in a toolbar
             item.setToolTip(tip)
 
         # ========== FILE ACTIONS ==========
@@ -989,7 +1041,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.node_origin = node_origin
         self.x1_scene = node_origin.draw_x_pos + node_origin.radius / 2
         self.y1_scene = node_origin.draw_y_pos + node_origin.radius / 2
-        self.node_origin.signals.position_changed.connect(lambda: self.update_point_position(
+        self.node_origin.signals.position_changed.connect(
+            lambda: self.update_point_position(
             "origin",
             self.node_origin.x_scene,
             self.node_origin.y_scene
@@ -998,13 +1051,15 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.node_end = node_end
         self.x2_scene = node_end.draw_x_pos + node_end.radius / 2
         self.y2_scene = node_end.draw_y_pos + node_end.radius / 2
-        self.node_end.signals.position_changed.connect(lambda: self.update_point_position(
+        self.node_end.signals.position_changed.connect(
+            lambda: self.update_point_position(
             "end",
             self.node_end.x_scene,
             self.node_end.y_scene
         ))
 
-        super().__init__(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+        super().__init__(self.x1_scene, self.y1_scene, self.x2_scene,
+                         self.y2_scene)
 
         # Appearance
         self.color = NORMAL_COLOR
@@ -1015,7 +1070,7 @@ class Bar(QtWidgets.QGraphicsLineItem):
         self.setAcceptHoverEvents(True)
 
         # Label to identify bar and be able to check its effort laws
-        self.bar_number = -1
+        # self.bar_number = -1
         self.bar_label = QtWidgets.QGraphicsSimpleTextItem("", self)
         ### Text color
         self.bar_label.setBrush(
@@ -1033,24 +1088,31 @@ class Bar(QtWidgets.QGraphicsLineItem):
             font
         )
 
-        self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+        self.update_label_position(self.x1_scene, self.y1_scene,
+                                   self.x2_scene, self.y2_scene)
 
         # Distributed charges
         self.distributed_charges_container = QtWidgets.QGroupBox()
         self.distributed_charges_layout = QtWidgets.QVBoxLayout()
-        self.distributed_charges_container.setLayout(self.distributed_charges_layout)
-        # Do NOT change the name, it is hardcoded in other function to be able to retrieve this object
-        self.distributed_charges_container.setObjectName("distributed_charges_container")
+        self.distributed_charges_container.setLayout(
+            self.distributed_charges_layout)
+        # Do NOT change the name, it is hardcoded in other function to be
+        # able to retrieve this object
+        self.distributed_charges_container.setObjectName(
+            "distributed_charges_container")
 
         # Punctual forces
         self.punctual_forces_container = QtWidgets.QGroupBox()
         self.punctual_forces_layout = QtWidgets.QVBoxLayout()
         self.punctual_forces_container.setLayout(self.punctual_forces_layout)
-        # Do NOT change the name, it is hardcoded in other function to be able to retrieve this object
-        self.punctual_forces_container.setObjectName("punctual_forces_container")
+        # Do NOT change the name, it is hardcoded in other function to be
+        # able to retrieve this object
+        self.punctual_forces_container.setObjectName(
+            "punctual_forces_container")
 
         # Bar logic
-        bar_name = f"B_{self.x1_scene}_{self.y1_scene}_{self.x2_scene}_{self.y2_scene}"
+        bar_name = f"B_{self.x1_scene}_{self.y1_scene}_" \
+                   f"{self.x2_scene}_{self.y2_scene}"
         origin_node_logic = node_origin.node_logic
         end_node_logic = node_end.node_logic
         material = self.main_window.get_currently_selected_material()
@@ -1128,9 +1190,11 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
     def update_point_position(self, point_reference, new_x_scene, new_y_scene):
         """
-        Updates the position of one of the points of the line. This function is called when origin or end points
+        Updates the position of one of the points of the line. This function
+         is called when origin or end points
         change position
-        :param point_reference: Point to update. "origin" for origin node, something else for end node
+        :param point_reference: Point to update. "origin" for origin node,
+         something else for end node
         :param new_x_scene: new x position in scene coordinates
         :param new_y_scene: new y position in scene coordinates
         :return:
@@ -1143,18 +1207,22 @@ class Bar(QtWidgets.QGraphicsLineItem):
             self.y2_scene = new_y_scene
 
         self.setLine(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
-        self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
-        self.update_local_axis_position(self.x1_scene, self.y1_scene, self.x2_scene, self.y2_scene)
+        self.update_label_position(self.x1_scene, self.y1_scene, self.x2_scene,
+                                   self.y2_scene)
+        self.update_local_axis_position(self.x1_scene, self.y1_scene,
+                                        self.x2_scene, self.y2_scene)
 
     def update_label_position(self, x1_scene, y1_scene, x2_scene, y2_scene):
         """
-        Given origin and end node coordinates, it places the bar label at the middle of them
+        Given origin and end node coordinates, it places the bar label
+         at the middle of them
         """
         x_label = abs(x1_scene - x2_scene) / 2 + min(x1_scene, x2_scene)
         y_label = abs(y1_scene - y2_scene) / 2 + min(y1_scene, y2_scene)
         self.bar_label.setPos(x_label, y_label)
 
-    def update_local_axis_position(self, x1_scene, y1_scene, x2_scene, y2_scene):
+    def update_local_axis_position(self, x1_scene, y1_scene, x2_scene,
+                                   y2_scene):
         """
         Moves local axis and rotate them to match the bar orientation
         """
@@ -1171,7 +1239,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
     def add_distributed_charge(self):
         """
-        Adds the graphical representation of a distributed charge. Called from a button
+        Adds the graphical representation of a distributed charge.
+         Called from a button
         :return:
         """
         # Give a unique name in order to be able to retrieve its values
@@ -1187,20 +1256,23 @@ class Bar(QtWidgets.QGraphicsLineItem):
         while dc_name in current_charges_dict_names:
             dc_name = fs.get_random_name(base_name)
 
-        # Create the graphical component for distributed charges and add it to the GUI
+        # Create the graphical component for distributed charges and add it
+        # to the GUI
         dc = BarDistributedCharge(self, dc_name).get_widget()
         self.distributed_charges_layout.addWidget(dc)
         print(f"New charge added to bar {self.bar_logic.name}")
 
     def add_punctual_force(self):
         """
-        Adds the graphical representation of a punctual force. Called from a button
+        Adds the graphical representation of a punctual force.
+         Called from a button
         :return:
         """
         # Give a unique name in order to be able to retrieve its values
         base_name = "pf"
         pf_name = fs.get_random_name(base_name)
-        current_punctual_forces = get_widgets_in_layout(self.punctual_forces_layout)
+        current_punctual_forces =\
+            get_widgets_in_layout(self.punctual_forces_layout)
 
         current_forces_dict_names = list(
             map(lambda x: x.pf_name,
@@ -1210,7 +1282,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
         while pf_name in current_forces_dict_names:
             pf_name = fs.get_random_name(base_name)
 
-        # Create the graphical component for punctual force and add it to the GUI
+        # Create the graphical component for punctual force and add it
+        # to the GUI
         pf = BarPunctualForce(self, pf_name).get_widget()
         self.punctual_forces_layout.addWidget(pf)
         print(f"New punctual force added to bar {self.bar_logic.name}")
@@ -1235,13 +1308,15 @@ class Bar(QtWidgets.QGraphicsLineItem):
         """
         Function called from update charge in class BarDistributedCharge
         :param direction:
-        :param dc_name: name of the distributed charge in the bar logic dictionary
+        :param dc_name: name of the distributed charge in the bar logic
+         dictionary
         :param dc_type: distributed charge type to update
         :param value: value to update with
         """
 
         def update(dc_type, value, direction):
-            current_distributed_charges = self.bar_logic.get_distributed_charges()
+            current_distributed_charges =\
+                self.bar_logic.get_distributed_charges()
 
             none_values = len(
                 [x for x in [dc_type, value, direction] if x is None]
@@ -1263,10 +1338,12 @@ class Bar(QtWidgets.QGraphicsLineItem):
 
         update(dc_type, value, direction)
 
-    def update_punctual_force(self, pf_name, value, origin_end_factor, direction):
+    def update_punctual_force(self, pf_name, value, origin_end_factor,
+                              direction):
         """
         Function called from update punctual force in class BarPunctualForce
-        :param origin_end_factor: distance from origin to the point in which the force is applied. Measured in per unit.
+        :param origin_end_factor: distance from origin to the point in which
+         the force is applied. Measured in per unit.
         :param direction: Direction in which the force is applied
         :param pf_name: name of the punctual force in the bar logic dictionary
         :param value: magnitude of the force
@@ -1295,7 +1372,8 @@ class Bar(QtWidgets.QGraphicsLineItem):
         """
         if application_mode == ApplicationMode.NORMAL_MODE and \
                 (active_structure_element is not self or (
-                        active_structure_element is self and self.color is NORMAL_COLOR
+                        active_structure_element is self and self.color is
+                        NORMAL_COLOR
                 )):
             self.change_bar_color("hover")
 
@@ -1317,8 +1395,10 @@ class Bar(QtWidgets.QGraphicsLineItem):
 class BarDistributedCharge(QtWidgets.QWidget):
     def __init__(self, bar_attached_to, dc_name):
         """
-        :param bar_attached_to: bar to which an instance of distributed charge is applied to
-        :param dc_name: name to store the distributed charge in the bar logic dictionary
+        :param bar_attached_to: bar to which an instance of distributed
+        charge is applied to
+        :param dc_name: name to store the distributed charge in the bar
+        logic dictionary
         """
         super().__init__()
         self.layout = QtWidgets.QHBoxLayout()
@@ -1337,8 +1417,8 @@ class BarDistributedCharge(QtWidgets.QWidget):
         # CHARGE VALUE
         self.charge_value_text_box = LineEdit()
         # Can be resized in width, but not in height
-        self.charge_value_text_box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                                 QtWidgets.QSizePolicy.Maximum)
+        self.charge_value_text_box.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
 
         self.charge_value_text_box.textChanged.connect(
             lambda: self._update_charge()
@@ -1356,7 +1436,8 @@ class BarDistributedCharge(QtWidgets.QWidget):
 
     def get_widget(self):
         """
-        Simple instanciating this class didn't provide a widget. This function is meant to fix that problem
+        Simple instanciating this class didn't provide a widget. This function
+         is meant to fix that problem
         :return: instance of the class widget
         """
         return self.widget
@@ -1367,9 +1448,12 @@ class BarDistributedCharge(QtWidgets.QWidget):
         # Get full name of distributed charge types
         distributed_charge_types = list(map(str, st.DistributedChargeType))
         # Get only specific name of distributed charge type
-        useful_distributed_charges = list(map(lambda x: x.split(".")[1], distributed_charge_types))
-        # This is just a workaround because I couldn't connect the creation of the object to the update method
-        # This forces the user to, at least, change the value of the combobox once  and, hence, call the update method
+        useful_distributed_charges = list(map(lambda x: x.split(".")[1],
+                                              distributed_charge_types))
+        # This is just a workaround because I couldn't connect the creation of
+        # the object to the update method
+        # This forces the user to, at least, change the value of the combobox
+        # once  and, hence, call the update method
         distributed_charges = [""]
 
         distributed_charges.extend(
@@ -1395,7 +1479,8 @@ class BarDistributedCharge(QtWidgets.QWidget):
             dc_type = st.DistributedChargeType.PARALLEL_TO_BAR
             direction = (0, 1, 0)
         else:
-            raise ValueError(f"Error: Distributed charge type {dc_type_string} has not been implemented")
+            raise ValueError(f"Error: Distributed charge type {dc_type_string}"
+                             f" has not been implemented")
 
         value = self.charge_value_text_box.text()
 
@@ -1407,10 +1492,8 @@ class BarDistributedCharge(QtWidgets.QWidget):
         except ValueError:
             value = make_qline_edit_value_zero(self.charge_value_text_box)
 
-        self.widget.bar_attached_to.update_distributed_charge(self.widget.dc_name,
-                                                              dc_type,
-                                                              value,
-                                                              direction)
+        self.widget.bar_attached_to.update_distributed_charge(
+            self.widget.dc_name, dc_type, value, direction)
 
 
 class BarPunctualForce(QtWidgets.QWidget):
@@ -1448,14 +1531,16 @@ class BarPunctualForce(QtWidgets.QWidget):
 
         # REMOVE BUTTON
         self.remove_punctual_force_button = SmallButton("X")
-        self.remove_punctual_force_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                                        QtWidgets.QSizePolicy.Minimum)
-        self.remove_punctual_force_button.pressed.connect(self.widget.deleteLater)
+        self.remove_punctual_force_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.remove_punctual_force_button.pressed.connect(
+            self.widget.deleteLater)
         self.layout.addWidget(self.remove_punctual_force_button, 1)
 
     def get_widget(self):
         """
-        Simple instantiating this class didn't provide a widget. This function is meant to fix that problem
+        Simple instantiating this class didn't provide a widget.
+         This function is meant to fix that problem
         :return: instance of the class widget
         """
         return self.widget
@@ -1479,7 +1564,8 @@ class BarPunctualForce(QtWidgets.QWidget):
 
         x_component = _parse_float_qlineedit(self.x_component_text)
         y_component = _parse_float_qlineedit(self.y_component_text)
-        origin_end_meters = _parse_float_qlineedit(self.origin_end_factor_in_meters)
+        origin_end_meters = _parse_float_qlineedit(
+            self.origin_end_factor_in_meters)
 
         bar_length = self.widget.bar_attached_to.bar_logic.length()
 
@@ -1490,7 +1576,8 @@ class BarPunctualForce(QtWidgets.QWidget):
             origin_end_meters = 0
             self.origin_end_factor_in_meters.setText(str(origin_end_meters))
 
-        origin_end_factor = origin_end_meters / self.widget.bar_attached_to.bar_logic.length()
+        origin_end_factor = origin_end_meters /\
+                            self.widget.bar_attached_to.bar_logic.length()
 
         if origin_end_factor < 0 or origin_end_factor > 1:
             return
@@ -1500,15 +1587,15 @@ class BarPunctualForce(QtWidgets.QWidget):
 
         direction = tuple(force_vector / value)
 
-        self.widget.bar_attached_to.update_punctual_force(pf_name=self.widget.pf_name,
-                                                          value=value,
-                                                          origin_end_factor=origin_end_factor,
-                                                          direction=direction)
+        self.widget.bar_attached_to.update_punctual_force(
+            pf_name=self.widget.pf_name, value=value,
+            origin_end_factor=origin_end_factor, direction=direction)
 
 
 class NodeSignals(QtWidgets.QGraphicsObject):
     """
-    The class from which inherits Node cannot emit signals. This class is aimed to hold the needed custom signals
+    The class from which inherits Node cannot emit signals.
+     This class is aimed to hold the needed custom signals
     of the Node class and emit them when necessary
     """
     position_changed = QtCore.pyqtSignal()
@@ -1519,7 +1606,8 @@ class NodeSignals(QtWidgets.QGraphicsObject):
 
 class BarSignals(QtWidgets.QGraphicsObject):
     """
-    The class from which inherits Bar cannot emit signals. This class is aimed to hold the needed custom signals
+    The class from which inherits Bar cannot emit signals. This class is aimed
+     to hold the needed custom signals
     of the Bar class and emit them when necessary
     """
     error_convert_value_to_string = QtCore.pyqtSignal()
@@ -1530,7 +1618,8 @@ class BarSignals(QtWidgets.QGraphicsObject):
 
 class Node(QtWidgets.QGraphicsEllipseItem):
     """
-    Class that holds all structure node information, as well as its graphic behavior
+    Class that holds all structure node information, as well as its graphic
+     behavior
     """
 
     def __init__(self, main_window, x_scene, y_scene, radius):
@@ -1551,10 +1640,13 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # x and y coordinates in scene reference system
         self.x_scene, self.y_scene = x_scene, y_scene
         # x and y coordinates in centered reference system
-        self.x_centered, self.y_centered = self.main_window.centered_coordinates(x_scene, y_scene)
+        self.x_centered, self.y_centered =\
+            self.main_window.centered_coordinates(x_scene, y_scene)
 
-        # x and y coordinates in scene reference system to draw the node by its center
-        self.draw_x_pos, self.draw_y_pos = x_scene - self.radius, self.y_scene - self.radius
+        # x and y coordinates in scene reference system to draw the node by
+        # its center
+        self.draw_x_pos, self.draw_y_pos = x_scene - self.radius,\
+                                           self.y_scene - self.radius
 
         self.setPos(self.draw_x_pos, self.draw_y_pos)
 
@@ -1585,12 +1677,17 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         # Signal
         self.signals = NodeSignals()
 
-    def update_position(self, new_x_centered_in_meters=None, new_y_centered_in_meters=None):
+    def update_position(self, new_x_centered_in_meters=None,
+                        new_y_centered_in_meters=None):
         """
-        This method is called from the coordinate textBoxes. Changes the position of the node the the specified one.
-        If one of the parameters is omitted or set to None, then the current position is applied.
-        :param new_x_centered_in_meters: New x position, in centered coordinates and in meters
-        :param new_y_centered_in_meters: New y position, in centered coordinates and in meters
+        This method is called from the coordinate textBoxes. Changes the
+         position of the node the the specified one.
+        If one of the parameters is omitted or set to None, then the current
+         position is applied.
+        :param new_x_centered_in_meters: New x position, in centered
+         coordinates and in meters
+        :param new_y_centered_in_meters: New y position, in centered
+         coordinates and in meters
         :return:
         """
         # If no x coordinate is specified, then use the current value
@@ -1611,9 +1708,13 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             new_y_centered = int(new_y_centered_in_meters * METER_TO_PX)
             self.y_centered = new_y_centered
 
-        if new_x_centered_in_meters != self.node_logic.x() or new_y_centered_in_meters != self.node_logic.y():
-            # Convert centered coordinates to scene ones in order to be able to draw them correctly
-            new_x_scene, new_y_scene = self.main_window.scene_coordinates(new_x_centered, new_y_centered)
+        if new_x_centered_in_meters != self.node_logic.x() or\
+                new_y_centered_in_meters != self.node_logic.y():
+            # Convert centered coordinates to scene ones in order to be able
+            # to draw them correctly
+            new_x_scene, new_y_scene =\
+                self.main_window.scene_coordinates(new_x_centered,
+                                                   new_y_centered)
 
             # Pixel coordinates must be integer
             new_x_scene = int(new_x_scene)
@@ -1622,7 +1723,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
             # Scene coordinates
             self.x_scene, self.y_scene = new_x_scene, new_y_scene
             # Update meter coordinates in node logic
-            self.node_logic.set_position((new_x_centered_in_meters, new_y_centered_in_meters, 0))
+            self.node_logic.set_position((new_x_centered_in_meters,
+                                          new_y_centered_in_meters, 0))
 
             # Modify scene coordinates to draw the node at its center
             self.draw_x_pos = int(new_x_scene - self.radius / 2)
@@ -1647,7 +1749,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         if support_name == "ROLLER_X":
             support = st.Support.ROLLER_X
             support_image = QtGui.QPixmap(":roller_x_support.svg")
-            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width()
+                                     / 2 + self.radius / 2)
             image_y_coordinate = int(self.draw_y_pos + self.radius)
         elif support_name == "ROLLER_Y":
             support = st.Support.ROLLER_Y
@@ -1657,17 +1760,20 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         elif support_name == "PINNED":
             support = st.Support.PINNED
             support_image = QtGui.QPixmap(":pinned_support.svg")
-            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width()
+                                     / 2 + self.radius / 2)
             image_y_coordinate = int(self.draw_y_pos + self.radius)
         elif support_name == "FIXED":
             support = st.Support.FIXED
             support_image = QtGui.QPixmap(":fixed_support.svg")
-            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width()
+                                     / 2 + self.radius / 2)
             image_y_coordinate = int(self.draw_y_pos + self.radius)
         else:
             support = st.Support.NONE
             support_image = QtGui.QPixmap()
-            image_x_coordinate = int(self.draw_x_pos - support_image.width() / 2 + self.radius / 2)
+            image_x_coordinate = int(self.draw_x_pos - support_image.width()
+                                     / 2 + self.radius / 2)
             image_y_coordinate = int(self.draw_y_pos + self.radius)
 
         self.label_support_image.setPixmap(support_image)
@@ -1684,7 +1790,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
         """
         if application_mode == ApplicationMode.NORMAL_MODE and \
                 (active_structure_element is not self or (
-                        active_structure_element is self and self.color is NORMAL_COLOR
+                        active_structure_element is self and self.color is
+                        NORMAL_COLOR
                 )):
             self.change_node_color("hover")
         elif application_mode == ApplicationMode.BAR_MODE:
@@ -1726,7 +1833,8 @@ class Node(QtWidgets.QGraphicsEllipseItem):
 
 class GraphicsScene(QtWidgets.QGraphicsScene):
     """
-    Reimplementation of QGraphicsScene in order to be able to handle the mouse events
+    Reimplementation of QGraphicsScene in order to be able to handle the mouse
+     events
     """
 
     def __init__(self, main_window, parent=None):
@@ -1738,7 +1846,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         super().__init__(parent)
         self.main_window = main_window
 
-        # Dictionary to track the mouse clicks when in bar mode in order to store
+        # Dictionary to track the mouse clicks when in bar mode in order
+        # to store
         # the points of the bar
         self.nodes_for_bar_creation = None
 
@@ -1755,7 +1864,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
         if event.key() == QtCore.Qt.Key_Escape:
             self.main_window.set_current_mode(ApplicationMode.NORMAL_MODE)
         # Delete active element
-        elif event.key() == QtCore.Qt.Key_Delete and application_mode == ApplicationMode.NORMAL_MODE:
+        elif event.key() == QtCore.Qt.Key_Delete and application_mode ==\
+                ApplicationMode.NORMAL_MODE:
             if type(active_structure_element) is Node:
                 self.main_window.delete_node(active_structure_element)
             elif type(active_structure_element) is Bar:
@@ -1785,7 +1895,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                 self.nodes_for_bar_creation = None
 
             # Create bar
-            if self.nodes_for_bar_creation is not None and len(self.nodes_for_bar_creation) >= 2:
+            if self.nodes_for_bar_creation is not None and\
+                    len(self.nodes_for_bar_creation) >= 2:
                 node_origin = self.nodes_for_bar_creation.get("node_origin")
                 node_end = self.nodes_for_bar_creation.get("node_end")
 
@@ -1805,7 +1916,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def _update_active_element_info(self):
         """
-        Updates the interface elements to show information about the active element
+        Updates the interface elements to show information about the active
+         element
         :return:
         """
         # NODE item
@@ -1833,7 +1945,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                                   "==============" + "\n"
                                   f"x: {node_displacement.get('x')} [m]" + "\n"
                                   f"y: {node_displacement.get('y')} [m]" + "\n"
-                                  f"ang.: {node_displacement.get('angle')} [rad.]" + "\n"
+                                  f"ang.: {node_displacement.get('angle')}"
+                                  f" [rad.]" + "\n"
             )
 
             # Show reactions
@@ -1847,7 +1960,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                                  "==========" + "\n"
                                  f"x: {node_reactions.get('x')} [N]" + "\n"
                                  f"y: {node_reactions.get('y')} [N]" + "\n"
-                                 f"M.: {node_reactions.get('momentum')} [Nm]" + "\n"
+                                 f"M.: {node_reactions.get('momentum')} [Nm]\n"
             )
 
             self._hide_last_bar_charges_info_from_gui()
@@ -1857,9 +1970,12 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Change bar color
             active_structure_element.change_bar_color("selected")
             active_structure_element.change_origin_node_color("origin_node")
-            material_name = active_structure_element.bar_logic.get_material().name
-            profile_name = " ".join([active_structure_element.bar_logic.get_profile().name,
-                                     str(active_structure_element.bar_logic.get_profile().name_number)])
+            material_name =\
+                active_structure_element.bar_logic.get_material().name
+            profile_name =\
+                " ".join([active_structure_element.bar_logic.get_profile().name,
+                str(active_structure_element.bar_logic.get_profile().name_number
+                    )])
 
             self.main_window.material_combo_box.setCurrentText(material_name)
             self.main_window.profile_combo_box.setCurrentText(profile_name)
@@ -1870,9 +1986,11 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Hide currently shown
             self._hide_last_bar_charges_info_from_gui()
             # Add active element
-            if active_structure_element.distributed_charges_container not in get_widgets_in_layout(
+            if active_structure_element.distributed_charges_container not in\
+                    get_widgets_in_layout(
                     self.main_window.bar_charges_layout):
-                self.main_window.bar_charges_layout.addWidget(active_structure_element.distributed_charges_container)
+                self.main_window.bar_charges_layout.addWidget(
+                    active_structure_element.distributed_charges_container)
             else:
                 active_structure_element.distributed_charges_container.show()
 
@@ -1880,7 +1998,8 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             # Hide currently shown
             self._hide_last_bar_punctual_forces_info_from_gui()
             # Add active element
-            if active_structure_element.punctual_forces_container not in get_widgets_in_layout(
+            if active_structure_element.punctual_forces_container not in\
+                    get_widgets_in_layout(
                     self.main_window.bar_punctual_forces_layout):
                 self.main_window.bar_punctual_forces_layout.addWidget(
                     active_structure_element.punctual_forces_container)
@@ -1896,17 +2015,21 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def _hide_last_bar_charges_info_from_gui(self):
         """
-        This function is used to update the active element information shown in the GUI. It
+        This function is used to update the active element information shown in
+         the GUI. It
         HIDES the already included distributed charges widgets in the dock.
 
-        The original idea was to remove them from the dock, but its children caused visual problems and,
+        The original idea was to remove them from the dock, but its children
+         caused visual problems and,
         when deleted from the layout, they disappeared also in the Bar object.
         """
         # Get elements that are currently contained in bar_charges_layout
-        elements_in_bar_charges_layout = get_widgets_in_layout(self.main_window.bar_charges_layout)
+        elements_in_bar_charges_layout =\
+            get_widgets_in_layout(self.main_window.bar_charges_layout)
         # Use the name of the widget to filter the ones that must be hidden
-        elements_to_hide = list(filter(lambda x: x.objectName() == "distributed_charges_container",
-                                       elements_in_bar_charges_layout))
+        elements_to_hide = list(filter(
+            lambda x: x.objectName() == "distributed_charges_container",
+            elements_in_bar_charges_layout))
 
         # Hide the filtered elements
         if len(elements_to_hide) > 0:
@@ -1915,17 +2038,22 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
 
     def _hide_last_bar_punctual_forces_info_from_gui(self):
         """
-        This function is used to update the active element information shown in the GUI. It
+        This function is used to update the active element information shown
+         in the GUI. It
         HIDES the already included punctual forces widgets in the dock.
 
-        The original idea was to remove them from the dock, but its children caused visual problems and,
+        The original idea was to remove them from the dock, but its children
+         caused visual problems and,
         when deleted from the layout, they disappeared also in the Bar object.
         """
         # Get elements that are currently contained in bar_charges_layout
-        elements_in_punctual_forces_layout = get_widgets_in_layout(self.main_window.bar_punctual_forces_layout)
+        elements_in_punctual_forces_layout =\
+            get_widgets_in_layout(
+                self.main_window.bar_punctual_forces_layout)
         # Use the name of the widget to filter the ones that must be hidden
-        elements_to_hide = list(filter(lambda x: x.objectName() == "punctual_forces_container",
-                                       elements_in_punctual_forces_layout))
+        elements_to_hide = list(
+            filter(lambda x: x.objectName() == "punctual_forces_container",
+                   elements_in_punctual_forces_layout))
 
         # Hide the filtered elements
         if len(elements_to_hide) > 0:
@@ -1957,12 +2085,15 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             if type(item) is Bar:
                 bars.append(item)
 
-        return bars
+        ordered_bars = sorted(bars, key=lambda x: (x.x1_scene, x.x2_scene,
+                                                   x.y1_scene, x.y2_scene))
+        return ordered_bars
 
 
 class LineEdit(QtWidgets.QLineEdit):
     """
-    Extends QLineEdit in order to be able to specify a sizeHint lesser than the default one
+    Extends QLineEdit in order to be able to specify a sizeHint lesser than
+     the default one
     """
 
     def __init__(self, parent=None):
@@ -1977,7 +2108,8 @@ class LineEdit(QtWidgets.QLineEdit):
 
 class SmallButton(QtWidgets.QPushButton):
     """
-    Extends QPushButton in order to be able to specify a sizeHint lesser than the default one
+    Extends QPushButton in order to be able to specify a sizeHint lesser than
+     the default one
     """
 
     def __init__(self, parent=None):
@@ -1998,13 +2130,15 @@ class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, width=5, height=4):
         self.fig = Figure(figsize=(width, height))
         # Create axes for each effort law
-        self.axes_axile, self.axes_shear, self.axes_bending = self.fig.subplots(3, 1, sharex=True)
+        self.axes_axile, self.axes_shear, self.axes_bending =\
+            self.fig.subplots(3, 1, sharex=True)
 
         # Axes general configuration
         self.axes = [self.axes_axile, self.axes_shear, self.axes_bending]
 
         for ax in self.axes:
-            # Create markers for each effort law. They are transparent on startup
+            # Create markers for each effort law.
+            # They are transparent on startup
             ax.plot([0], [0], marker="o", color="#FF000000", zorder=3)
             # Create value text for each effort law. They are empty on startup
             ax.text(0, 0, "", weight="bold")
@@ -2016,6 +2150,8 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes_shear.set_ylabel("Shear strength (N)")
         self.axes_bending.set_ylabel("Bending moment (N/m)")
 
+        self.fig.align_ylabels(self.axes)
+
         # Label x axis
         self.axes_bending.set_xlabel("Length (m)")
         super(MplCanvas, self).__init__(self.fig)
@@ -2024,15 +2160,19 @@ class MplCanvas(FigureCanvasQTAgg):
         self.marker_can_be_moved = False
 
         # Connect self.mouse_movement function to mouse hover event
-        self.fig.canvas.mpl_connect('motion_notify_event', self._mouse_movement)
+        self.fig.canvas.mpl_connect('motion_notify_event',
+                                    self._mouse_movement)
         # Allow marker movement when clicking the mouse
-        self.fig.canvas.mpl_connect('button_press_event', self._allow_marker_movement)
+        self.fig.canvas.mpl_connect('button_press_event',
+                                    self._allow_marker_movement)
         # Deny marker movement when not clicking the mouse
-        self.fig.canvas.mpl_connect('button_release_event', self._deny_marker_movement)
+        self.fig.canvas.mpl_connect('button_release_event',
+                                    self._deny_marker_movement)
 
     def _allow_marker_movement(self, event):
         """
-        Turns to True the flag that allows the marker movement and moves it to the cursor position
+        Turns to True the flag that allows the marker movement and moves
+         it to the cursor position
         """
         self.marker_can_be_moved = True
         self._move_marker(event)
@@ -2045,7 +2185,8 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def _mouse_movement(self, event):
         """
-        Snaps the marker to the plotted lines and shows its value when hovering the mouse
+        Snaps the marker to the plotted lines and shows its value when
+         hovering the mouse
         """
         self._move_marker(event)
 
@@ -2062,7 +2203,8 @@ class MplCanvas(FigureCanvasQTAgg):
 
     def _get_info_from_mouse_event(self, event):
         """
-        Original from https://stackoverflow.com/questions/44679473/add-cursor-to-matplotlib
+        Original from
+         https://stackoverflow.com/questions/44679473/add-cursor-to-matplotlib
         Extracts the useful information from the given MouseEvent
         """
         # For MouseEvent event
@@ -2074,12 +2216,17 @@ class MplCanvas(FigureCanvasQTAgg):
                 # Get the axes over which the mouse is hovering
                 ax = event.inaxes.axes
                 # Get x and y plotted values
-                x_axis = ax.lines[1].get_xdata()    # The effort information is the second line since the marker is the first one
-                y_axis = ax.lines[1].get_ydata()    # The effort information is the second line since the marker is the first one
+                x_axis = ax.lines[1].get_xdata()    # The effort information is
+                # the second line since the marker is the first one
+                y_axis = ax.lines[1].get_ydata()    # The effort information is
+                # the second line since the marker is the first one
 
-                # The x_value of the mouse must be in the plotted range in order for the data to be display correctly
-                if x_axis[0] <= x_mouse_value <= x_axis[-1] and self.marker_can_be_moved:
-                    # Get the index value for the closest x point in axis to the x cursor value
+                # The x_value of the mouse must be in the plotted range in
+                # order for the data to be display correctly
+                if x_axis[0] <= x_mouse_value <= x_axis[-1] and\
+                        self.marker_can_be_moved:
+                    # Get the index value for the closest x point in axis
+                    # to the x cursor value
                     index = np.searchsorted(x_axis, [x_mouse_value])[0]
                     # Get x and y data coordinates
                     x_data_value = x_axis[index]
