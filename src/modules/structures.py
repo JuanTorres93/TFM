@@ -504,8 +504,7 @@ class Bar:
 
         :return: Length of the bar
         """
-        return np.linalg.norm(np.subtract(self.end.position, \
-                                          self.origin.position))
+        return np.linalg.norm(np.subtract(self.end.position, self.origin.position))
 
     def set_material(self, mat_name: str):
         """
@@ -557,17 +556,13 @@ class Bar:
 
         local_rigidity_matrix = \
             np.array([[e * a / l, 0, 0, -e * a / l, 0, 0],
-                      [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e \
-                       * i / l ** 3,
+                      [0, 12 * e * i / l ** 3, 6 * e * i / l ** 2, 0, -12 * e * i / l ** 3,
                        6 * e * i / l ** 2],
-                      [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / \
-                       l ** 2, 2 * e * i / l],
+                      [0, 6 * e * i / l ** 2, 4 * e * i / l, 0, -6 * e * i / l ** 2, 2 * e * i / l],
                       [-e * a / l, 0, 0, e * a / l, 0, 0],
-                      [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * \
-                       e * i / l ** 3,
+                      [0, -12 * e * i / l ** 3, -6 * e * i / l ** 2, 0, 12 * e * i / l ** 3,
                        -6 * e * i / l ** 2],
-                      [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / \
-                       l ** 2,
+                      [0, 6 * e * i / l ** 2, 2 * e * i / l, 0, -6 * e * i / l ** 2,
                        4 * e * i / l]])
 
         m_aux = local_rigidity_matrix[0:3, 0:3]
@@ -594,28 +589,23 @@ class Bar:
         reference = np.array((1, 0, 0))
         # Vector with origin in the origin node of the bar (beam) and with
         # end in the end node of the bar
-        beam_line = np.subtract(self.get_end().position, \
-                                self.get_origin().position)
+        beam_line = np.subtract(self.get_end().position, self.get_origin().position)
 
         # Calculate the dot product of the previous vectors
         dot_product = reference @ beam_line
 
         # Compute the angle between the vector using the definition of the
         # dot product
-        cosine = dot_product / np.linalg.norm(reference) / \
-                 np.linalg.norm(beam_line)
+        cosine = dot_product / np.linalg.norm(reference) / np.linalg.norm(beam_line)
         angle = np.arccos(cosine)
 
         # Adjust the angle to the pertinent quadrant
-        if self.get_end().x() >= self.get_origin().x() and self.get_end().y()\
-                >= self.get_origin().y():
+        if self.get_end().x() >= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
             # angle = angle
             pass
-        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y()\
-                >= self.get_origin().y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() >= self.get_origin().y():
             angle = angle + math.pi / 2
-        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y()\
-                <= self.get_origin().y():
+        elif self.get_end().x() <= self.get_origin().x() and self.get_end().y() <= self.get_origin().y():
             angle = angle + math.pi
         else:
             angle = 2 * math.pi - angle
@@ -889,8 +879,7 @@ class Bar:
         # Distributed charges
         # Dictionary of dictionaries containing all distributed charges in
         # the bar
-        distributed_charges_contribution =\
-            self.get_referred_distributed_charge_to_nodes(
+        distributed_charges_contribution = self.get_referred_distributed_charge_to_nodes(
                 return_global_values=False)
         if distributed_charges_contribution is not None:
             # Iterate over every found distributed charge
@@ -921,8 +910,7 @@ class Bar:
 
         # Punctual forces
         # Dictionary of dictionaries containing all punctual forces in the bar
-        punctual_forces_contribution =\
-            self.get_referred_punctual_forces_in_bar_to_nodes(
+        punctual_forces_contribution = self.get_referred_punctual_forces_in_bar_to_nodes(
                 return_global_values=True)
         if punctual_forces_contribution is not None:
             # Iterate over every found punctual forces
@@ -1046,8 +1034,7 @@ class Bar:
 
             bar_angle = self.angle_from_global_to_local()
 
-            v = - y_reaction * math.cos(bar_angle) + x_reaction *\
-                math.sin(bar_angle)
+            v = - y_reaction * math.cos(bar_angle) + x_reaction * math.sin(bar_angle)
         else:
             bar_efforts = self.get_efforts()
             v = - bar_efforts.get("p_ij")[1]
@@ -1085,8 +1072,7 @@ class Bar:
             x_reaction = origin_reactions.get("x")
             y_reaction = origin_reactions.get("y")
 
-            shear_force_contribution = - x_reaction * math.sin(bar_angle) * x\
-                                       + y_reaction * math.cos(bar_angle) * x
+            shear_force_contribution = - x_reaction * math.sin(bar_angle) * x + y_reaction * math.cos(bar_angle) * x
 
             m_contribution = - origin_reactions.get("momentum")
 
@@ -1312,14 +1298,10 @@ class Structure:
 
             # This list is used in a loop in order to use the different k_ij
             # of the bar
-            nodes_combination = [(origin_node.solving_numeration,
-                                  origin_node.solving_numeration),
-                                 (origin_node.solving_numeration,
-                                  end_node.solving_numeration),
-                                 (end_node.solving_numeration,
-                                  origin_node.solving_numeration),
-                                 (end_node.solving_numeration,
-                                  end_node.solving_numeration)
+            nodes_combination = [(origin_node.solving_numeration, origin_node.solving_numeration),
+                                 (origin_node.solving_numeration, end_node.solving_numeration),
+                                 (end_node.solving_numeration, origin_node.solving_numeration),
+                                 (end_node.solving_numeration, end_node.solving_numeration)
                                  ]
 
             for i in range(4):
@@ -1380,8 +1362,7 @@ class Structure:
                     # offset_index is used to cancel rows and columns in a more
                     # human-friendly way (using 0, 1 and 2)
                     # to cancel out the pertinent rows and columns
-                    offset_index = (node.solving_numeration - 1) *\
-                                   submatrix_size
+                    offset_index = (node.solving_numeration - 1) * submatrix_size
 
                     # range_start is used to restrain cancellations on rollers
                     # supports
@@ -1412,8 +1393,7 @@ class Structure:
                                 index_to_delete:
                             # Add index to the list in order to delete all
                             # rows and columns at once
-                            indexes_to_delete.append(offset_index +
-                                                     offset_component)
+                            indexes_to_delete.append(offset_index + offset_component)
 
                 # Mark the current node as processed
                 proc_nodes.append(node.solving_numeration)
@@ -2154,15 +2134,11 @@ class PunctualForceInBar:
         reaction_end = np.array([x_reaction, y_reaction_end, 0])
 
         # Bending moments
-        flector_origin = - forces_in_axis[1] * distance_origin_force *\
-                         pow(distance_end_force, 2) / pow(
+        flector_origin = - forces_in_axis[1] * distance_origin_force * pow(distance_end_force, 2) / pow(
             bar_length, 2)
-        flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) *\
-                      distance_end_force / pow(bar_length,2)
+        flector_end = forces_in_axis[1] * pow(distance_origin_force, 2) * distance_end_force / pow(bar_length,2)
 
-        flector_force_point = 2 * forces_in_axis[1] *\
-                              pow(distance_origin_force, 2) *\
-                              pow(distance_end_force, 2) / pow(bar_length, 3)
+        flector_force_point = 2 * forces_in_axis[1] * pow(distance_origin_force, 2) * pow(distance_end_force, 2) / pow(bar_length, 3)
 
         if not return_global_values:
             referred_punctual_force = {
@@ -2217,8 +2193,7 @@ class PunctualForceInBar:
             m_origin_to_force_point = 0
             return m_origin_to_force_point
         else:
-            m_force_point_to_end = p * self.direction[1] *\
-                                   (x - distance_origin_to_force)
+            m_force_point_to_end = p * self.direction[1] * (x - distance_origin_to_force)
             return m_force_point_to_end
 
     def shear_strength_law(self, bar, origin_to_end_factor):
